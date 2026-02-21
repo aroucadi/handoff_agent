@@ -61,4 +61,8 @@ async def record_trace(
         print(f"[TRACE] {agent_name} | Latency: {latency_ms}ms | Cost: {(prompt_tokens + completion_tokens)} tokens")
 
     except Exception as e:
-        logger.error(f"[TELEMETRY] Failed to record trace for {agent_name}: {e}")
+        # Strictly suppress errors so telemetry NEVER breaks the primary agent execution
+        try:
+            logger.error(f"[TELEMETRY] Failed to record trace for {agent_name}: {e}")
+        except:
+            pass

@@ -1,108 +1,91 @@
 # Handoff — Architecture
 
-## System Overview
+## Multimodal Live Agent Flow (Vision + Voice)
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        HANDOFF ARCHITECTURE                          │
-│                                                                      │
-│  ┌─────────────┐    webhook     ┌──────────────────┐                │
-│  │   CRM       │───────────────▶│   Handoff API    │                │
-│  │  Simulator  │   deal-closed  │   (Cloud Run)    │                │
-│  │  :8001      │                │   :8000          │                │
-│  └─────────────┘                └──────┬───────────┘                │
-│        │                               │                             │
-│        │                    ┌──────────┴──────────┐                  │
-│        │                    │                     │                  │
-│        │              POST /generate      WS /ws/sessions           │
-│        │                    │                     │                  │
-│        │                    ▼                     ▼                  │
-│        │          ┌──────────────┐     ┌─────────────────┐          │
-│        │          │   Graph      │     │  Gemini Live    │          │
-│        │          │  Generator   │     │  Session Mgr    │          │
-│        │          │  (Cloud Run) │     │                 │          │
-│        │          │  :8002       │     │  gemini-2.5-    │          │
-│        │          └──────┬───────┘     │  flash-native-  │          │
-│        │                 │             │  audio-preview  │          │
-│        │         ┌───────┼───────┐     └────────┬────────┘          │
-│        │         │       │       │              │                    │
-│        │         ▼       ▼       ▼              │                    │
-│        │     ┌──────┐┌──────┐┌──────┐          │                    │
-│        │     │Gemini││Gemini││Gemini│    tool calls                 │
-│        │     │3.1Pro││3.1Pro││Embed │    (read_index,               │
-│        │     │      ││      ││001   │     follow_link,              │
-│        │     │Extract││Nodes ││768d  │     search_graph)             │
-│        │     └──────┘└──────┘└──────┘          │                    │
-│        │         │       │       │              │                    │
-│        │         ▼       ▼       ▼              ▼                    │
-│        │    ┌─────────────────────────────────────────┐              │
-│        │    │        Google Cloud Platform             │              │
-│        │    │                                         │              │
-│        │    │  ┌──────────┐  ┌──────────────────┐    │              │
-│        │    │  │   GCS    │  │    Firestore     │    │              │
-│        │    │  │          │  │                  │    │              │
-│        │    │  │ skill-   │  │ skill_graphs/    │    │              │
-│        │    │  │ graphs/  │  │   {client_id}/   │    │              │
-│        │    │  │          │  │     nodes/       │    │              │
-│        │    │  │ clients/ │  │       metadata   │    │              │
-│        │    │  │ product/ │  │       links      │    │              │
-│        │    │  │ industry/│  │       embedding  │    │              │
-│        │    │  └──────────┘  └──────────────────┘    │              │
-│        │    │                                         │              │
-│        │    │  ┌──────────────────────────────────┐   │              │
-│        │    │  │     Secret Manager               │   │              │
-│        │    │  │     GEMINI_API_KEY                │   │              │
-│        │    │  └──────────────────────────────────┘   │              │
-│        │    └─────────────────────────────────────────┘              │
-│        │                                                             │
-│        │    ┌─────────────────────────────────────────┐              │
-│        ▼    │         Frontend (Voice UI)              │              │
-│  ┌──────────────┐                                     │              │
-│  │  Handoff     │◀── WebSocket (bidirectional audio) ─┘              │
-│  │  Voice UI    │                                                    │
-│  │  (React)     │    Features:                                       │
-│  │  :5174       │    • Dashboard (account cards)                     │
-│  │              │    • Split-screen briefing                         │
-│  │              │    • React Flow graph topology                     │
-│  │              │    • Mic capture (PCM 16kHz)                       │
-│  │              │    • Audio playback (PCM 24kHz)                    │
-│  └──────────────┘    • Breadcrumb + node content                    │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+This sequence demonstrates how our React frontend captures desktop screen shares (Vision) and microphone audio (Voice), and proxies them through our FastAPI Google Cloud Run backend into the **Gemini 2.0 Flash Multimodal Live API**.
+
+```mermaid
+sequenceDiagram
+    participant CSM as User (CSM)
+    participant React as Frontend (React)
+    participant FastAPI as Backend (FastAPI)
+    participant Gemini as Gemini Live API
+    participant Graph as Firestore Skill Graph
+
+    CSM->>React: Clicks "Share Screen" & "Mic On"
+    activate React
+    React->>React: Capture 16000Hz PCM Audio
+    React->>React: Capture <canvas> Desktop frames at 1 FPS
+    
+    React->>FastAPI: WebSocket: {"type": "audio", "data": "<base64>"}
+    React->>FastAPI: WebSocket: {"type": "image", "data": "<base64>"}
+    
+    activate FastAPI
+    FastAPI->>Gemini: Forward Audio (mime_type: audio/pcm) 
+    FastAPI->>Gemini: Forward Image (mime_type: image/jpeg)
+    
+    activate Gemini
+    Gemini-->>Gemini: Multimodal Synthesis & Reasoning
+    
+    rect rgb(200, 220, 240)
+        Note right of Gemini: Agentic Tool Use (Grounding)
+        Gemini->>FastAPI: Tool Call: search_graph("revenue trends")
+        FastAPI->>Graph: Firestore Vector Search (FindNearest)
+        Graph-->>FastAPI: Top 3 Markdown Nodes
+        FastAPI-->>Gemini: Tool Result (Node Content)
+    end
+    
+    Gemini-->>FastAPI: Output Audio (mime_type: audio/pcm)
+    deactivate Gemini
+    
+    FastAPI-->>React: WebSocket {"type": "audio", "data": "<base64>"}
+    deactivate FastAPI
+    
+    React-->>CSM: Plays Audio Contextualized to the Screen
+    deactivate React
 ```
 
-## Data Flow: Deal Close → Voice Briefing
+---
 
-```
-1. CSM closes deal in CRM Simulator
-       │
-       ▼
-2. CRM fires webhook → POST /api/webhooks/crm/deal-closed
-       │
-       ▼
-3. Backend forwards to Graph Generator → POST /generate
-       │
-       ▼
-4. Graph Generator pipeline (async, ~60-120 seconds):
-   a. Extract entities from CRM payload
-   b. Extract entities from transcript (Gemini 3.1 Pro)
-   c. Generate 8 markdown nodes (Gemini 3.1 Pro)
-   d. Write nodes to GCS: gs://bucket/clients/{id}/*.md
-   e. Index in Firestore with embeddings (gemini-embedding-001)
-       │
-       ▼
-5. CSM opens Handoff dashboard → sees account card "Ready"
-       │
-       ▼
-6. CSM clicks "Start Briefing" → creates session
-       │
-       ▼
-7. WebSocket connects to Gemini Live (gemini-2.5-flash-native-audio)
-       │
-       ▼
-8. Real-time voice conversation with tool calling:
-   Agent reads graph nodes → provides grounded briefing
-   Frontend shows: transcript, speaking indicator, graph animation
+## ETL Graph Generation Pipeline (Multi-Agent)
+
+This diagram outlines how raw CRM data and Salesforce transcripts are parsed by a dual-agent team into a deterministic Markdown Skill Graph.
+
+```mermaid
+graph TD
+    subgraph Data Sources
+        CRM[CRM Webhook]
+        Transcript[Sales Call Transcript]
+        Contract[PDF Contract GCS]
+    end
+
+    subgraph Generator Team [Graph Generator Service]
+        ETL[asyncio.gather Extractors]
+        Gen[Agent 1: Generator Draft]
+        Rev[Agent 2: Strict QA Reviewer]
+    end
+
+    subgraph Storage [Google Cloud Storage / Firestore]
+        GCS[(GCS Markdown Bucket)]
+        DB[(Firestore Vector DB)]
+        Trace[(Telemetry Traces)]
+    end
+
+    CRM -.->|Webhooks| ETL
+    Transcript --> ETL
+    Contract --> ETL
+    
+    ETL -->|Aggregated Data| Gen
+    Gen -->|Raw Nodes JSON| Rev
+    Rev -->|Valid YAML + Links| GCS
+    
+    GCS -->|Index API| DB
+    Gen -.->|Latency/Cost logs| Trace
+    Rev -.->|Latency/Cost logs| Trace
+    
+    style Gen fill:#d4edda,stroke:#28a745
+    style Rev fill:#cce5ff,stroke:#007bff
+    style Trace fill:#f8d7da,stroke:#dc3545
 ```
 
 ## Gemini Models Used

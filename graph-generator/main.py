@@ -45,6 +45,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all for unhandled exceptions to return standard JSON instead of crashing."""
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"[ERROR] Unhandled exception on {request.url.path}:\n{error_details}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal Server Error", "details": str(exc)},
+    )
+
 # In-memory job tracking
 jobs: dict[str, dict] = {}
 
