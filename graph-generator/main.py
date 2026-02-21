@@ -28,7 +28,7 @@ from extractors.crm_extractor import extract_from_crm_payload
 from extractors.transcript_extractor import extract_from_transcript
 from extractors.contract_extractor import extract_from_contract
 from node_generator import generate_client_nodes
-from storage import write_all_nodes
+from core.storage import write_all_nodes
 from indexer import index_all_nodes, get_graph_status
 
 app = FastAPI(
@@ -67,33 +67,37 @@ async def _run_generation(job_id: str, payload: dict):
         company_name = payload.get("company_name", "Unknown Company")
         industry = payload.get("industry", "general")
 
-        # Step 2: Extract from transcript (if available)
-        transcript_data = None
+        # Step 2: Extract asynchronously (Transcript & Contract in parallel)
+        print(f"[JOB {job_id}] Step 2: Running parallel AI extractions (Gemini 3.1 Pro)...")
+        jobs[job_id]["status"] = "analyzing_documents"
+        
         transcript = payload.get("sales_transcript")
-        if transcript and transcript.strip():
-            print(f"[JOB {job_id}] Step 2: Extracting from transcript with Gemini 3.1 Pro...")
-            jobs[job_id]["status"] = "analyzing_transcript"
-            transcript_data = await extract_from_transcript(transcript)
-            print(f"[JOB {job_id}] Transcript extraction complete: "
-                  f"{len(transcript_data.get('stakeholders', []))} stakeholders, "
-                  f"{len(transcript_data.get('risks_identified', []))} risks")
-        else:
-            print(f"[JOB {job_id}] No transcript provided, skipping transcript extraction")
-
-        # Step 2.5: Extract from contract PDF (if available)
-        contract_data = None
         contract_pdf_url = payload.get("contract_pdf_url")
-        if contract_pdf_url:
-            print(f"[JOB {job_id}] Step 2.5: Extracting contract terms with Gemini 3.1 Pro (multimodal)...")
-            jobs[job_id]["status"] = "analyzing_contract"
-            contract_data = await extract_from_contract(client_id, contract_pdf_url)
-            if contract_data:
-                print(f"[JOB {job_id}] Contract extraction complete: "
-                      f"{len(contract_data.get('contracted_modules', []))} modules")
-            else:
-                print(f"[JOB {job_id}] Contract PDF could not be processed")
-        else:
-            print(f"[JOB {job_id}] No contract PDF URL provided, skipping contract extraction")
+        
+        async def safe_extract_transcript():
+            if transcript and transcript.strip():
+                print(f"[JOB {job_id}] Extracting from transcript...")
+                return await extract_from_transcript(transcript)
+            print(f"[JOB {job_id}] No transcript provided.")
+            return None
+            
+        async def safe_extract_contract():
+            if contract_pdf_url:
+                print(f"[JOB {job_id}] Extracting from contract PDF...")
+                return await extract_from_contract(client_id, contract_pdf_url)
+            print(f"[JOB {job_id}] No contract PDF URL provided.")
+            return None
+            
+        import asyncio
+        transcript_data, contract_data = await asyncio.gather(
+            safe_extract_transcript(),
+            safe_extract_contract(),
+        )
+        
+        if transcript_data:
+            print(f"[JOB {job_id}] Transcript extraction complete: {len(transcript_data.get('stakeholders', []))} stakeholders")
+        if contract_data:
+            print(f"[JOB {job_id}] Contract extraction complete: {len(contract_data.get('contracted_modules', []))} modules")
 
         # Step 3: Generate nodes
         print(f"[JOB {job_id}] Step 3: Generating skill graph nodes with Gemini 3.1 Pro...")

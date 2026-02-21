@@ -6,15 +6,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
-
-interface BriefingSessionProps {
-    clientId: string;
-    sessionId: string;
-    onEnd: () => void;
-}
 
 interface ClientDetails {
     client_id: string;
@@ -23,7 +18,12 @@ interface ClientDetails {
     kickoff_date?: string;
 }
 
-export default function BriefingSession({ clientId, sessionId, onEnd }: BriefingSessionProps) {
+export default function BriefingSession() {
+    const { clientId } = useParams<{ clientId: string }>();
+    const location = useLocation();
+    const navigate = useNavigate();
+    const sessionId = location.state?.sessionId;
+
     const {
         isConnected,
         isMicActive,
@@ -41,6 +41,11 @@ export default function BriefingSession({ clientId, sessionId, onEnd }: Briefing
 
     // Connect to WebSocket when session starts
     useEffect(() => {
+        if (!clientId || !sessionId) {
+            navigate('/dashboard');
+            return;
+        }
+
         connect(sessionId);
 
         // Fetch client details for header
@@ -64,7 +69,7 @@ export default function BriefingSession({ clientId, sessionId, onEnd }: Briefing
 
     const handleEnd = () => {
         disconnect();
-        onEnd();
+        navigate('/dashboard');
     };
 
     // Keyboard: Space to toggle mic
@@ -145,7 +150,7 @@ export default function BriefingSession({ clientId, sessionId, onEnd }: Briefing
                     onEndBriefing={handleEnd}
                 />
                 <GraphPanel
-                    clientId={clientId}
+                    clientId={clientId || ''}
                     toolCalls={toolCalls}
                     currentNode={currentNode}
                 />

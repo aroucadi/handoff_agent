@@ -43,6 +43,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all for unhandled exceptions to return standard JSON instead of crashing."""
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"[ERROR] Unhandled exception on {request.url.path}:\n{error_details}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal Server Error", "details": str(exc)},
+    )
+
 # ── Active Session Objects (for WebSocket connections only) ────
 # Note: Session metadata is persisted in Firestore. This dict holds
 # active LiveSession objects that have open WebSocket connections.
@@ -334,7 +346,7 @@ async def get_graph_status(client_id: str):
 @app.get("/api/clients/{client_id}/graph/nodes")
 async def list_graph_nodes(client_id: str):
     """List all nodes in a client's skill graph."""
-    from graph.storage import list_client_nodes
+    from core.storage import list_client_nodes
     nodes = list_client_nodes(client_id)
     return {"client_id": client_id, "nodes": nodes, "count": len(nodes)}
 
@@ -342,7 +354,7 @@ async def list_graph_nodes(client_id: str):
 @app.get("/api/clients/{client_id}/graph/nodes/{node_id}")
 async def read_graph_node(client_id: str, node_id: str):
     """Read a specific node from a client's skill graph."""
-    from graph.storage import read_node
+    from core.storage import read_node
     content = read_node(client_id, node_id)
     if not content:
         return JSONResponse(status_code=404, content={"error": f"Node {node_id} not found"})

@@ -1,18 +1,26 @@
-"""Graph Generator — GCS Storage Module.
+"""Handoff Core Library — Google Cloud Storage Singleton.
 
-Writes generated markdown nodes to Google Cloud Storage.
+Provides a unified, reusable GCS client to prevent repeated
+inline instantiations and abstract common bucket operations
+shared by the backend and graph-generator services.
 """
 
-from __future__ import annotations
-
+from typing import Optional
 from google.cloud import storage as gcs
 
-from config import config
+from core.config import config
 
 
-def _get_client() -> gcs.Client:
-    """Get GCS client."""
-    return gcs.Client(project=config.project_id)
+# Global singleton instance
+_gcs_client: Optional[gcs.Client] = None
+
+
+def get_gcs_client() -> gcs.Client:
+    """Get or create the Google Cloud Storage client singleton."""
+    global _gcs_client
+    if _gcs_client is None:
+        _gcs_client = gcs.Client(project=config.project_id)
+    return _gcs_client
 
 
 async def write_node_to_gcs(client_id: str, node_id: str, content: str) -> str:
@@ -26,11 +34,13 @@ async def write_node_to_gcs(client_id: str, node_id: str, content: str) -> str:
     Returns:
         GCS URI of the written file.
     """
-    gcs_client = _get_client()
+    gcs_client = get_gcs_client()
     bucket = gcs_client.bucket(config.skill_graphs_bucket)
 
     blob_path = f"clients/{client_id}/{node_id}.md"
     blob = bucket.blob(blob_path)
+    # GCS sync operations within an async context are acceptable
+    # for this scale, but could be offloaded to threadpool if needed.
     blob.upload_from_string(content, content_type="text/markdown")
 
     uri = f"gs://{config.skill_graphs_bucket}/{blob_path}"
@@ -57,34 +67,29 @@ async def write_all_nodes(client_id: str, nodes: list[dict]) -> list[str]:
     return uris
 
 
-async def read_node_from_gcs(client_id: str, node_id: str) -> str | None:
-    """Read a single markdown node from GCS.
-
-    Returns None if the node doesn't exist.
-    """
-    gcs_client = _get_client()
+def read_node(client_id: str, node_id: str) -> str | None:
+    """Read a client-specific node from GCS."""
+    gcs_client = get_gcs_client()
     bucket = gcs_client.bucket(config.skill_graphs_bucket)
     blob_path = f"clients/{client_id}/{node_id}.md"
     blob = bucket.blob(blob_path)
 
     if not blob.exists():
-        # Try without .md extension (for static graph nodes)
+        # Fallback for paths requested without extension
         return None
 
     return blob.download_as_text()
 
 
-async def read_static_node(layer: str, node_path: str) -> str | None:
+def read_static_node(path: str) -> str | None:
     """Read a static (product/industry) node from GCS.
 
     Args:
-        layer: "product" or "industries"
-        node_path: Path within the layer, e.g. "index.md" or "manufacturing/cpq-complexity.md"
+        path: Full path within the bucket, e.g. "product/index.md"
     """
-    gcs_client = _get_client()
+    gcs_client = get_gcs_client()
     bucket = gcs_client.bucket(config.skill_graphs_bucket)
-    blob_path = f"{layer}/{node_path}"
-    blob = bucket.blob(blob_path)
+    blob = bucket.blob(path)
 
     if not blob.exists():
         return None
@@ -92,13 +97,13 @@ async def read_static_node(layer: str, node_path: str) -> str | None:
     return blob.download_as_text()
 
 
-async def list_client_nodes(client_id: str) -> list[str]:
+def list_client_nodes(client_id: str) -> list[str]:
     """List all node IDs for a client.
 
     Returns:
         List of node_id strings (without .md extension).
     """
-    gcs_client = _get_client()
+    gcs_client = get_gcs_client()
     bucket = gcs_client.bucket(config.skill_graphs_bucket)
     prefix = f"clients/{client_id}/"
     blobs = bucket.list_blobs(prefix=prefix)

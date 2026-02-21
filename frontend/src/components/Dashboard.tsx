@@ -7,6 +7,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 
+import { useNavigate } from 'react-router-dom';
+
 interface ClientAccount {
     client_id: string;
     company_name?: string;
@@ -17,11 +19,8 @@ interface ClientAccount {
     generated_at?: string;
 }
 
-interface DashboardProps {
-    onStartBriefing: (clientId: string) => void;
-}
-
-export default function Dashboard({ onStartBriefing }: DashboardProps) {
+export default function Dashboard() {
+    const navigate = useNavigate();
     const [clients, setClients] = useState<ClientAccount[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -36,6 +35,20 @@ export default function Dashboard({ onStartBriefing }: DashboardProps) {
             setLoading(false);
         }
     }, []);
+
+    const handleStartBriefing = async (clientId: string) => {
+        try {
+            const res = await fetch('/api/sessions/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ client_id: clientId, csm_name: 'CSM' }),
+            });
+            const data = await res.json();
+            navigate(`/session/${clientId}`, { state: { sessionId: data.session_id } });
+        } catch (err) {
+            console.error('Failed to start session:', err);
+        }
+    };
 
     useEffect(() => {
         loadClients();
@@ -135,7 +148,7 @@ export default function Dashboard({ onStartBriefing }: DashboardProps) {
                         <button
                             className="btn btn--launch"
                             disabled={client.status !== 'ready'}
-                            onClick={() => onStartBriefing(client.client_id)}
+                            onClick={() => handleStartBriefing(client.client_id)}
                         >
                             {client.status === 'ready' ? '🎙️ Start Briefing' : 'Graph not ready'}
                         </button>

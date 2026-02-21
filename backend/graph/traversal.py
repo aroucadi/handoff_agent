@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import yaml
 
-from graph.storage import read_node, read_static_node, list_client_nodes
+from core.storage import read_node, read_static_node, list_client_nodes
 from graph.search import search_nodes
 
 
