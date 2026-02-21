@@ -12,3 +12,13 @@ output "firestore_database" {
   description = "Firestore database name"
   value       = module.firestore.database_name
 }
+
+output "api_url" {
+  description = "Handoff API Cloud Run URL"
+  value       = module.cloud_run.api_url
+}
+
+output "graph_generator_url" {
+  description = "Graph Generator Cloud Run URL"
+  value       = module.cloud_run.graph_generator_url
+}

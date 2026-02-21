@@ -75,3 +75,13 @@ module "firestore" {
 
   depends_on = [google_project_service.apis]
 }
+
+module "cloud_run" {
+  source              = "./modules/cloud-run"
+  project_id          = var.project_id
+  region              = var.region
+  skill_graphs_bucket = module.storage.skill_graphs_bucket_name
+  uploads_bucket      = module.storage.uploads_bucket_name
+
+  depends_on = [google_project_service.apis, module.storage, module.firestore]
+}
