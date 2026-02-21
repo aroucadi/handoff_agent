@@ -65,6 +65,22 @@ Return a JSON array of objects, each with "node_id" and "content" (the full mark
 CLIENT DATA:
 """
 
+REVIEWER_PROMPT = """You are a strict QA Reviewer for a skill graph generation pipeline.
+
+Your job is to review the JSON array of draft markdown nodes provided below.
+You must ensure:
+1. Every node has valid YAML frontmatter exactly matching the schema.
+2. Every [[wikilink]] in the prose resolves to a `node_id` that ACTUALLY EXISTS in the provided JSON array, or to one of these valid static nodes: [[cpq-module]], [[revenue-cloud]], [[implementation-patterns]], [[manufacturing-index]], [[manufacturing-cpq-complexity]].
+3. If a wikilink points to a node that does not exist, REMOVE the wikilink brackets but keep the text.
+4. The output must be valid JSON.
+
+You must not change the core facts or meaning of the nodes. Only fix formatting, links, and schema issues.
+
+Format your response as a pure JSON array with no markdown code blocks outside of the JSON payload itself.
+
+DRAFT NODES:
+"""
+
 
 def _build_client_slug(company_name: str) -> str:
     """Convert company name to kebab-case slug."""
@@ -130,22 +146,40 @@ async def generate_client_nodes(
         )
         if not raw_text:
             return []
+            
+        # --- AGENT 2: The Reviewer ---
+        print("[NODE_GEN] Generation complete. Starting Reviewer Agent pass...")
+        reviewer_prompt = REVIEWER_PROMPT + raw_text
+        
+        reviewed_text = await generate_content_with_fallback(
+            contents=reviewer_prompt,
+            gen_config=gen_config,
+            primary_model=config.gen_model,
+            fallback_model=config.fallback_model,
+        )
+        if not reviewed_text:
+            reviewed_text = raw_text # Fallback to unreviewed if reviewer fails
+            
     except Exception as e:
-        print(f"[NODE_GEN] Generation failed: {e}")
+        print(f"[NODE_GEN] Pipeline failed: {e}")
         return []
 
     # Parse JSON array of nodes
     try:
-        nodes = json.loads(raw_text)
+        nodes = json.loads(reviewed_text)
     except json.JSONDecodeError:
-        if "```json" in raw_text:
-            json_str = raw_text.split("```json")[1].split("```")[0].strip()
+        if "```json" in reviewed_text:
+            json_str = reviewed_text.split("```json")[1].split("```")[0].strip()
             nodes = json.loads(json_str)
-        elif "```" in raw_text:
-            json_str = raw_text.split("```")[1].split("```")[0].strip()
+        elif "```" in reviewed_text:
+            json_str = reviewed_text.split("```")[1].split("```")[0].strip()
             nodes = json.loads(json_str)
         else:
-            raise ValueError(f"Failed to parse node generation response: {raw_text[:500]}")
+            # Fallback parsing attempt
+            try:
+                nodes = json.loads(raw_text)
+            except Exception:
+                raise ValueError(f"Failed to parse node generation response: {reviewed_text[:500]}")
 
     if not isinstance(nodes, list):
         nodes = [nodes]

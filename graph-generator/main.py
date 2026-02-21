@@ -100,8 +100,10 @@ async def _run_generation(job_id: str, payload: dict):
             print(f"[JOB {job_id}] Contract extraction complete: {len(contract_data.get('contracted_modules', []))} modules")
 
         # Step 3: Generate nodes
-        print(f"[JOB {job_id}] Step 3: Generating skill graph nodes with Gemini 3.1 Pro...")
+        print(f"[JOB {job_id}] Step 3: Generating nodes (Multi-Agent: Generator + Reviewer) with Gemini 3.1 Pro...")
         jobs[job_id]["status"] = "generating_nodes"
+        
+        # This function now orchestrates both the Generation and Review passes internally
         nodes = await generate_client_nodes(
             client_id=client_id,
             company_name=company_name,
@@ -110,7 +112,9 @@ async def _run_generation(job_id: str, payload: dict):
             transcript_data=transcript_data,
             contract_data=contract_data,
         )
-        print(f"[JOB {job_id}] Generated {len(nodes)} nodes")
+        
+        jobs[job_id]["status"] = "reviewing_nodes" # Set briefly before writing to GCS
+        print(f"[JOB {job_id}] Generated and reviewed {len(nodes)} nodes")
 
         # Step 4: Write to GCS
         print(f"[JOB {job_id}] Step 4: Writing nodes to GCS...")
