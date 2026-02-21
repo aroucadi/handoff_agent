@@ -115,7 +115,7 @@ class LiveSession:
         client = genai.Client(api_key=config.gemini_api_key)
 
         live_config = LiveConnectConfig(
-            response_modalities=[Modality.AUDIO, Modality.TEXT],
+            response_modalities=[Modality.AUDIO, Modality.TEXT],  # Server responds in audio/text
             speech_config=SpeechConfig(
                 voice_config=VoiceConfig(
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name="Aoede")
@@ -145,6 +145,19 @@ class LiveSession:
 
         await self._gemini_session.send(
             input={"data": audio_data, "mime_type": "audio/pcm"}
+        )
+
+    async def send_image(self, image_data: bytes):
+        """Send a video frame (JPEG) to Gemini Live for vision processing.
+
+        Args:
+            image_data: Raw JPEG image bytes from the client screen share.
+        """
+        if not self._connected or not self._gemini_session:
+            return
+
+        await self._gemini_session.send(
+            input={"data": image_data, "mime_type": "image/jpeg"}
         )
 
     async def send_text(self, text: str):

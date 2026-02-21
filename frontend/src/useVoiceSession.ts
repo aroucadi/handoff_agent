@@ -23,6 +23,7 @@ export interface ToolCallEntry {
 interface UseVoiceSessionReturn {
     isConnected: boolean;
     isMicActive: boolean;
+    isScreenShared: boolean;
     isAgentSpeaking: boolean;
     transcript: TranscriptEntry[];
     toolCalls: ToolCallEntry[];
@@ -30,6 +31,7 @@ interface UseVoiceSessionReturn {
     connect: (sessionId: string) => void;
     disconnect: () => void;
     toggleMic: () => void;
+    toggleScreenShare: () => void;
     sendText: (text: string) => void;
 }
 
@@ -42,8 +44,13 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const processorRef = useRef<ScriptProcessorNode | null>(null);
 
+    // Screen Sharing Refs
+    const screenStreamRef = useRef<MediaStream | null>(null);
+    const captureIntervalRef = useRef<number | null>(null);
+
     const [isConnected, setIsConnected] = useState(false);
     const [isMicActive, setIsMicActive] = useState(false);
+    const [isScreenShared, setIsScreenShared] = useState(false);
     const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
     const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
     const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
@@ -135,6 +142,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         ws.onclose = () => {
             setIsConnected(false);
             setIsMicActive(false);
+            setIsScreenShared(false);
             console.log('[WS] Disconnected');
         };
     }, [playAudio]);
@@ -207,8 +215,77 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         }
     }, [isMicActive, startMic, stopMic]);
 
+    // --- Screen Sharing (Vision) Implementation ---
+    const startScreenShare = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    frameRate: { ideal: 1 }, // Need low framerate for Live API limits
+                },
+                audio: false,
+            });
+
+            screenStreamRef.current = stream;
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.play();
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Listen for user stopping via browser UI
+            stream.getVideoTracks()[0].onended = () => {
+                stopScreenShare();
+            };
+
+            // Capture frame every 1 second
+            captureIntervalRef.current = window.setInterval(() => {
+                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+                if (!video.videoWidth) return;
+
+                // Lock native resolution, or downscale if too large
+                const scale = Math.min(1, 1280 / video.videoWidth);
+                canvas.width = video.videoWidth * scale;
+                canvas.height = video.videoHeight * scale;
+
+                if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    // Get base64 JPEG
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const b64 = dataUrl.split(',')[1];
+                    wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
+                }
+            }, 1000);
+
+            setIsScreenShared(true);
+        } catch (err) {
+            console.error('[SCREEN] Failed to share screen:', err);
+        }
+    }, []);
+
+    const stopScreenShare = useCallback(() => {
+        if (captureIntervalRef.current) {
+            clearInterval(captureIntervalRef.current);
+            captureIntervalRef.current = null;
+        }
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(t => t.stop());
+            screenStreamRef.current = null;
+        }
+        setIsScreenShared(false);
+    }, []);
+
+    const toggleScreenShare = useCallback(() => {
+        if (isScreenShared) {
+            stopScreenShare();
+        } else {
+            startScreenShare();
+        }
+    }, [isScreenShared, startScreenShare, stopScreenShare]);
+
     const disconnect = useCallback(() => {
         stopMic();
+        stopScreenShare();
         if (wsRef.current) {
             wsRef.current.send(JSON.stringify({ type: 'end' }));
             wsRef.current.close();
@@ -231,6 +308,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     useEffect(() => {
         return () => {
             stopMic();
+            stopScreenShare();
             if (wsRef.current) {
                 wsRef.current.close();
             }
@@ -240,6 +318,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     return {
         isConnected,
         isMicActive,
+        isScreenShared,
         isAgentSpeaking,
         transcript,
         toolCalls,
@@ -247,6 +326,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         connect,
         disconnect,
         toggleMic,
+        toggleScreenShare,
         sendText,
     };
 }

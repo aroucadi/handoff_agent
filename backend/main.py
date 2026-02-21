@@ -202,6 +202,7 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
 
     Protocol:
     - Client sends: {"type": "audio", "data": "<base64 PCM 16kHz>"}
+    - Client sends: {"type": "image", "data": "<base64 JPEG>"}
     - Client sends: {"type": "text", "text": "...", "end_of_turn": true}
     - Server sends: {"type": "audio", "data": "<base64 PCM 24kHz>"}
     - Server sends: {"type": "text", "text": "..."}
@@ -242,6 +243,11 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
                     # Decode base64 audio and forward to Gemini Live
                     audio_bytes = base64.b64decode(data["data"])
                     await session.send_audio(audio_bytes)
+
+                elif msg_type == "image":
+                    # Decode base64 image and forward to Gemini Live Vision
+                    image_bytes = base64.b64decode(data["data"])
+                    await session.send_image(image_bytes)
 
                 elif msg_type == "text":
                     # Text message (for testing or fallback)

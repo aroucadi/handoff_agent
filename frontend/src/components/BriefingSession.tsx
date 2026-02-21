@@ -27,6 +27,7 @@ export default function BriefingSession() {
     const {
         isConnected,
         isMicActive,
+        isScreenShared,
         isAgentSpeaking,
         transcript,
         toolCalls,
@@ -34,6 +35,7 @@ export default function BriefingSession() {
         connect,
         disconnect,
         toggleMic,
+        toggleScreenShare,
         sendText,
     } = useVoiceSession();
 
@@ -143,9 +145,11 @@ export default function BriefingSession() {
                 <ConversationPanel
                     transcript={transcript}
                     isMicActive={isMicActive}
+                    isScreenShared={isScreenShared}
                     isAgentSpeaking={isAgentSpeaking}
                     sessionId={sessionId}
                     onToggleMic={toggleMic}
+                    onToggleScreenShare={toggleScreenShare}
                     onSendText={sendText}
                     onEndBriefing={handleEnd}
                 />

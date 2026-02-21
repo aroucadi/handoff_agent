@@ -11,9 +11,11 @@ import type { TranscriptEntry } from '../useVoiceSession';
 interface ConversationPanelProps {
     transcript: TranscriptEntry[];
     isMicActive: boolean;
+    isScreenShared: boolean;
     isAgentSpeaking: boolean;
     sessionId: string;
     onToggleMic: () => void;
+    onToggleScreenShare: () => void;
     onSendText: (text: string) => void;
     onEndBriefing: () => void;
 }
@@ -21,9 +23,11 @@ interface ConversationPanelProps {
 export default function ConversationPanel({
     transcript,
     isMicActive,
+    isScreenShared,
     isAgentSpeaking,
     sessionId,
     onToggleMic,
+    onToggleScreenShare,
     onSendText,
     onEndBriefing,
 }: ConversationPanelProps) {
@@ -113,9 +117,18 @@ export default function ConversationPanel({
                 <button
                     className={`btn btn--mic-lg ${isMicActive ? 'btn--mic-lg-active' : ''}`}
                     onClick={onToggleMic}
+                    title="Toggle Microphone"
                 >
                     <span className="btn__icon">{isMicActive ? '🔴' : '🎤'}</span>
                     <span>{isMicActive ? 'Mic On' : 'Mic Off'}</span>
+                </button>
+                <button
+                    className={`btn btn--mic-lg ${isScreenShared ? 'btn--mic-lg-active' : ''}`}
+                    onClick={onToggleScreenShare}
+                    title="Share Screen with Gemini Vision (Hackathon)"
+                >
+                    <span className="btn__icon">{isScreenShared ? '👁️' : '💻'}</span>
+                    <span>{isScreenShared ? 'Sharing Vision' : 'Share Screen'}</span>
                 </button>
                 <button className="btn btn--end-sm" onClick={onEndBriefing}>
                     End Briefing
