@@ -1,96 +1,165 @@
-# HANDOFF
+# Handoff — AI Voice Agent for B2B SaaS Customer Success
 
-**Gemini Live Agent Challenge Submission**
+> **Gemini-powered voice agent** that transforms CRM deal closure into real-time, grounded customer success briefings.
 
-> When a B2B SaaS deal closes, Handoff automatically generates a traversable client skill graph and enables Customer Success Managers to get real-time, grounded voice briefings before kickoff calls — powered by Gemini Live.
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue)]()
+[![Gemini](https://img.shields.io/badge/Gemini-3.1_Pro_%7C_2.5_Flash_Audio_%7C_Embedding_001-orange)]()
+[![IaC](https://img.shields.io/badge/IaC-Terraform_with_GCP-purple)]()
+
+---
+
+## What Is This?
+
+When a B2B SaaS deal closes, critical context is trapped in CRM data and sales transcripts. Handoff uses **Gemini 3.1 Pro** to extract that knowledge into a navigable **skill graph**, then serves it through a **Gemini Live voice agent** that Customer Success Managers can talk to before their kickoff call.
+
+### The Demo Flow
+
+1. **CSM closes a deal** in the CRM Simulator → webhook fires
+2. **Graph Generator** extracts entities with Gemini 3.1 Pro → creates 8 client-specific knowledge nodes → stores in GCS → indexes with embeddings in Firestore
+3. **CSM opens Handoff** → sees account ready on Dashboard
+4. **CSM clicks "Start Briefing"** → real-time voice conversation with the agent
+5. **Agent navigates the skill graph** using 3 tools (read_index, follow_link, search_graph) → provides grounded, never-hallucinated answers
+6. **Split-screen UI** shows live transcript + React Flow graph topology animating in real-time
+
+### Gemini Models Used
+
+| Model | Purpose |
+|---|---|
+| `gemini-3.1-pro-preview` | Entity extraction + node generation |
+| `gemini-embedding-001` | 768d vector embeddings for semantic search |
+| `gemini-2.5-flash-native-audio-preview` | Real-time voice via Multimodal Live API |
+
+---
 
 ## Quick Start
 
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
-- Google Cloud SDK (`gcloud`)
-- Terraform 1.5+
-- A GCP project with billing enabled
-- A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+- A Gemini API key ([Google AI Studio](https://aistudio.google.com/))
 
-### 1. Clone & Configure
+### Setup
 
 ```bash
-git clone <repo-url>
-cd handoff
-cp infra/terraform.tfvars.example infra/terraform.tfvars
-# Edit terraform.tfvars with your GCP project ID
+# Clone
+git clone https://github.com/aroucadi/handoff_agent.git
+cd handoff_agent
+
+# Set your API key
+export GEMINI_API_KEY="your-key-here"
+
+# Install everything
+bash scripts/demo-setup.sh
+
+# Start all services
+bash scripts/start-local.sh
 ```
 
-### 2. Set Up API Key
+### Access Points
 
-```bash
-export GEMINI_API_KEY="your-api-key-from-ai-studio"
-```
+| Service | URL |
+|---|---|
+| CRM Simulator | http://localhost:5173 |
+| Handoff Voice UI | http://localhost:5174 |
+| Backend API | http://localhost:8000/health |
+| Graph Generator | http://localhost:8002/health |
 
-### 3. Deploy Infrastructure
+### Demo Walkthrough
 
-```bash
-cd infra
-terraform init
-terraform apply
-cd ..
-```
+1. Open **CRM Simulator** → click "Closed Won" on a deal
+2. Open **Handoff Voice UI** → enter the deal ID → click "Start Briefing"
+3. Talk to the agent or type questions
+4. Watch the React Flow graph animate as the agent navigates nodes
 
-### 4. Start the CRM Simulator
+### Keyboard Shortcuts
 
-```bash
-cd crm-simulator
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001 --reload
-```
+| Key | Action |
+|---|---|
+| **Space** | Toggle microphone on/off |
+| **Escape** | End briefing session |
+| **Enter** | Send text message |
 
-In a separate terminal:
-```bash
-cd crm-simulator/frontend
-npm install
-npm run dev
-```
-
-### 5. Start the Handoff Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### 6. Seed Static Graphs
-
-```bash
-./scripts/seed-graphs.sh
-```
+---
 
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram.
 
+```
+CRM Simulator → webhook → Handoff API → Graph Generator
+                                ↕                 ↓
+                          Gemini Live        GCS + Firestore
+                          (voice)            (skill graphs)
+                                ↕
+                          Voice UI ←── WebSocket (bidirectional audio)
+```
+
+---
+
 ## Project Structure
 
 ```
 handoff/
-├── infra/              ← Terraform IaC
-├── backend/            ← FastAPI + ADK agent
-├── graph-generator/    ← Skill graph generation service
-├── crm-simulator/      ← CRM Simulator web app
-├── skill-graphs/       ← Pre-built product & industry knowledge
-├── frontend/           ← React briefing UI
-└── scripts/            ← Deployment & setup scripts
+├── backend/                # Handoff API (FastAPI)
+│   ├── agent/              # ADK agent (tools, prompts, handoff_agent)
+│   ├── graph/              # Graph traversal engine
+│   └── live/               # Gemini Live session handler
+├── graph-generator/        # Graph Generator (FastAPI)
+│   └── extractors/         # Gemini 3.1 Pro entity extraction
+├── crm-simulator/          # CRM Simulator (FastAPI + React)
+├── frontend/               # Handoff Voice UI (React + React Flow)
+├── skill-graphs/           # 12 static knowledge nodes
+├── infra/                  # Terraform IaC (4 modules)
+└── scripts/                # Deploy, demo-setup, start-local
 ```
-
-## Tech Stack
-
-- **Models**: Gemini 3.1 Pro, Gemini 2.5 Flash Native Audio, Gemini 3 Flash, gemini-embedding-001
-- **Backend**: Python, FastAPI, Google ADK
-- **Frontend**: React, TypeScript, Vite, React Flow
-- **Infra**: GCP (Cloud Run, GCS, Firestore, Firebase Hosting), Terraform
 
 ---
 
-*Built for the Gemini Live Agent Challenge | Deadline: March 16, 2026*
+## Infrastructure (Terraform)
+
+All infrastructure is defined as code in `infra/`:
+
+| Module | Resources |
+|---|---|
+| `storage` | GCS buckets (skill-graphs + uploads) |
+| `firestore` | Firestore database (native mode) |
+| `cloud-run` | 2 Cloud Run services, Artifact Registry, IAM |
+| `firebase` | Firebase Web App |
+
+### Deploy to GCP
+
+```bash
+export PROJECT_ID="your-project"
+bash scripts/deploy.sh
+```
+
+See [DEPLOYMENT_PROOF.md](DEPLOYMENT_PROOF.md) for full infrastructure details.
+
+---
+
+## Release History
+
+| Version | Release | What Shipped |
+|---|---|---|
+| `v0.1.0` | R0 — Foundation | CRM Simulator, IaC base, 12 static skill graphs |
+| `v0.2.0` | R1 — Skill Graph Engine | Gemini 3.1 Pro extraction, ADK agent, embeddings |
+| `v0.3.0` | R2 — Voice Agent | Gemini Live audio streaming, WebSocket sessions |
+| `v0.4.0` | R3 — Full UI | Dashboard, split-screen briefing, React Flow |
+| `v1.0.0` | R4 — Submission | Demo polish, documentation, deployment scripts |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript 5, Vite 6, React Flow |
+| Backend | Python 3.11, FastAPI, WebSockets |
+| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
+| Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
+
+---
+
+## License
+
+MIT

@@ -53,6 +53,17 @@ export default function BriefingSession({ clientId, sessionId, onEnd }: Briefing
         return () => window.removeEventListener('keydown', handler);
     }, [isConnected, toggleMic]);
 
+    // Keyboard: Escape to end briefing
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.code === 'Escape' && isConnected) {
+                handleEnd();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [isConnected, handleEnd]);
+
     return (
         <div className="briefing">
             <div className="briefing__status-bar">
