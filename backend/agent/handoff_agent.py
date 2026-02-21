@@ -116,72 +116,48 @@ async def run_text_conversation(
 
     tool_calls_log = []
     nodes_visited = []
-    max_tool_rounds = 8  # Prevent infinite tool-calling loops
 
-    for round_num in range(max_tool_rounds):
-        response = await client.aio.models.generate_content(
-            model=config.graph_gen_model,  # Using 3.1 Pro for text agent too
-            contents=contents,
-            config=gen_config,
-        )
+    # Wrapper functions to hide client_id from the model and log calls
+    def get_index(layer: str = "client") -> str:
+        """Read the index/table-of-contents node for a skill graph layer. Use this FIRST when starting a briefing."""
+        tool_calls_log.append({"tool": "read_index", "args": {"layer": layer}})
+        return TOOL_FUNCTIONS["read_index"](client_id, layer)
 
-        # Check if the response has function calls
-        candidate = response.candidates[0]
-        has_function_calls = False
+    def follow_link(node_id: str, sections_only: bool = False) -> str:
+        """Navigate to a specific node in the skill graph by following a wikilink."""
+        tool_calls_log.append({"tool": "follow_link", "args": {"node_id": node_id, "sections_only": sections_only}})
+        nodes_visited.append(node_id)
+        return TOOL_FUNCTIONS["follow_link"](client_id, node_id, sections_only)
 
-        for part in candidate.content.parts:
-            if part.function_call:
-                has_function_calls = True
-                fc = part.function_call
-                fn_name = fc.name
-                fn_args = dict(fc.args) if fc.args else {}
+    def search_graph(query: str) -> str:
+        """Search across the client's entire skill graph using semantic search."""
+        tool_calls_log.append({"tool": "search_graph", "args": {"query": query}})
+        return TOOL_FUNCTIONS["search_graph"](client_id, query)
 
-                # Inject client_id if not provided
-                if "client_id" not in fn_args:
-                    fn_args["client_id"] = client_id
+    from google.genai.types import AutomaticFunctionCallingConfig
+    
+    gen_config = GenerateContentConfig(
+        system_instruction=HANDOFF_SYSTEM_PROMPT,
+        temperature=0.3,
+        tools=[get_index, follow_link, search_graph],
+        automatic_function_calling=AutomaticFunctionCallingConfig(disable=False),
+    )
 
-                print(f"[AGENT] Tool call: {fn_name}({fn_args})")
-                tool_calls_log.append({"tool": fn_name, "args": fn_args})
+    chat = client.aio.chats.create(
+        model=config.graph_gen_model,
+        config=gen_config,
+        history=contents,
+    )
 
-                # Execute the tool
-                tool_fn = TOOL_FUNCTIONS.get(fn_name)
-                if tool_fn:
-                    result = tool_fn(**fn_args)
-                    # Track visited nodes
-                    try:
-                        result_data = json.loads(result)
-                        if "node_id" in result_data:
-                            nodes_visited.append(result_data["node_id"])
-                    except (json.JSONDecodeError, KeyError):
-                        pass
-                else:
-                    result = json.dumps({"error": f"Unknown tool: {fn_name}"})
+    try:
+        response = await chat.send_message(message)
+        agent_response = response.text
+    except Exception as e:
+        agent_response = f"Sorry, I encountered an error coordinating tool execution: {e}"
 
-                # Add the function call and response to conversation
-                contents.append(candidate.content)
-                contents.append(
-                    Content(
-                        role="user",
-                        parts=[Part.from_function_response(name=fn_name, response={"result": result})],
-                    )
-                )
-                break  # Process one function call at a time
-
-        if not has_function_calls:
-            # Model returned a text response — we're done
-            agent_response = candidate.content.parts[0].text if candidate.content.parts else ""
-            return {
-                "response": agent_response,
-                "tool_calls": tool_calls_log,
-                "nodes_visited": nodes_visited,
-                "rounds": round_num + 1,
-            }
-
-    # Exhausted tool rounds
     return {
-        "response": "I've navigated through several nodes but need more specific guidance. Could you ask a more targeted question?",
+        "response": agent_response,
         "tool_calls": tool_calls_log,
         "nodes_visited": nodes_visited,
-        "rounds": max_tool_rounds,
-        "warning": "Max tool call rounds reached",
+        "rounds": len(tool_calls_log) + 1,
     }

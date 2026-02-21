@@ -9,13 +9,16 @@ from __future__ import annotations
 from google import genai
 from google.genai.types import EmbedContentConfig
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+from google.cloud.firestore_v1.vector import Vector
 
-from config import config
+from core.config import config
 
 
 def _get_firestore() -> firestore.Client:
     """Get Firestore client."""
-    return firestore.Client(project=config.project_id)
+    from core.db import get_firestore_client
+    return get_firestore_client()
 
 
 def embed_query(query: str) -> list[float]:
@@ -48,28 +51,26 @@ def search_nodes(client_id: str, query: str, top_k: int = 5) -> list[dict]:
 
     db = _get_firestore()
     nodes_ref = db.collection("skill_graphs").document(client_id).collection("nodes")
-    docs = nodes_ref.stream()
+    
+    # Use Firestore Native Vector Search (FindNearest)
+    # This prevents loading every node into memory for manual cosine similarity
+    docs = nodes_ref.find_nearest(
+        vector_field="embedding",
+        query_vector=Vector(query_embedding),
+        distance_measure=DistanceMeasure.COSINE,
+        limit=top_k,
+    ).stream()
 
     results = []
     for doc in docs:
         data = doc.to_dict()
-        stored_embedding = data.get("embedding", [])
-        if not stored_embedding:
-            continue
-
-        # Cosine similarity
-        dot = sum(a * b for a, b in zip(query_embedding, stored_embedding))
-        norm_a = sum(a * a for a in query_embedding) ** 0.5
-        norm_b = sum(b * b for b in stored_embedding) ** 0.5
-        similarity = dot / (norm_a * norm_b) if norm_a and norm_b else 0
-
         results.append({
             "node_id": data.get("node_id"),
             "title": data.get("title"),
             "description": data.get("description"),
-            "similarity": round(similarity, 4),
             "body_preview": data.get("body_preview", "")[:200],
+            # Note: With find_nearest, distance isn't automatically injected into
+            # the doc dict by the Python SDK, but returning the ranked list is sufficient.
         })
 
-    results.sort(key=lambda r: r["similarity"], reverse=True)
-    return results[:top_k]
+    return results

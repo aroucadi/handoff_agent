@@ -274,6 +274,13 @@ class LiveSession:
         self._connected = False
         # Persist final state to Firestore
         await self.persist_to_firestore()
+
+        # Fire off insights extraction in the background
+        from live.insights import extract_and_save_session_insights
+        asyncio.create_task(
+            extract_and_save_session_insights(self.session_id, self.client_id, self.transcript)
+        )
+
         print(f"[LIVE] Session {self.session_id} disconnected and persisted")
 
     async def persist_to_firestore(self):
