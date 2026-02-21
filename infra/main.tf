@@ -85,3 +85,10 @@ module "cloud_run" {
 
   depends_on = [google_project_service.apis, module.storage, module.firestore]
 }
+
+module "firebase" {
+  source     = "./modules/firebase"
+  project_id = var.project_id
+
+  depends_on = [google_project_service.apis]
+}

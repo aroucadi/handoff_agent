@@ -1,24 +1,31 @@
 """Handoff Backend — FastAPI Application Entry Point.
 
-R1: Adds text conversation endpoint, webhook-to-generator integration,
-and client/graph status endpoints.
+R2: Adds WebSocket endpoint for Gemini Live voice sessions, session management,
+and real-time bidirectional audio streaming.
 """
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import json
+import uuid
+from datetime import datetime
+
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from config import config
 from agent.handoff_agent import run_text_conversation
+from live.session import LiveSession
 
 app = FastAPI(
     title="Handoff API",
     description="Gemini Live voice agent for B2B SaaS customer success handoffs",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.add_middleware(
@@ -29,32 +36,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Session Store ───────────────────────────────────────────────
+sessions: dict[str, LiveSession] = {}
+
 
 # ── Health ──────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "0.2.0", "environment": config.environment}
+    return {
+        "status": "ok",
+        "version": "0.3.0",
+        "environment": config.environment,
+        "active_sessions": len(sessions),
+    }
 
 
 # ── Webhook: CRM Deal Closed ───────────────────────────────────
 
-GRAPH_GENERATOR_URL = f"{config.crm_simulator_url.replace('8001', '8002')}"
-
-
 @app.post("/api/webhooks/crm/deal-closed")
 async def webhook_deal_closed(request: Request):
-    """Receive webhook from CRM Simulator and forward to Graph Generator.
-
-    In R1, this triggers real graph generation via the Graph Generator service.
-    """
+    """Receive webhook from CRM Simulator and forward to Graph Generator."""
     payload = await request.json()
     deal_id = payload.get("deal_id", "unknown")
     company = payload.get("company_name", "unknown")
     print(f"[WEBHOOK] Deal closed: {deal_id} — {company}")
 
-    # Forward to Graph Generator service
-    generator_url = f"http://localhost:8002/generate"
+    generator_url = "http://localhost:8002/generate"
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(generator_url, json=payload)
@@ -77,12 +85,149 @@ async def webhook_deal_closed(request: Request):
                 "status": "received_but_generation_failed",
                 "deal_id": deal_id,
                 "error": str(e),
-                "message": "Webhook received but graph generator is not running. Start it with: cd graph-generator && uvicorn main:app --port 8002",
             },
         )
 
 
-# ── Text Conversation ──────────────────────────────────────────
+# ── Session Management ─────────────────────────────────────────
+
+class SessionStartRequest(BaseModel):
+    client_id: str
+    csm_name: str = "CSM"
+
+
+@app.post("/api/sessions/start")
+async def start_session(req: SessionStartRequest):
+    """Create a new voice session and return connection details."""
+    session_id = str(uuid.uuid4())[:8]
+
+    session = LiveSession(
+        session_id=session_id,
+        client_id=req.client_id,
+        csm_name=req.csm_name,
+    )
+    sessions[session_id] = session
+
+    print(f"[SESSION] Created session {session_id} for client {req.client_id}")
+
+    return {
+        "session_id": session_id,
+        "websocket_url": f"/ws/sessions/{session_id}",
+        "client_id": req.client_id,
+        "csm_name": req.csm_name,
+    }
+
+
+@app.get("/api/sessions/{session_id}/history")
+async def get_session_history(session_id: str):
+    """Get the transcript and traversal log for a session."""
+    session = sessions.get(session_id)
+    if not session:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+    return session.get_history()
+
+
+@app.get("/api/sessions")
+async def list_sessions():
+    """List all active and recent sessions."""
+    return {
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "client_id": s.client_id,
+                "csm_name": s.csm_name,
+                "started_at": s.started_at,
+                "tool_calls": len(s.tool_calls),
+                "nodes_visited": len(set(s.nodes_visited)),
+            }
+            for s in sessions.values()
+        ],
+        "count": len(sessions),
+    }
+
+
+# ── WebSocket: Gemini Live Voice ────────────────────────────────
+
+@app.websocket("/ws/sessions/{session_id}")
+async def websocket_voice_session(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time voice conversations.
+
+    Protocol:
+    - Client sends: {"type": "audio", "data": "<base64 PCM 16kHz>"}
+    - Client sends: {"type": "text", "text": "...", "end_of_turn": true}
+    - Server sends: {"type": "audio", "data": "<base64 PCM 24kHz>"}
+    - Server sends: {"type": "text", "text": "..."}
+    - Server sends: {"type": "tool_call", "name": "...", "args": {...}}
+    - Server sends: {"type": "turn_complete"}
+    - Server sends: {"type": "interrupted"}
+    """
+    session = sessions.get(session_id)
+    if not session:
+        await websocket.close(code=4004, reason="Session not found")
+        return
+
+    await websocket.accept()
+    print(f"[WS] Client connected to session {session_id}")
+
+    try:
+        # Connect to Gemini Live API
+        await session.connect()
+
+        # Start receiving responses from Gemini Live (runs concurrently)
+        async def forward_responses():
+            """Forward Gemini Live responses to the WebSocket client."""
+            async for event in session.receive_responses():
+                try:
+                    await websocket.send_json(event)
+                except WebSocketDisconnect:
+                    break
+
+        response_task = asyncio.create_task(forward_responses())
+
+        # Receive audio/text from the WebSocket client
+        try:
+            while True:
+                data = await websocket.receive_json()
+                msg_type = data.get("type")
+
+                if msg_type == "audio":
+                    # Decode base64 audio and forward to Gemini Live
+                    audio_bytes = base64.b64decode(data["data"])
+                    await session.send_audio(audio_bytes)
+
+                elif msg_type == "text":
+                    # Text message (for testing or fallback)
+                    await session.send_text(data.get("text", ""))
+
+                elif msg_type == "end":
+                    # Client requested end of session
+                    break
+
+        except WebSocketDisconnect:
+            print(f"[WS] Client disconnected from session {session_id}")
+
+        # Cancel the response forwarding task
+        response_task.cancel()
+        try:
+            await response_task
+        except asyncio.CancelledError:
+            pass
+
+    except Exception as e:
+        print(f"[WS] Session {session_id} error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "error": str(e)})
+        except Exception:
+            pass
+
+    finally:
+        await session.disconnect()
+        print(f"[WS] Session {session_id} ended. "
+              f"Tool calls: {len(session.tool_calls)}, "
+              f"Nodes visited: {len(set(session.nodes_visited))}")
+
+
+# ── Text Conversation (from R1) ────────────────────────────────
 
 class TextMessage(BaseModel):
     client_id: str
@@ -92,11 +237,7 @@ class TextMessage(BaseModel):
 
 @app.post("/api/sessions/text")
 async def text_conversation(msg: TextMessage):
-    """Have a text conversation with the Handoff agent.
-
-    The agent navigates the client's skill graph to provide grounded answers.
-    This is the R1 text-mode interface; voice comes in R2.
-    """
+    """Have a text conversation with the Handoff agent (R1 endpoint, still available)."""
     print(f"[TEXT] Client: {msg.client_id} | Message: {msg.message}")
 
     result = await run_text_conversation(
@@ -107,7 +248,6 @@ async def text_conversation(msg: TextMessage):
 
     print(f"[TEXT] Tools used: {len(result['tool_calls'])} | "
           f"Nodes visited: {result['nodes_visited']}")
-
     return result
 
 
@@ -123,7 +263,7 @@ async def list_clients():
     docs = db.collection("skill_graphs").stream()
     for doc in docs:
         data = doc.to_dict()
-        if data.get("status"):  # Only client-level status docs
+        if data.get("status"):
             clients.append({
                 "client_id": data.get("client_id", doc.id),
                 "status": data.get("status", "unknown"),
