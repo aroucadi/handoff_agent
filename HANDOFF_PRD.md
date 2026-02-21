@@ -1,13 +1,13 @@
-# HANDOFF — Product Requirements Document
+# SYNAPSE — Product Requirements Document
 ### Gemini Live Agent Challenge Submission
-**Version**: 2.0 | **Date**: February 2026 | **Status**: Ready for Vibe Coding
+**Version**: 3.0 | **Date**: February 2026 | **Status**: Hackathon Final Candidate
 
 > [!IMPORTANT]
-> **v2.0 Enhancements**: Updated Gemini model strategy to leverage the latest models available through Google AI Studio API (Feb 2026). Added dedicated Model Strategy section with fallback matrix. Upgraded from Gemini 2.0/2.5 references to Gemini 3.1 Pro + 3 Flash + 2.5 Flash Native Audio where appropriate.
+> **v3.0 Enhancements (Level 5 Agentic AI)**: Upgraded the core interaction model to **Gemini 2.0 Flash Exp** to unlock purely Multimodal (Vision + Voice) WebRTC capabilities. Added asynchronous `core/telemetry` for agent observability. Replaced static local indexes with a production-grade **Firestore Native Vector Search**. Added complete `infra/` **Terraform IaC** for one-click GCP deployment.
 
 ---
 
-> **TL;DR for Antigravity Agent**: This PRD describes "Handoff" — a Gemini Live voice agent that automatically generates a traversable skill graph when a B2B SaaS deal closes, enabling Customer Success Managers to get real-time, grounded briefings before client kickoff calls. Build in this order: (1) skill graph engine, (2) CRM webhook + graph generator, (3) Gemini Live ADK agent, (4) split-screen UI, (5) Cloud infra + IaC.
+> **TL;DR**: This PRD describes "Synapse" — a Level 5 Multimodal Agent that automatically generates a traversable skill graph when a B2B SaaS deal closes. It enables Customer Success Managers to get real-time, grounded voice and vision briefings before client kickoff calls. Using screen-sharing, the agent can "see" the CRM and discuss it aloud without hallucinating, thanks to underlying Graph Grounding logic.
 
 ---
 
@@ -43,29 +43,29 @@ The Customer Success Manager assigned to the account has 48 hours before the kic
 
 ### The Solution
 
-**Handoff** is a Gemini Live voice agent that:
+**Synapse** is a Level 5 Multimodal Live agent that:
 1. **Automatically generates** a traversable client skill graph when a deal closes in the CRM
-2. **Enables real-time voice conversations** where CSMs ask questions and the agent traverses the graph to give grounded, structured answers
-3. **Never hallucinates** because every answer is grounded in the actual skill graph nodes — product docs, industry context, client-specific data, and deal history
+2. **Enables real-time voice and vision conversations**: CSMs share their screen and ask questions. The agent "sees" the UI and traverses the graph to give grounded answers.
+3. **Never hallucinates** because every answer is grounded in the actual skill graph nodes — product docs, industry context, client-specific data, and deal history.
 
 ### The Core Insight (from Skill Graph Architecture)
 
-Instead of dumping all knowledge into one prompt, Handoff uses a **skill graph** — a network of interconnected markdown files with YAML frontmatter and wikilinks. The Gemini Live agent navigates this graph progressively during the voice conversation, pulling only what's relevant. This is the difference between an agent that follows instructions and one that **understands a domain**.
+Instead of dumping all knowledge into one prompt, Synapse uses a **skill graph** — a network of interconnected markdown files with YAML frontmatter and wikilinks. The Gemini Live agent navigates this graph progressively during the voice conversation, pulling only what's relevant. This is the difference between an agent that follows instructions and one that **understands a domain**.
 
 ---
 
 ## 2. Hackathon Alignment
 
-| Requirement | How Handoff Satisfies It |
+| Requirement | How Synapse Satisfies It |
 |---|---|
-| Gemini Live API | Core voice interaction layer — CSM speaks, agent listens and responds in real-time |
-| Google GenAI SDK or ADK | ADK orchestrates the graph traversal agent tools |
-| Google Cloud hosting | Full GCP deployment: Cloud Run, Cloud Storage, Firestore |
-| Multimodal input/output | Voice input + visual graph traversal output on split-screen UI |
-| Moves beyond text-box | Real-time voice conversation grounded in dynamic knowledge graph |
-| Category fit | **Live Agents** — real-time interaction with audio and contextual intelligence |
-| Innovation (40% of score) | Skill graph navigation is architecturally novel; no hallucination by design |
-| Technical execution (30%) | ADK + skill graph traversal tools + IaC = clean, auditable architecture |
+| Gemini Live API | Core voice/vision interaction layer — CSM speaks & shares screen, agent listens, sees, and responds in real-time |
+| Google GenAI SDK | ADK orchestrates the graph traversal agent's function calling |
+| Google Cloud hosting | Full GCP deployment via Terraform: Cloud Run, Cloud Storage, Firestore Vector Search |
+| Multimodal input/output | Voice input + Video frame input (1 FPS) + Visual graph traversal output on split-screen UI |
+| Moves beyond text-box | Real-time multimodal conversation grounded in a dynamically generated knowledge graph |
+| Category fit | **Live Agents** — real-time interaction with audio, vision, and contextual intelligence |
+| Innovation (40% of score) | Screen-aware skill graph navigation is architecturally novel; no hallucination by design |
+| Technical execution (30%) | ADK + Firestore Vector Search + Telemetry + IaC = clean, production-grade architecture |
 | Demo quality (30%) | 3-scene demo showing deal close → graph generation → live CSM briefing |
 
 **Target prizes**: Grand Prize ($25K) + Best of Live Agents ($10K) + Best Technical Execution ($5K)

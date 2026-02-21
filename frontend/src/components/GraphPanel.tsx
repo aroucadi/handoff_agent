@@ -1,5 +1,5 @@
 /**
- * Handoff — Graph Panel Component
+ * Synapse — Graph Panel Component
  *
  * Right side of the split-screen briefing view.
  * Shows a React Flow graph topology with animated node traversal,

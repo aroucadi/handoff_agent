@@ -1,5 +1,5 @@
 /**
- * Handoff — Dashboard Component
+ * Synapse — Dashboard Component
  *
  * Shows all client accounts with their graph status.
  * Premium glassmorphism cards with animated status indicators.

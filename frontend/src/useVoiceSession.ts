@@ -1,7 +1,7 @@
 /**
- * Handoff Voice UI — WebSocket Audio Hook
+ * Synapse — WebSocket Audio + Vision Hook
  *
- * Manages the bidirectional audio connection to the Handoff backend,
+ * Manages the bidirectional audio/vision connection to the Synapse backend,
  * which proxies to Gemini Live. Captures microphone PCM audio,
  * sends it via WebSocket, and plays back received audio.
  */

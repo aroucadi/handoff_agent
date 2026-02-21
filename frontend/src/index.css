@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   Handoff Voice Agent — R3 Premium Dark Theme
-   Split-screen briefing UI + Dashboard + React Flow
+   Synapse — The Living Memory of Your Customer Journey
+   Premium Neural Dark Theme · R14 Rebrand
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -18,11 +18,11 @@
     --text-primary: #edf0f8;
     --text-secondary: #8892b0;
     --text-muted: #4f5778;
-    --accent: #6366f1;
-    --accent-light: #818cf8;
-    --accent-glow: rgba(99, 102, 241, 0.25);
-    --cyan: #22d3ee;
-    --cyan-glow: rgba(34, 211, 238, 0.2);
+    --accent: #7c3aed;
+    --accent-light: #a78bfa;
+    --accent-glow: rgba(124, 58, 237, 0.25);
+    --cyan: #38bdf8;
+    --cyan-glow: rgba(56, 189, 248, 0.2);
     --green: #10b981;
     --green-glow: rgba(16, 185, 129, 0.2);
     --red: #f43f5e;

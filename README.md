@@ -1,4 +1,4 @@
-# Handoff — AI Voice Agent for B2B SaaS Customer Success
+# Synapse — The Living Memory of Your Customer Journey
 
 > **Gemini-powered voice agent** that transforms CRM deal closure into real-time, grounded customer success briefings.
 
@@ -10,13 +10,13 @@
 
 ## What Is This?
 
-When a B2B SaaS deal closes, critical context is trapped in CRM data and sales transcripts. Handoff uses **Gemini 3.1 Pro** to extract that knowledge into a navigable **skill graph**, then serves it through a **Gemini Live voice agent** that Customer Success Managers can talk to before their kickoff call.
+When a B2B SaaS deal closes, critical context is trapped in CRM data and sales transcripts. Synapse uses **Gemini 3.1 Pro** to extract that knowledge into a navigable **skill graph**, then serves it through a **Gemini Live multimodal agent** that Customer Success Managers can talk to and screen-share with before their kickoff call.
 
 ### The Demo Flow
 
 1. **CSM closes a deal** in the CRM Simulator → webhook fires
 2. **Graph Generator** extracts entities with Gemini 3.1 Pro → creates 8 client-specific knowledge nodes → stores in GCS → indexes with embeddings in Firestore
-3. **CSM opens Handoff** → sees account ready on Dashboard
+3. **CSM opens Synapse** → sees account ready on Dashboard
 4. **CSM clicks "Start Briefing"** → real-time voice conversation with the agent
 5. **Agent navigates the skill graph** using 3 tools (read_index, follow_link, search_graph) → provides grounded, never-hallucinated answers
 6. **Split-screen UI** shows live transcript + React Flow graph topology animating in real-time
@@ -61,14 +61,14 @@ bash scripts/start-local.sh
 | Service | URL |
 |---|---|
 | CRM Simulator | http://localhost:5173 |
-| Handoff Voice UI | http://localhost:5174 |
+| Synapse UI | http://localhost:5174 |
 | Backend API | http://localhost:8000/health |
 | Graph Generator | http://localhost:8002/health |
 
 ### Demo Walkthrough
 
 1. Open **CRM Simulator** → click "Closed Won" on a deal
-2. Open **Handoff Voice UI** → enter the deal ID → click "Start Briefing"
+2. Open **Synapse UI** → enter the deal ID → click "Start Briefing"
 3. Talk to the agent or type questions
 4. Watch the React Flow graph animate as the agent navigates nodes
 

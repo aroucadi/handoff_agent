@@ -1,5 +1,5 @@
 /**
- * Handoff — Briefing Session Component
+ * Synapse — Briefing Session Component
  *
  * Split-screen layout: ConversationPanel (left) + GraphPanel (right).
  * Manages the active voice session and passes state to child panels.

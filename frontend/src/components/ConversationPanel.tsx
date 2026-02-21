@@ -1,5 +1,5 @@
 /**
- * Handoff — Conversation Panel Component
+ * Synapse — Conversation Panel Component
  *
  * Left side of the split-screen briefing view.
  * Shows live transcript with speaker labels, text input, and mic controls.
@@ -74,7 +74,7 @@ export default function ConversationPanel({
                 {transcript.length === 0 && (
                     <div className="conv-panel__empty">
                         <div className="conv-panel__empty-pulse" />
-                        <p>Connecting to Handoff agent...</p>
+                        <p>Connecting to Synapse agent...</p>
                         <p className="conv-panel__hint">The agent will start the briefing automatically</p>
                     </div>
                 )}
@@ -90,7 +90,7 @@ export default function ConversationPanel({
                                 {entry.role === 'agent' ? '🤖' : '👤'}
                             </span>
                             <span className="msg__name">
-                                {entry.role === 'agent' ? 'Handoff' : 'You'}
+                                {entry.role === 'agent' ? 'Synapse' : 'You'}
                             </span>
                             <span className="msg__time">
                                 {new Date(entry.timestamp).toLocaleTimeString()}

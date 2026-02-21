@@ -1,7 +1,7 @@
 /**
- * Handoff — Main App Component (R7)
+ * Synapse — Main App Component
  *
- * Client-side routing with React Router.
+ * The Living Memory of Your Customer Journey.
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -14,8 +14,8 @@ export default function App() {
             <div className="app">
                 <header className="header">
                     <div className="header__brand" onClick={() => window.location.href = '/'}>
-                        <h1 className="header__title">Handoff</h1>
-                        <span className="header__subtitle">AI Voice Agent</span>
+                        <h1 className="header__title">Synapse</h1>
+                        <span className="header__subtitle">Multimodal Live Agent</span>
                     </div>
                 </header>
 

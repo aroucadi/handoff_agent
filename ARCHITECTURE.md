@@ -1,4 +1,4 @@
-# Handoff — Architecture
+# Synapse — Architecture
 
 ## Multimodal Live Agent Flow (Vision + Voice)
 
