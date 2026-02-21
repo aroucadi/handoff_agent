@@ -4,10 +4,15 @@ variable "project_id" {
   type = string
 }
 
+resource "google_firebase_project" "handoff" {
+  project = var.project_id
+}
+
 resource "google_firebase_web_app" "handoff" {
-  provider     = google
   project      = var.project_id
   display_name = "Handoff Voice Agent"
+
+  depends_on = [google_firebase_project.handoff]
 }
 
 output "firebase_app_id" {

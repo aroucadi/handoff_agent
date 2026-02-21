@@ -75,6 +75,10 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.uploads_bucket
       }
       env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
@@ -145,6 +149,10 @@ resource "google_cloud_run_v2_service" "graph_generator" {
         value = var.skill_graphs_bucket
       }
       env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
@@ -180,6 +188,55 @@ resource "google_cloud_run_v2_service_iam_member" "generator_public" {
   member   = "allUsers"
 }
 
+# ── Cloud Run: CRM Simulator ────────────────────────────────────
+
+resource "google_cloud_run_v2_service" "crm_simulator" {
+  name     = "handoff-crm-simulator"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 1
+    }
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/crm-simulator:latest"
+
+      ports {
+        container_port = 8001
+      }
+      
+      env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+}
+
+# Public access for CRM Simulator
+resource "google_cloud_run_v2_service_iam_member" "crm_simulator_public" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.crm_simulator.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # ── Outputs ──────────────────────────────────────────────────────
 
 output "api_url" {
@@ -188,6 +245,10 @@ output "api_url" {
 
 output "graph_generator_url" {
   value = google_cloud_run_v2_service.graph_generator.uri
+}
+
+output "crm_simulator_url" {
+  value = google_cloud_run_v2_service.crm_simulator.uri
 }
 
 output "artifact_registry" {

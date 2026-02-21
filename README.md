@@ -27,7 +27,8 @@ When a B2B SaaS deal closes, critical context is trapped in CRM data and sales t
 |---|---|
 | `gemini-3.1-pro-preview` | Entity extraction + node generation |
 | `gemini-embedding-001` | 768d vector embeddings for semantic search |
-| `gemini-2.5-flash-native-audio-preview` | Real-time voice via Multimodal Live API |
+| `gemini-2.0-flash-exp` | Real-time multimodal (Vision + Voice) via Live API |
+| `gemini-2.5-flash-native-audio-preview` | Voice-only fallback |
 
 ---
 
@@ -128,9 +129,16 @@ All infrastructure is defined as code in `infra/`:
 
 ### Deploy to GCP
 
-```bash
-export PROJECT_ID="your-project"
-bash scripts/deploy.sh
+To deploy the entire architecture (Frontend, FastAPIs, Cloud Run, Firestore, Storage) to Google Cloud, you need a GCP Project ID where you have billing and owner permissions.
+
+We have provided one-click PowerShell scripts to handle the Docker builds, Terraform execution, and Firebase deployment.
+
+```powershell
+# 1. Open PowerShell and run the deployment script, passing your GCP Project ID:
+.\scripts\deploy.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
+
+# 2. To completely destroy the environment and avoid billing:
+.\scripts\teardown.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
 ```
 
 See [DEPLOYMENT_PROOF.md](DEPLOYMENT_PROOF.md) for full infrastructure details.
@@ -142,10 +150,12 @@ See [DEPLOYMENT_PROOF.md](DEPLOYMENT_PROOF.md) for full infrastructure details.
 | Version | Release | What Shipped |
 |---|---|---|
 | `v0.1.0` | R0 — Foundation | CRM Simulator, IaC base, 12 static skill graphs |
-| `v0.2.0` | R1 — Skill Graph Engine | Gemini 3.1 Pro extraction, ADK agent, embeddings |
-| `v0.3.0` | R2 — Voice Agent | Gemini Live audio streaming, WebSocket sessions |
-| `v0.4.0` | R3 — Full UI | Dashboard, split-screen briefing, React Flow |
 | `v1.0.0` | R4 — Submission | Demo polish, documentation, deployment scripts |
+| `v1.4.0` | R8 — Grounding | Native Firestore Vector Search (`FindNearest`) |
+| `v1.6.0` | R10 — Telemetry | Asynchronous `core/telemetry.py` traces |
+| `v1.7.0` | R11 — Vision | Multimodal WebRTC screen sharing |
+| `v1.8.0` | R12 — Polish | Global exception handlers and architecture diagrams |
+| `v1.9.0` | R13 — IaC | Hardened Terraform & PowerShell deployment scripts |
 
 ---
 
