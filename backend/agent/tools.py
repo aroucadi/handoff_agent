@@ -28,21 +28,23 @@ def read_index(client_id: str, layer: str = "client") -> str:
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_follow_link(client_id: str, node_id: str) -> str:
+def tool_follow_link(client_id: str, node_id: str, sections_only: bool = False) -> str:
     """Navigate to a specific node in the skill graph by following a wikilink.
 
     Use this tool when a [[wikilink]] in the current node is relevant to
     the CSM's question. The tool resolves links across all layers:
     client nodes, product nodes, and industry nodes.
+    Set sections_only=True to read just the headers first if the node is long.
 
     Args:
         client_id: The client identifier
         node_id: The node_id to navigate to (from a [[wikilink]] reference)
+        sections_only: If True, returns only the section headers
 
     Returns:
-        The full node content with its metadata and outgoing links.
+        The node content with its metadata and outgoing links.
     """
-    result = follow_link(client_id, node_id)
+    result = follow_link(client_id, node_id, sections_only)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -91,6 +93,7 @@ TOOL_DEFINITIONS = [
             "properties": {
                 "client_id": {"type": "string", "description": "The client identifier"},
                 "node_id": {"type": "string", "description": "The node_id to navigate to"},
+                "sections_only": {"type": "boolean", "description": "If true, returns only the section headers to save context window"},
             },
             "required": ["client_id", "node_id"],
         },

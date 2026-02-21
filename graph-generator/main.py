@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from config import config
 from extractors.crm_extractor import extract_from_crm_payload
 from extractors.transcript_extractor import extract_from_transcript
+from extractors.contract_extractor import extract_from_contract
 from node_generator import generate_client_nodes
 from storage import write_all_nodes
 from indexer import index_all_nodes, get_graph_status
@@ -73,6 +74,21 @@ async def _run_generation(job_id: str, payload: dict):
         else:
             print(f"[JOB {job_id}] No transcript provided, skipping transcript extraction")
 
+        # Step 2.5: Extract from contract PDF (if available)
+        contract_data = None
+        contract_pdf_url = payload.get("contract_pdf_url")
+        if contract_pdf_url:
+            print(f"[JOB {job_id}] Step 2.5: Extracting contract terms with Gemini 3.1 Pro (multimodal)...")
+            jobs[job_id]["status"] = "analyzing_contract"
+            contract_data = await extract_from_contract(client_id, contract_pdf_url)
+            if contract_data:
+                print(f"[JOB {job_id}] Contract extraction complete: "
+                      f"{len(contract_data.get('contracted_modules', []))} modules")
+            else:
+                print(f"[JOB {job_id}] Contract PDF could not be processed")
+        else:
+            print(f"[JOB {job_id}] No contract PDF URL provided, skipping contract extraction")
+
         # Step 3: Generate nodes
         print(f"[JOB {job_id}] Step 3: Generating skill graph nodes with Gemini 3.1 Pro...")
         jobs[job_id]["status"] = "generating_nodes"
@@ -82,6 +98,7 @@ async def _run_generation(job_id: str, payload: dict):
             industry=industry,
             crm_data=crm_data,
             transcript_data=transcript_data,
+            contract_data=contract_data,
         )
         print(f"[JOB {job_id}] Generated {len(nodes)} nodes")
 
@@ -94,7 +111,7 @@ async def _run_generation(job_id: str, payload: dict):
         # Step 5: Index with embeddings
         print(f"[JOB {job_id}] Step 5: Indexing nodes with embeddings (gemini-embedding-001)...")
         jobs[job_id]["status"] = "indexing"
-        indexed = await index_all_nodes(client_id, nodes)
+        indexed = await index_all_nodes(client_id, nodes, payload=payload)
         print(f"[JOB {job_id}] Indexed {len(indexed)} nodes in Firestore")
 
         # Done!
@@ -106,6 +123,20 @@ async def _run_generation(job_id: str, payload: dict):
             "gcs_uris": uris,
             "completed_at": datetime.utcnow().isoformat(),
         })
+
+        # Step 6: Notify CSM (Firestore document)
+        from google.cloud import firestore
+        db = firestore.Client(project=config.project_id)
+        db.collection("notifications").document(client_id).set({
+            "client_id": client_id,
+            "company_name": company_name,
+            "status": "graph_ready",
+            "node_count": len(nodes),
+            "generated_at": datetime.utcnow().isoformat(),
+            "csm_id": payload.get("csm_id", "unknown"),
+            "deal_id": payload.get("deal_id", "unknown"),
+        })
+
         print(f"[JOB {job_id}] ✅ Graph generation complete for {company_name}")
 
     except Exception as e:

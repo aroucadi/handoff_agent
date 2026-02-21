@@ -45,12 +45,14 @@ def _build_tools() -> list[Tool]:
         FunctionDeclaration(
             name="follow_link",
             description="Navigate to a specific node in the skill graph. "
-                        "Use when a [[wikilink]] in the current node is relevant.",
+                        "Use when a [[wikilink]] in the current node is relevant. "
+                        "Set sections_only to true to preview long nodes first.",
             parameters={
                 "type": "object",
                 "properties": {
                     "client_id": {"type": "string", "description": "The client identifier"},
                     "node_id": {"type": "string", "description": "The node_id to navigate to"},
+                    "sections_only": {"type": "boolean", "description": "Return only headers"},
                 },
                 "required": ["client_id", "node_id"],
             },

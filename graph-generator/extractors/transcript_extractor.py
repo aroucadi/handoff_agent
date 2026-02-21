@@ -88,15 +88,27 @@ async def extract_from_transcript(transcript: str) -> dict:
     """
     client = genai.Client(api_key=config.gemini_api_key)
 
-    response = await client.aio.models.generate_content(
-        model=config.gen_model,
-        contents=EXTRACTION_PROMPT + transcript,
-        config=GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.1,  # Low temperature for factual extraction
-            max_output_tokens=8192,
-        ),
-    )
+    try:
+        response = await client.aio.models.generate_content(
+            model=config.gen_model,
+            contents=EXTRACTION_PROMPT + transcript,
+            config=GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.1,  # Low temperature for factual extraction
+                max_output_tokens=8192,
+            ),
+        )
+    except Exception as e:
+        print(f"[TRANSCRIPT] Primary model failed ({e}), trying fallback model...")
+        response = await client.aio.models.generate_content(
+            model=config.fallback_model,
+            contents=EXTRACTION_PROMPT + transcript,
+            config=GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.1,
+                max_output_tokens=8192,
+            ),
+        )
 
     raw_text = response.text.strip()
 

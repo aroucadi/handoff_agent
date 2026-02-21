@@ -9,6 +9,9 @@ import { useEffect, useState, useCallback } from 'react';
 
 interface ClientAccount {
     client_id: string;
+    company_name?: string;
+    deal_value?: number;
+    kickoff_date?: string;
     status: string;
     node_count: number;
     generated_at?: string;
@@ -89,7 +92,27 @@ export default function Dashboard({ onStartBriefing }: DashboardProps) {
                             <span className="account-card__nodes">{client.node_count} nodes</span>
                         </div>
 
-                        <h3 className="account-card__id">{client.client_id}</h3>
+                        <h3 className="account-card__id">{client.company_name || client.client_id}</h3>
+                        {client.company_name && (
+                            <p className="account-card__subtitle font-mono text-xs text-slate-400 mt-1">{client.client_id}</p>
+                        )}
+
+                        {(client.deal_value !== undefined || client.kickoff_date) && (
+                            <div className="account-card__deal-info mt-2 mb-2 p-2 bg-slate-800/50 rounded text-sm text-slate-300">
+                                {client.deal_value !== undefined && client.deal_value > 0 && (
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-slate-500 text-xs uppercase tracking-wider">Deal Value</span>
+                                        <span className="text-emerald-400 font-medium">${client.deal_value.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {client.kickoff_date && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-500 text-xs uppercase tracking-wider">Kickoff</span>
+                                        <span className="text-amber-400">{Math.max(0, Math.floor((new Date(client.kickoff_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)))} Days</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {client.generated_at && (
                             <p className="account-card__date">

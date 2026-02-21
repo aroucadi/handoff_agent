@@ -29,6 +29,7 @@ from google.genai.types import (
 from config import config
 from agent.tools import TOOL_FUNCTIONS
 from agent.prompts import HANDOFF_SYSTEM_PROMPT
+from google.cloud import firestore as firestore_client
 
 
 def _build_live_tools() -> list[Tool]:
@@ -50,12 +51,14 @@ def _build_live_tools() -> list[Tool]:
         FunctionDeclaration(
             name="follow_link",
             description="Navigate to a specific node in the skill graph. "
-                        "Use when a [[wikilink]] is relevant to the question.",
+                        "Use when a [[wikilink]] is relevant to the question. "
+                        "Set sections_only to true to safely preview long nodes.",
             parameters={
                 "type": "object",
                 "properties": {
                     "client_id": {"type": "string"},
                     "node_id": {"type": "string"},
+                    "sections_only": {"type": "boolean"},
                 },
                 "required": ["client_id", "node_id"],
             },
@@ -262,14 +265,42 @@ class LiveSession:
             yield {"type": "error", "error": str(e)}
 
     async def disconnect(self):
-        """Close the Gemini Live session."""
+        """Close the Gemini Live session and persist to Firestore."""
         if self._gemini_session:
             try:
                 await self._gemini_session.close()
             except Exception:
                 pass
         self._connected = False
-        print(f"[LIVE] Session {self.session_id} disconnected")
+        # Persist final state to Firestore
+        await self.persist_to_firestore()
+        print(f"[LIVE] Session {self.session_id} disconnected and persisted")
+
+    async def persist_to_firestore(self):
+        """Persist session state (transcript, tool calls, nodes visited) to Firestore.
+
+        Called on disconnect and can be called periodically during conversation.
+        Writes to: sessions/{session_id}
+        """
+        try:
+            db = firestore_client.AsyncClient(project=config.project_id)
+            doc_ref = db.collection("sessions").document(self.session_id)
+            await doc_ref.set({
+                "session_id": self.session_id,
+                "client_id": self.client_id,
+                "csm_name": self.csm_name,
+                "started_at": self.started_at,
+                "ended_at": datetime.utcnow().isoformat(),
+                "transcript": self.transcript,
+                "tool_calls": self.tool_calls,
+                "nodes_visited": list(set(self.nodes_visited)),
+                "total_tool_calls": len(self.tool_calls),
+                "total_messages": len(self.transcript),
+            })
+            print(f"[FIRESTORE] Persisted session {self.session_id}: "
+                  f"{len(self.transcript)} messages, {len(self.tool_calls)} tool calls")
+        except Exception as e:
+            print(f"[FIRESTORE] Failed to persist session {self.session_id}: {e}")
 
     def get_history(self) -> dict:
         """Get the full session history."""
@@ -283,3 +314,15 @@ class LiveSession:
             "nodes_visited": list(set(self.nodes_visited)),
             "total_tool_calls": len(self.tool_calls),
         }
+
+    @staticmethod
+    async def get_history_from_firestore(session_id: str) -> dict | None:
+        """Retrieve session history from Firestore (for sessions no longer in memory)."""
+        try:
+            db = firestore_client.AsyncClient(project=config.project_id)
+            doc = await db.collection("sessions").document(session_id).get()
+            if doc.exists:
+                return doc.to_dict()
+        except Exception as e:
+            print(f"[FIRESTORE] Failed to read session {session_id}: {e}")
+        return None

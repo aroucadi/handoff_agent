@@ -72,6 +72,7 @@ async def generate_client_nodes(
     industry: str,
     crm_data: dict,
     transcript_data: dict | None = None,
+    contract_data: dict | None = None,
 ) -> list[dict]:
     """Generate client skill graph nodes using Gemini 3.1 Pro.
 
@@ -81,6 +82,7 @@ async def generate_client_nodes(
         industry: Industry vertical.
         crm_data: Structured CRM data from crm_extractor.
         transcript_data: Structured transcript data from transcript_extractor (optional).
+        contract_data: Structured contract data from contract_extractor (optional).
 
     Returns:
         List of dicts with "node_id" and "content" for each generated node.
@@ -99,6 +101,8 @@ async def generate_client_nodes(
     }
     if transcript_data:
         combined_data["transcript_extraction"] = transcript_data
+    if contract_data:
+        combined_data["contract_extraction"] = contract_data
 
     prompt = NODE_GENERATION_PROMPT.replace("{client_id}", client_id)
     prompt = prompt.replace("{client_slug}", client_slug)
@@ -108,15 +112,27 @@ async def generate_client_nodes(
 
     client = genai.Client(api_key=config.gemini_api_key)
 
-    response = await client.aio.models.generate_content(
-        model=config.gen_model,
-        contents=prompt,
-        config=GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.2,
-            max_output_tokens=16384,  # Nodes can be long
-        ),
-    )
+    try:
+        response = await client.aio.models.generate_content(
+            model=config.gen_model,
+            contents=prompt,
+            config=GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2,
+                max_output_tokens=16384,  # Nodes can be long
+            ),
+        )
+    except Exception as e:
+        print(f"[NODE_GEN] Primary model failed ({e}), trying fallback model...")
+        response = await client.aio.models.generate_content(
+            model=config.fallback_model,
+            contents=prompt,
+            config=GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.2,
+                max_output_tokens=16384,
+            ),
+        )
 
     raw_text = response.text.strip()
 

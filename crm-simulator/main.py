@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from google.cloud import storage as gcs
 
 from models import Deal, DealStage, DealUpdate, WebhookPayload
 from seed_data import DEMO_DEALS
@@ -200,18 +201,25 @@ async def _fire_webhook(deal: Deal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# File Upload (contract PDFs, transcripts)
+# File Upload (contract PDFs → GCS)
 # ---------------------------------------------------------------------------
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOADS_BUCKET = os.environ.get(
+    "UPLOADS_BUCKET",
+    f"{os.environ.get('PROJECT_ID', 'handoff-dev')}-handoff-uploads",
+)
+
+
+def _get_gcs_client() -> gcs.Client:
+    """Get GCS client."""
+    return gcs.Client(project=os.environ.get("PROJECT_ID", "handoff-dev"))
 
 
 @app.post("/api/deals/{deal_id}/upload-contract")
 async def upload_contract(deal_id: str, file: UploadFile = File(...)):
-    """Upload a contract PDF for a deal.
+    """Upload a contract PDF to Google Cloud Storage.
 
-    In production, this would go to GCS. For the simulator, we store locally
-    and update the deal's contract_pdf_url.
+    Writes to gs://{UPLOADS_BUCKET}/contracts/{deal_id}/{filename}
+    and updates the deal's contract_pdf_url with the GCS URI.
     """
     deal = deals_store.get(deal_id)
     if not deal:
@@ -219,20 +227,26 @@ async def upload_contract(deal_id: str, file: UploadFile = File(...)):
 
     file_ext = os.path.splitext(file.filename or "contract.pdf")[1]
     filename = f"{deal_id}_contract{file_ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
     content = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
 
-    deal.contract_pdf_url = f"/uploads/{filename}"
+    # Upload to GCS
+    gcs_client = _get_gcs_client()
+    bucket = gcs_client.bucket(UPLOADS_BUCKET)
+    blob_path = f"contracts/{deal_id}/{filename}"
+    blob = bucket.blob(blob_path)
+    blob.upload_from_string(content, content_type="application/pdf")
+
+    gcs_uri = f"gs://{UPLOADS_BUCKET}/{blob_path}"
+    deal.contract_pdf_url = gcs_uri
     deal.updated_at = datetime.utcnow()
+
+    print(f"[GCS] Uploaded contract: {gcs_uri} ({len(content)} bytes)")
 
     return {
         "deal_id": deal_id,
         "filename": filename,
         "size_bytes": len(content),
-        "url": deal.contract_pdf_url,
+        "gcs_uri": gcs_uri,
     }
 
 
@@ -271,6 +285,8 @@ async def reset_data():
 
 
 # ---------------------------------------------------------------------------
-# Serve uploaded files
+# Serve uploaded files (legacy fallback)
 # ---------------------------------------------------------------------------
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+_upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(_upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")

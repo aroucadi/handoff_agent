@@ -36,8 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Session Store ───────────────────────────────────────────────
-sessions: dict[str, LiveSession] = {}
+# ── Active Session Objects (for WebSocket connections only) ────
+# Note: Session metadata is persisted in Firestore. This dict holds
+# active LiveSession objects that have open WebSocket connections.
+active_sessions: dict[str, LiveSession] = {}
 
 
 # ── Health ──────────────────────────────────────────────────────
@@ -46,9 +48,9 @@ sessions: dict[str, LiveSession] = {}
 async def health():
     return {
         "status": "ok",
-        "version": "0.3.0",
+        "version": "0.5.0",
         "environment": config.environment,
-        "active_sessions": len(sessions),
+        "active_sessions": len(active_sessions),
     }
 
 
@@ -98,7 +100,7 @@ class SessionStartRequest(BaseModel):
 
 @app.post("/api/sessions/start")
 async def start_session(req: SessionStartRequest):
-    """Create a new voice session and return connection details."""
+    """Create a new voice session, persist to Firestore, and return connection details."""
     session_id = str(uuid.uuid4())[:8]
 
     session = LiveSession(
@@ -106,9 +108,20 @@ async def start_session(req: SessionStartRequest):
         client_id=req.client_id,
         csm_name=req.csm_name,
     )
-    sessions[session_id] = session
+    active_sessions[session_id] = session
 
-    print(f"[SESSION] Created session {session_id} for client {req.client_id}")
+    # Persist session creation to Firestore
+    from google.cloud import firestore
+    db = firestore.Client(project=config.project_id)
+    db.collection("sessions").document(session_id).set({
+        "session_id": session_id,
+        "client_id": req.client_id,
+        "csm_name": req.csm_name,
+        "started_at": session.started_at,
+        "status": "active",
+    })
+
+    print(f"[SESSION] Created session {session_id} for client {req.client_id} (persisted to Firestore)")
 
     return {
         "session_id": session_id,
@@ -120,30 +133,47 @@ async def start_session(req: SessionStartRequest):
 
 @app.get("/api/sessions/{session_id}/history")
 async def get_session_history(session_id: str):
-    """Get the transcript and traversal log for a session."""
-    session = sessions.get(session_id)
-    if not session:
-        return JSONResponse(status_code=404, content={"error": "Session not found"})
-    return session.get_history()
+    """Get the transcript and traversal log for a session.
+
+    Checks active in-memory sessions first, then falls back to Firestore.
+    """
+    # Try active in-memory session
+    session = active_sessions.get(session_id)
+    if session:
+        return session.get_history()
+
+    # Fall back to Firestore
+    history = await LiveSession.get_history_from_firestore(session_id)
+    if history:
+        return history
+
+    return JSONResponse(status_code=404, content={"error": "Session not found"})
 
 
 @app.get("/api/sessions")
 async def list_sessions():
-    """List all active and recent sessions."""
-    return {
-        "sessions": [
-            {
-                "session_id": s.session_id,
-                "client_id": s.client_id,
-                "csm_name": s.csm_name,
-                "started_at": s.started_at,
-                "tool_calls": len(s.tool_calls),
-                "nodes_visited": len(set(s.nodes_visited)),
-            }
-            for s in sessions.values()
-        ],
-        "count": len(sessions),
-    }
+    """List all sessions from Firestore (active and completed)."""
+    from google.cloud import firestore
+    db = firestore.Client(project=config.project_id)
+
+    sessions_list = []
+    docs = db.collection("sessions").order_by(
+        "started_at", direction=firestore.Query.DESCENDING
+    ).limit(50).stream()
+
+    for doc in docs:
+        data = doc.to_dict()
+        sessions_list.append({
+            "session_id": data.get("session_id", doc.id),
+            "client_id": data.get("client_id"),
+            "csm_name": data.get("csm_name"),
+            "started_at": data.get("started_at"),
+            "status": data.get("status", "unknown"),
+            "total_tool_calls": data.get("total_tool_calls", 0),
+            "total_messages": data.get("total_messages", 0),
+        })
+
+    return {"sessions": sessions_list, "count": len(sessions_list)}
 
 
 # ── WebSocket: Gemini Live Voice ────────────────────────────────
@@ -161,7 +191,7 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
     - Server sends: {"type": "turn_complete"}
     - Server sends: {"type": "interrupted"}
     """
-    session = sessions.get(session_id)
+    session = active_sessions.get(session_id)
     if not session:
         await websocket.close(code=4004, reason="Session not found")
         return
@@ -266,6 +296,9 @@ async def list_clients():
         if data.get("status"):
             clients.append({
                 "client_id": data.get("client_id", doc.id),
+                "company_name": data.get("company_name", "Unknown Company"),
+                "deal_value": data.get("deal_value", 0),
+                "kickoff_date": data.get("kickoff_date", ""),
                 "status": data.get("status", "unknown"),
                 "node_count": data.get("node_count", 0),
                 "generated_at": data.get("generated_at"),

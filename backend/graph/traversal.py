@@ -71,7 +71,7 @@ def get_index(client_id: str, layer: str = "client") -> dict:
     }
 
 
-def follow_link(client_id: str, node_id: str) -> dict:
+def follow_link(client_id: str, node_id: str, sections_only: bool = False) -> dict:
     """Follow a wikilink to read a specific node.
 
     Searches client nodes first, then static product/industry nodes.
@@ -79,6 +79,7 @@ def follow_link(client_id: str, node_id: str) -> dict:
     Args:
         client_id: Client identifier.
         node_id: The node_id to navigate to.
+        sections_only: If True, returns only H2 headers for progressive disclosure.
 
     Returns:
         Dict with node content, metadata, and outgoing links.
@@ -106,6 +107,15 @@ def follow_link(client_id: str, node_id: str) -> dict:
 
     metadata, body = _parse_frontmatter(content)
     links = _extract_links(content)
+
+    if sections_only:
+        # Filter body to only include headers (specifically H2 logic as per PRD)
+        lines = body.split("\n")
+        headers = [line for line in lines if line.startswith("#")]
+        if headers:
+            body = "\n".join(headers)
+        else:
+            body = "(Node has no section headers)"
 
     return {
         "node_id": node_id,

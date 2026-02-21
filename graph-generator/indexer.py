@@ -120,16 +120,19 @@ async def index_node(client_id: str, node_id: str, content: str) -> dict:
     return doc_data
 
 
-async def index_all_nodes(client_id: str, nodes: list[dict]) -> list[dict]:
+async def index_all_nodes(client_id: str, nodes: list[dict], payload: dict = None) -> list[dict]:
     """Index all generated nodes in Firestore.
 
     Args:
         client_id: Client identifier.
         nodes: List of dicts with "node_id" and "content".
+        payload: Original webhook payload containing CRM data.
 
     Returns:
         List of Firestore document data.
     """
+    if payload is None:
+        payload = {}
     indexed = []
     for node in nodes:
         node_id = node.get("node_id", "unknown")
@@ -140,8 +143,17 @@ async def index_all_nodes(client_id: str, nodes: list[dict]) -> list[dict]:
     # Also write the client-level status document
     db = _get_firestore()
     status_ref = db.collection("skill_graphs").document(client_id)
+
+    # Use today + SLA days as a simple kickoff date calculation for the demo
+    # In a real system this would be parsed accurately from the contract/CRM.
+    kickoff_date = payload.get("close_date", datetime.utcnow().isoformat()[:10])
+
     await status_ref.set({
         "client_id": client_id,
+        "company_name": payload.get("company_name", "Unknown Company"),
+        "deal_value": payload.get("deal_value", 0),
+        "kickoff_date": kickoff_date,
+        "csm_id": payload.get("csm_id", "unknown"),
         "status": "ready",
         "node_count": len(indexed),
         "node_ids": [n["node_id"] for n in indexed],
