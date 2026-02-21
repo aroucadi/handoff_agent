@@ -12,7 +12,12 @@ from datetime import date
 from google import genai
 from google.genai.types import GenerateContentConfig
 
-from config import config
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from core.config import config
+from core.llm import generate_content_with_fallback
 
 NODE_GENERATION_PROMPT = """You are a skill graph architect for a B2B SaaS customer success platform.
 
@@ -110,31 +115,24 @@ async def generate_client_nodes(
     prompt = prompt.replace("{today}", today)
     prompt += json.dumps(combined_data, indent=2, default=str)
 
-    client = genai.Client(api_key=config.gemini_api_key)
-
     try:
-        response = await client.aio.models.generate_content(
-            model=config.gen_model,
-            contents=prompt,
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-                max_output_tokens=16384,  # Nodes can be long
-            ),
+        gen_config = GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.2,
+            max_output_tokens=16384,  # Nodes can be long
         )
+        
+        raw_text = await generate_content_with_fallback(
+            contents=prompt,
+            gen_config=gen_config,
+            primary_model=config.gen_model,
+            fallback_model=config.fallback_model,
+        )
+        if not raw_text:
+            return []
     except Exception as e:
-        print(f"[NODE_GEN] Primary model failed ({e}), trying fallback model...")
-        response = await client.aio.models.generate_content(
-            model=config.fallback_model,
-            contents=prompt,
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-                max_output_tokens=16384,
-            ),
-        )
-
-    raw_text = response.text.strip()
+        print(f"[NODE_GEN] Generation failed: {e}")
+        return []
 
     # Parse JSON array of nodes
     try:

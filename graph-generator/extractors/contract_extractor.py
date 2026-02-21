@@ -13,7 +13,12 @@ from google import genai
 from google.genai.types import GenerateContentConfig, Part
 from google.cloud import storage as gcs
 
-from config import config
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+from core.config import config
+from core.llm import generate_content_with_fallback
 
 CONTRACT_EXTRACTION_PROMPT = """You are an expert at analyzing B2B SaaS contracts and service agreements.
 
@@ -102,42 +107,24 @@ async def extract_from_contract(client_id: str, contract_pdf_url: str | None = N
 
     print(f"[CONTRACT] Extracting terms from PDF ({len(pdf_bytes)} bytes)...")
 
-    client = genai.Client(api_key=config.gemini_api_key)
-
-    # Build multimodal content: text prompt + PDF bytes
-    contents = [
-        CONTRACT_EXTRACTION_PROMPT,
-        Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
-    ]
-
     try:
-        response = await client.aio.models.generate_content(
-            model=config.gen_model,
-            contents=contents,
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,  # Low temperature for factual extraction
-                max_output_tokens=8192,
-            ),
+        gen_config = GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.1,  # Low temperature for factual extraction
+            max_output_tokens=8192,
         )
-    except Exception as e:
-        # Fallback to Flash model on rate-limit or error
-        print(f"[CONTRACT] Primary model failed ({e}), trying fallback model...")
-        try:
-            response = await client.aio.models.generate_content(
-                model=config.fallback_model,
-                contents=contents,
-                config=GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.1,
-                    max_output_tokens=8192,
-                ),
-            )
-        except Exception as fallback_error:
-            print(f"[CONTRACT] Fallback model also failed: {fallback_error}")
+        
+        raw_text = await generate_content_with_fallback(
+            contents=contents,
+            gen_config=gen_config,
+            primary_model=config.gen_model,
+            fallback_model=config.fallback_model,
+        )
+        if not raw_text:
             return None
-
-    raw_text = response.text.strip()
+    except Exception as e:
+        print(f"[CONTRACT] Extractor failed: {e}")
+        return None
 
     # Parse JSON response
     try:

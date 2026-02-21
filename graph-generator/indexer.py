@@ -12,14 +12,13 @@ from datetime import datetime
 
 from google import genai
 from google.genai.types import EmbedContentConfig
-from google.cloud import firestore
 
-from config import config
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-def _get_firestore() -> firestore.AsyncClient:
-    """Get async Firestore client."""
-    return firestore.AsyncClient(project=config.project_id)
+from core.config import config
+from core.db import get_firestore_async_client as _get_firestore
 
 
 def _parse_yaml_frontmatter(content: str) -> tuple[dict, str]:

@@ -18,7 +18,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from config import config
+import os
+import sys
+
+# Add root directory to python path for shared modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from core.config import config
+from core.db import get_firestore_client
 from agent.handoff_agent import run_text_conversation
 from live.session import LiveSession
 
@@ -111,8 +118,7 @@ async def start_session(req: SessionStartRequest):
     active_sessions[session_id] = session
 
     # Persist session creation to Firestore
-    from google.cloud import firestore
-    db = firestore.Client(project=config.project_id)
+    db = get_firestore_client()
     db.collection("sessions").document(session_id).set({
         "session_id": session_id,
         "client_id": req.client_id,
@@ -154,7 +160,7 @@ async def get_session_history(session_id: str):
 async def list_sessions():
     """List all sessions from Firestore (active and completed)."""
     from google.cloud import firestore
-    db = firestore.Client(project=config.project_id)
+    db = get_firestore_client()
 
     sessions_list = []
     docs = db.collection("sessions").order_by(
@@ -286,8 +292,7 @@ async def text_conversation(msg: TextMessage):
 @app.get("/api/clients")
 async def list_clients():
     """List all client accounts with graph status."""
-    from google.cloud import firestore
-    db = firestore.Client(project=config.project_id)
+    db = get_firestore_client()
 
     clients = []
     docs = db.collection("skill_graphs").stream()
@@ -310,8 +315,7 @@ async def list_clients():
 @app.get("/api/clients/{client_id}/graph/status")
 async def get_graph_status(client_id: str):
     """Check if a client's skill graph is ready."""
-    from google.cloud import firestore
-    db = firestore.Client(project=config.project_id)
+    db = get_firestore_client()
 
     doc = db.collection("skill_graphs").document(client_id).get()
     if not doc.exists:

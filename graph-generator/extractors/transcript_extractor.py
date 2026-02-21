@@ -10,7 +10,12 @@ import json
 from google import genai
 from google.genai.types import GenerateContentConfig
 
-from config import config
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+from core.config import config
+from core.llm import generate_content_with_fallback
 
 EXTRACTION_PROMPT = """You are an expert at analyzing B2B SaaS sales call transcripts.
 
@@ -86,31 +91,24 @@ async def extract_from_transcript(transcript: str) -> dict:
     Returns:
         Dictionary with extracted entities (stakeholders, risks, promises, etc.)
     """
-    client = genai.Client(api_key=config.gemini_api_key)
-
     try:
-        response = await client.aio.models.generate_content(
-            model=config.gen_model,
-            contents=EXTRACTION_PROMPT + transcript,
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,  # Low temperature for factual extraction
-                max_output_tokens=8192,
-            ),
+        gen_config = GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.1,  # Low temperature for factual extraction
+            max_output_tokens=8192,
         )
+        
+        raw_text = await generate_content_with_fallback(
+            contents=EXTRACTION_PROMPT + transcript,
+            gen_config=gen_config,
+            primary_model=config.gen_model,
+            fallback_model=config.fallback_model,
+        )
+        if not raw_text:
+            return {}
     except Exception as e:
-        print(f"[TRANSCRIPT] Primary model failed ({e}), trying fallback model...")
-        response = await client.aio.models.generate_content(
-            model=config.fallback_model,
-            contents=EXTRACTION_PROMPT + transcript,
-            config=GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,
-                max_output_tokens=8192,
-            ),
-        )
-
-    raw_text = response.text.strip()
+        print(f"[TRANSCRIPT] Extractor failed: {e}")
+        return {}
 
     # Parse JSON response
     try:

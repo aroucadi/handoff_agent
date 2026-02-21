@@ -49,7 +49,7 @@ export default function BriefingSession({ clientId, sessionId, onEnd }: Briefing
                 const url = import.meta.env.VITE_API_URL || "http://localhost:8000";
                 const res = await fetch(`${url}/api/clients`);
                 const data = await res.json();
-                const client = data.clients?.find((c: any) => c.client_id === clientId);
+                const client = data.clients?.find((c: ClientDetails) => c.client_id === clientId);
                 if (client) {
                     setClientDetails(client);
                 }

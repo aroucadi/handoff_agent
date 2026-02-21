@@ -17,7 +17,13 @@ from fastapi import FastAPI, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from config import config
+import os
+import sys
+
+# Add root directory to python path for shared modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from core.config import config
 from extractors.crm_extractor import extract_from_crm_payload
 from extractors.transcript_extractor import extract_from_transcript
 from extractors.contract_extractor import extract_from_contract
@@ -125,8 +131,8 @@ async def _run_generation(job_id: str, payload: dict):
         })
 
         # Step 6: Notify CSM (Firestore document)
-        from google.cloud import firestore
-        db = firestore.Client(project=config.project_id)
+        from core.db import get_firestore_client
+        db = get_firestore_client()
         db.collection("notifications").document(client_id).set({
             "client_id": client_id,
             "company_name": company_name,

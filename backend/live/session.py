@@ -26,10 +26,10 @@ from google.genai.types import (
     VoiceConfig,
 )
 
-from config import config
+from core.config import config
+from core.db import get_firestore_async_client
 from agent.tools import TOOL_FUNCTIONS
 from agent.prompts import HANDOFF_SYSTEM_PROMPT
-from google.cloud import firestore as firestore_client
 
 
 def _build_live_tools() -> list[Tool]:
@@ -283,7 +283,7 @@ class LiveSession:
         Writes to: sessions/{session_id}
         """
         try:
-            db = firestore_client.AsyncClient(project=config.project_id)
+            db = get_firestore_async_client()
             doc_ref = db.collection("sessions").document(self.session_id)
             await doc_ref.set({
                 "session_id": self.session_id,
@@ -319,7 +319,7 @@ class LiveSession:
     async def get_history_from_firestore(session_id: str) -> dict | None:
         """Retrieve session history from Firestore (for sessions no longer in memory)."""
         try:
-            db = firestore_client.AsyncClient(project=config.project_id)
+            db = get_firestore_async_client()
             doc = await db.collection("sessions").document(session_id).get()
             if doc.exists:
                 return doc.to_dict()
