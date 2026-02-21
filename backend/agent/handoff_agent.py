@@ -7,6 +7,8 @@ This agent navigates the skill graph to provide grounded answers.
 from __future__ import annotations
 
 import json
+import asyncio
+from datetime import datetime
 
 from google import genai
 from google.genai.types import (
@@ -149,9 +151,32 @@ async def run_text_conversation(
         history=contents,
     )
 
+    start_time = datetime.utcnow()
     try:
         response = await chat.send_message(message)
         agent_response = response.text
+        
+        # Extract usage
+        prompt_tokens = 0
+        completion_tokens = 0
+        if getattr(response, "usage_metadata", None):
+            prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
+            completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            
+        from core.telemetry import record_trace
+        asyncio.create_task(
+            record_trace(
+                agent_name="handoff_text_agent",
+                job_id="chat-turn",
+                start_time=start_time,
+                end_time=datetime.utcnow(),
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                tools_used=tool_calls_log,
+                client_id=client_id,
+            )
+        )
+        
     except Exception as e:
         agent_response = f"Sorry, I encountered an error coordinating tool execution: {e}"
 

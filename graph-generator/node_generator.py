@@ -7,7 +7,8 @@ Each node follows the YAML frontmatter schema defined in the HANDOFF PRD.
 from __future__ import annotations
 
 import json
-from datetime import date
+import asyncio
+from datetime import date, datetime
 
 from google import genai
 from google.genai.types import GenerateContentConfig
@@ -138,12 +139,27 @@ async def generate_client_nodes(
             max_output_tokens=16384,  # Nodes can be long
         )
         
+        from core.telemetry import record_trace
+        start_gen_time = datetime.utcnow()
+        
         raw_text = await generate_content_with_fallback(
             contents=prompt,
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
         )
+        end_gen_time = datetime.utcnow()
+        
+        asyncio.create_task(
+            record_trace(
+                agent_name="node_generator_draft",
+                job_id=f"generate-{client_id}",
+                start_time=start_gen_time,
+                end_time=end_gen_time,
+                client_id=client_id,
+            )
+        )
+        
         if not raw_text:
             return []
             
@@ -151,11 +167,23 @@ async def generate_client_nodes(
         print("[NODE_GEN] Generation complete. Starting Reviewer Agent pass...")
         reviewer_prompt = REVIEWER_PROMPT + raw_text
         
+        start_rev_time = datetime.utcnow()
         reviewed_text = await generate_content_with_fallback(
             contents=reviewer_prompt,
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+        )
+        end_rev_time = datetime.utcnow()
+        
+        asyncio.create_task(
+            record_trace(
+                agent_name="node_generator_reviewer",
+                job_id=f"review-{client_id}",
+                start_time=start_rev_time,
+                end_time=end_rev_time,
+                client_id=client_id,
+            )
         )
         if not reviewed_text:
             reviewed_text = raw_text # Fallback to unreviewed if reviewer fails
