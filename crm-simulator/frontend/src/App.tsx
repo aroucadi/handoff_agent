@@ -180,7 +180,7 @@ export default function App() {
             await loadDeals();
 
             if (result.webhook_fired) {
-                setNotification(`🚀 Deal closed! Webhook fired to Synapse. Graph generation started.`);
+                setNotification(`🛒 SalesClaw: Deal closed! Webhook fired to Synapse. Graph generation started.`);
                 setTimeout(() => setNotification(null), 5000);
             }
         } catch (err) {
@@ -205,7 +205,7 @@ export default function App() {
         <div className="app">
             <header className="app-header">
                 <div className="app-header__brand">
-                    <h1 className="app-header__title">VeloSaaS CRM</h1>
+                    <h1 className="app-header__title">SalesClaw CRM</h1>
                     <span className="app-header__subtitle">Synapse Simulator</span>
                 </div>
                 <div className="app-header__actions">

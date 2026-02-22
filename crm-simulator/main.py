@@ -23,9 +23,9 @@ from models import Deal, DealStage, DealUpdate, WebhookPayload
 from seed_data import DEMO_DEALS
 
 app = FastAPI(
-    title="Synapse CRM Simulator",
+    title="SalesClaw CRM Simulator",
     description="Lightweight CRM simulator for Synapse demos Ã¢â‚¬â€ manages deals, contacts, and fires webhooks on Closed Won",
-    version="3.2.0",
+    version="3.3.0",
 )
 
 app.add_middleware(
@@ -59,7 +59,7 @@ _seed_deals()
 # ---------------------------------------------------------------------------
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "crm-simulator", "version": "0.1.0"}
+    return {"status": "ok", "service": "salesclaw-crm", "version": "1.0.0"}
 
 
 # ---------------------------------------------------------------------------
