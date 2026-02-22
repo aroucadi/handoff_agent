@@ -11,7 +11,7 @@ This guide will help you understand how the repository is structured, how we man
 The codebase is split conceptually into Frontend, Backend Microservices, Infrastructure, and Shared Tooling.
 
 ```text
-handoff_agent/
+synapse_agent/
 ├── backend/            # (Microservice) The real-time FastAPI WebSocket/WebRTC bridge linking the UI to Gemini Live
 ├── crm-simulator/      # (Microservice) A mock FastAPI CRM used to trigger deals and test the closed-won webhooks
 ├── graph-generator/    # (Microservice) A FastAPI asynchronous multi-agent pipeline generating knowledge nodes

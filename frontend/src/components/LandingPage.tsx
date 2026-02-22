@@ -36,7 +36,7 @@ export default function LandingPage() {
                     <button className="btn btn--hero" onClick={() => navigate('/dashboard')}>
                         🚀 Launch Dashboard
                     </button>
-                    <a className="btn btn--hero-outline" href="https://github.com/aroucadi/handoff_agent" target="_blank" rel="noopener noreferrer">
+                    <a className="btn btn--hero-outline" href="https://github.com/aroucadi/synapse_agent" target="_blank" rel="noopener noreferrer">
                         ⭐ View on GitHub
                     </a>
                 </div>

@@ -279,7 +279,7 @@ Manufacturing conglomerate, 500 employees, midwest US. Closed $2M VeloSaaS CPQ +
 2. Use Gemini 3.1 Pro (`gemini-3.1-pro-preview`) to extract entities from transcript (stakeholders, pain points, promises, risks, objections) — 1M token context handles even the longest sales cycles
 3. Use Gemini 3.1 Pro to extract contract terms from PDF (multimodal PDF understanding)
 4. Generate 10–20 markdown nodes following the YAML schema
-5. Write nodes to `gs://handoff-graphs/{client-id}/` in Cloud Storage
+5. Write nodes to `gs://synapse-graphs/{client-id}/` in Cloud Storage
 6. Index node metadata in Firestore collection `skill_graphs/{client-id}/nodes`
 7. Generate embeddings via `gemini-embedding-001` for semantic search indexing
 8. Trigger notification to assigned CSM
@@ -575,7 +575,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket = "handoff-terraform-state"
+    bucket = "synapse-terraform-state"
     prefix = "terraform/state"
   }
 }
@@ -623,12 +623,12 @@ resource "google_firestore_database" "synapse" {
 
 # Cloud Run — API Server
 resource "google_cloud_run_v2_service" "api" {
-  name     = "handoff-api"
+  name     = "synapse-api"
   location = var.region
 
   template {
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/api:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:latest"
 
       env {
         name  = "PROJECT_ID"
@@ -665,12 +665,12 @@ resource "google_cloud_run_v2_service" "api" {
 
 # Cloud Run — Graph Generator
 resource "google_cloud_run_v2_service" "graph_generator" {
-  name     = "handoff-graph-generator"
+  name     = "synapse-graph-generator"
   location = var.region
 
   template {
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/graph-generator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:latest"
 
       resources {
         limits = {
@@ -690,7 +690,7 @@ resource "google_cloud_run_v2_service" "graph_generator" {
 # Artifact Registry
 resource "google_artifact_registry_repository" "synapse" {
   location      = var.region
-  repository_id = "handoff"
+  repository_id = "synapse"
   format        = "DOCKER"
 }
 
@@ -717,8 +717,8 @@ echo "🚀 Deploying Synapse to GCP project: $PROJECT_ID"
 
 # Build and push containers
 echo "📦 Building containers..."
-gcloud builds submit ./backend --tag "$REGION-docker.pkg.dev/$PROJECT_ID/handoff/api:latest"
-gcloud builds submit ./graph-generator --tag "$REGION-docker.pkg.dev/$PROJECT_ID/handoff/graph-generator:latest"
+gcloud builds submit ./backend --tag "$REGION-docker.pkg.dev/$PROJECT_ID/synapse/api:latest"
+gcloud builds submit ./graph-generator --tag "$REGION-docker.pkg.dev/$PROJECT_ID/synapse/graph-generator:latest"
 
 # Apply Terraform
 echo "🏗️  Applying infrastructure..."
@@ -736,7 +736,7 @@ firebase deploy --only hosting --project $PROJECT_ID
 cd ..
 
 echo "✅ Synapse deployed successfully!"
-echo "API: $(gcloud run services describe handoff-api --region=$REGION --format='value(status.url)')"
+echo "API: $(gcloud run services describe synapse-api --region=$REGION --format='value(status.url)')"
 ```
 
 ---
@@ -926,7 +926,7 @@ The diagram for the submission should be clean and professional. Use this layout
 ## 13. File & Folder Structure
 
 ```
-handoff/
+synapse/
 ├── README.md                        ← Setup instructions (judges need this)
 ├── ARCHITECTURE.md                  ← Architecture diagram (text + image)
 ├── DEPLOYMENT_PROOF.md             ← Links to GCP console screenshots
@@ -948,7 +948,7 @@ handoff/
 │   ├── main.py                      ← FastAPI app entry point
 │   ├── config.py                    ← Environment config
 │   ├── agent/
-│   │   ├── handoff_agent.py         ← ADK agent definition
+│   │   ├── synapse_agent.py         ← ADK agent definition
 │   │   ├── tools/
 │   │   │   ├── read_index.py
 │   │   │   ├── follow_link.py
@@ -1049,7 +1049,7 @@ Build production-ready Google ADK agents that integrate with Gemini Live API and
 
 ## Instructions
 
-1. **Agent structure**: Every ADK agent goes in `backend/agent/`. The main agent definition is in `handoff_agent.py`. Tools are separate files in `backend/agent/tools/`.
+1. **Agent structure**: Every ADK agent goes in `backend/agent/`. The main agent definition is in `synapse_agent.py`. Tools are separate files in `backend/agent/tools/`.
 
 2. **Tool pattern**: Each tool must be a Python function with type hints and a comprehensive docstring — ADK uses the docstring as the tool description for the model.
    ```python
@@ -1162,14 +1162,14 @@ Deploy Synapse services to GCP with proper build, push, and verification steps. 
 1. **Build**: Use Cloud Build for container builds (not local Docker)
    ```bash
    gcloud builds submit ./{service} \
-     --tag {REGION}-docker.pkg.dev/{PROJECT_ID}/handoff/{service}:latest \
+     --tag {REGION}-docker.pkg.dev/{PROJECT_ID}/synapse/{service}:latest \
      --project {PROJECT_ID}
    ```
 
 2. **Deploy**: Use Cloud Run v2
    ```bash
    gcloud run deploy synapse-{service} \
-     --image {REGION}-docker.pkg.dev/{PROJECT_ID}/handoff/{service}:latest \
+     --image {REGION}-docker.pkg.dev/{PROJECT_ID}/synapse/{service}:latest \
      --region {REGION} \
      --platform managed \
      --allow-unauthenticated \

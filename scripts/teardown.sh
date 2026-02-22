@@ -1,5 +1,5 @@
 #!/bin/bash
-PROJECT_ID="${1:-handoff-dev}"
+PROJECT_ID="${1:-synapse-dev}"
 REGION="${2:-us-central1}"
 
 echo -e "\033[31m=============================================\033[0m"

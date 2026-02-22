@@ -58,8 +58,8 @@ Explore the `docs/` folder for in-depth technical breakdowns of the platform:
 
 ```bash
 # Clone
-git clone https://github.com/aroucadi/handoff_agent.git
-cd handoff_agent
+git clone https://github.com/aroucadi/synapse_agent.git
+cd synapse_agent
 
 # Set your API key
 export GEMINI_API_KEY="your-key-here"

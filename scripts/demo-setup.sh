@@ -20,7 +20,7 @@ if [ -z "$GEMINI_API_KEY" ]; then
     exit 1
 fi
 
-PROJECT_ID="${PROJECT_ID:-handoff-dev}"
+PROJECT_ID="${PROJECT_ID:-synapse-dev}"
 BUCKET="${SKILL_GRAPHS_BUCKET:-${PROJECT_ID}-skill-graphs}"
 
 echo "📋 Configuration:"

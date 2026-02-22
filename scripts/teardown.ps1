@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$false)]
-    [string]$ProjectId = "handoff-dev",
+    [string]$ProjectId = "synapse-dev",
     
     [Parameter(Mandatory=$false)]
     [string]$Region = "us-central1"

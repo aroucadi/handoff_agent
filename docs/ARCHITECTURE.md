@@ -111,12 +111,12 @@ graph TD
 ## Project Structure
 
 ```
-handoff/
+synapse/
 ├── backend/                    # Synapse API (FastAPI)
 │   ├── main.py                 # Routes + WebSocket handler
 │   ├── config.py               # Environment config
 │   ├── agent/                  # ADK agent
-│   │   ├── handoff_agent.py    # Multi-round function calling
+│   │   ├── synapse_agent.py    # Multi-round function calling
 │   │   ├── tools.py            # read_index, follow_link, search_graph
 │   │   └── prompts.py          # System prompt
 │   ├── graph/                  # Graph traversal engine

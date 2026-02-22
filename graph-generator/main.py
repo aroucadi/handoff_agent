@@ -1,4 +1,4 @@
-﻿"""Graph Generator â€” Main Orchestrator.
+﻿"""Graph Generator Ã¢â‚¬â€ Main Orchestrator.
 
 Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline:
 1. Extract entities from CRM data and transcript (Gemini 3.1 Pro)
@@ -34,7 +34,7 @@ from indexer import index_all_nodes, get_graph_status
 app = FastAPI(
     title="Synapse Graph Generator",
     description="Generates client skill graphs from CRM data using Gemini 3.1 Pro",
-    version="3.1.0",
+    version="3.2.0",
 )
 
 app.add_middleware(
@@ -162,7 +162,7 @@ async def _run_generation(job_id: str, payload: dict):
             "deal_id": payload.get("deal_id", "unknown"),
         })
 
-        print(f"[JOB {job_id}] âœ… Graph generation complete for {company_name}")
+        print(f"[JOB {job_id}] Ã¢Å“â€¦ Graph generation complete for {company_name}")
 
     except Exception as e:
         traceback.print_exc()
@@ -171,7 +171,7 @@ async def _run_generation(job_id: str, payload: dict):
             "error": str(e),
             "failed_at": datetime.utcnow().isoformat(),
         })
-        print(f"[JOB {job_id}] âŒ Graph generation failed: {e}")
+        print(f"[JOB {job_id}] Ã¢ÂÅ’ Graph generation failed: {e}")
 
 
 @app.post("/generate")

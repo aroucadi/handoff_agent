@@ -6,7 +6,7 @@
 | Bucket | Purpose | Features |
 |---|---|---|
 | `{project}-skill-graphs` | Skill graph markdown storage | Versioning enabled, CORS configured |
-| `{project}-handoff-uploads` | CRM file uploads (contracts, transcripts) | Lifecycle rule → Nearline after 90d |
+| `{project}-synapse-uploads` | CRM file uploads (contracts, transcripts) | Lifecycle rule → Nearline after 90d |
 
 ### Firestore
 | Collection | Purpose |
@@ -17,15 +17,15 @@
 ### Cloud Run Services
 | Service | Port | Resources | Purpose |
 |---|---|---|---|
-| `handoff-api` | 8000 | 2 CPU, 1Gi RAM, 600s timeout | Backend API + WebSocket |
-| `handoff-graph-generator` | 8002 | 2 CPU, 2Gi RAM, 900s timeout | Graph generation pipeline |
+| `synapse-api` | 8000 | 2 CPU, 1Gi RAM, 600s timeout | Backend API + WebSocket |
+| `synapse-graph-generator` | 8002 | 2 CPU, 2Gi RAM, 900s timeout | Graph generation pipeline |
 
 ### Other GCP Resources
 | Resource | Purpose |
 |---|---|
 | Artifact Registry `synapse` | Docker image repository |
 | Secret Manager `gemini-api-key` | Gemini API key storage |
-| Service Account `handoff-runner` | Cloud Run identity with GCS/Firestore/SM access |
+| Service Account `synapse-runner` | Cloud Run identity with GCS/Firestore/SM access |
 | Firebase Web App | Frontend hosting |
 
 ### APIs Enabled
@@ -58,8 +58,8 @@ infra/
 
 ```bash
 # 1. Clone
-git clone https://github.com/aroucadi/handoff_agent.git
-cd handoff_agent
+git clone https://github.com/aroucadi/synapse_agent.git
+cd synapse_agent
 
 # 2. Set environment
 export GEMINI_API_KEY="your-key"

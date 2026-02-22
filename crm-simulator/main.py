@@ -1,4 +1,4 @@
-﻿"""CRM Simulator â€” FastAPI Application.
+﻿"""CRM Simulator Ã¢â‚¬â€ FastAPI Application.
 
 A lightweight but fully functional CRM simulator for Synapse demos.
 Supports deal CRUD, pipeline stage transitions, webhook dispatch on Closed Won,
@@ -24,8 +24,8 @@ from seed_data import DEMO_DEALS
 
 app = FastAPI(
     title="Synapse CRM Simulator",
-    description="Lightweight CRM simulator for Synapse demos â€” manages deals, contacts, and fires webhooks on Closed Won",
-    version="3.1.0",
+    description="Lightweight CRM simulator for Synapse demos Ã¢â‚¬â€ manages deals, contacts, and fires webhooks on Closed Won",
+    version="3.2.0",
 )
 
 app.add_middleware(
@@ -201,17 +201,17 @@ async def _fire_webhook(deal: Deal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# File Upload (contract PDFs â†’ GCS)
+# File Upload (contract PDFs Ã¢â€ â€™ GCS)
 # ---------------------------------------------------------------------------
 UPLOADS_BUCKET = os.environ.get(
     "UPLOADS_BUCKET",
-    f"{os.environ.get('PROJECT_ID', 'handoff-dev')}-handoff-uploads",
+    f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-uploads",
 )
 
 
 def _get_gcs_client() -> gcs.Client:
     """Get GCS client."""
-    return gcs.Client(project=os.environ.get("PROJECT_ID", "handoff-dev"))
+    return gcs.Client(project=os.environ.get("PROJECT_ID", "synapse-488201"))
 
 
 @app.post("/api/deals/{deal_id}/upload-contract")

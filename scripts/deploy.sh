@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-PROJECT_ID="${1:-handoff-dev}"
+PROJECT_ID="${1:-synapse-dev}"
 REGION="${2:-us-central1}"
 FIREBASE_PROJECT="${3:-$PROJECT_ID}"
 
