@@ -35,6 +35,7 @@ When a B2B SaaS deal closes, critical context is trapped in CRM data and sales t
 ## 📚 Documentation Hub
 
 Explore the `docs/` folder for in-depth technical breakdowns of the platform:
+- **[Developer Onboarding](docs/ONBOARDING.md)** — Start here! Monorepo structure, manifests, and cross-platform scripts.
 - **[Product Requirements Document (PRD)](docs/PRD.md)** — The original vision and UX flows.
 - **[System Architecture](docs/ARCHITECTURE.md)** — Core design decisions and data models.
 - **[AI Agents Deep Dive](docs/AI_AGENTS.md)** — How the Multi-Agent Generator and Gemini Live Vision interact.
