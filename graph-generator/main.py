@@ -32,7 +32,7 @@ from core.storage import write_all_nodes
 from indexer import index_all_nodes, get_graph_status
 
 app = FastAPI(
-    title="Handoff Graph Generator",
+    title="Synapse Graph Generator",
     description="Generates client skill graphs from CRM data using Gemini 3.1 Pro",
     version="3.1.0",
 )

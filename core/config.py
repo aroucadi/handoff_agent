@@ -1,4 +1,4 @@
-"""Handoff Core Library — Shared Configuration.
+"""Synapse Core Library — Shared Configuration.
 
 Centralizes configuration logic previously duplicated across the
 backend and graph-generator services.

@@ -33,7 +33,7 @@ class GeneratorConfig:
         )
     )
 
-    # Handoff backend URL (for status callbacks)
+    # Synapse backend URL (for status callbacks)
     backend_url: str = field(
         default_factory=lambda: os.environ.get("BACKEND_URL", "http://localhost:8000")
     )

@@ -1,4 +1,4 @@
-"""Handoff Core Library — LLM Fallback Wrapper.
+"""Synapse Core Library — LLM Fallback Wrapper.
 
 Centralizes generation calls to the Gemini API with automatic exception
 handling and fallback routing to ensure resilience against rate limits

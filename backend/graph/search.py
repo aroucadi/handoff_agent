@@ -1,4 +1,4 @@
-"""Handoff Backend — Graph Search Module.
+"""Synapse Backend — Graph Search Module.
 
 Provides vector search over skill graph nodes using embeddings stored in Firestore.
 Uses gemini-embedding-001 for query embedding.

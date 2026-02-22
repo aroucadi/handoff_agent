@@ -1,4 +1,4 @@
-"""Handoff Core Library — Google Cloud Storage Singleton.
+"""Synapse Core Library — Google Cloud Storage Singleton.
 
 Provides a unified, reusable GCS client to prevent repeated
 inline instantiations and abstract common bucket operations

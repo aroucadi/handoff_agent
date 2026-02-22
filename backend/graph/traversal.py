@@ -1,4 +1,4 @@
-"""Handoff Backend — Graph Traversal Module.
+"""Synapse Backend — Graph Traversal Module.
 
 Provides the high-level graph navigation logic used by ADK tools.
 """

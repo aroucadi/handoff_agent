@@ -2,7 +2,7 @@
  * CRM Simulator — Main App Component
  *
  * Kanban-style pipeline board with deal cards.
- * Drag deals to "Closed Won" to trigger the Handoff webhook.
+ * Drag deals to "Closed Won" to trigger the Synapse webhook.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -51,7 +51,7 @@ function DealCard({ deal, onStageChange }: { deal: Deal; onStageChange: (dealId:
 
             {deal.webhook_fired && (
                 <div className="deal-card__webhook-badge">
-                    ✅ Webhook sent to Handoff
+                    ✅ Webhook sent to Synapse
                 </div>
             )}
 
@@ -180,7 +180,7 @@ export default function App() {
             await loadDeals();
 
             if (result.webhook_fired) {
-                setNotification(`🚀 Deal closed! Webhook fired to Handoff. Graph generation started.`);
+                setNotification(`🚀 Deal closed! Webhook fired to Synapse. Graph generation started.`);
                 setTimeout(() => setNotification(null), 5000);
             }
         } catch (err) {
@@ -206,7 +206,7 @@ export default function App() {
             <header className="app-header">
                 <div className="app-header__brand">
                     <h1 className="app-header__title">VeloSaaS CRM</h1>
-                    <span className="app-header__subtitle">Handoff Simulator</span>
+                    <span className="app-header__subtitle">Synapse Simulator</span>
                 </div>
                 <div className="app-header__actions">
                     <span className="app-header__deal-count">{deals.length} deals</span>

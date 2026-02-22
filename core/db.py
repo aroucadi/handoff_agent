@@ -1,4 +1,4 @@
-"""Handoff Core Library — Database Client Singleton.
+"""Synapse Core Library — Database Client Singleton.
 
 Provides a unified, reusable Google Cloud Firestore client to prevent
 repeated inline instantiations and enable connection pooling across

@@ -291,7 +291,7 @@ class TextMessage(BaseModel):
 
 @app.post("/api/sessions/text")
 async def text_conversation(msg: TextMessage):
-    """Have a text conversation with the Handoff agent (R1 endpoint, still available)."""
+    """Have a text conversation with the Synapse agent (R1 endpoint, still available)."""
     print(f"[TEXT] Client: {msg.client_id} | Message: {msg.message}")
 
     result = await run_text_conversation(

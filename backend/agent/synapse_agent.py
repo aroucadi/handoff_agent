@@ -1,6 +1,6 @@
-"""Handoff Backend — Agent Definition.
+"""Synapse Backend — Agent Definition.
 
-Defines the Handoff CSM briefing agent using Gemini with function calling.
+Defines the Synapse CSM briefing agent using Gemini with function calling.
 This agent navigates the skill graph to provide grounded answers.
 """
 
@@ -82,7 +82,7 @@ async def run_text_conversation(
     message: str,
     history: list[dict] | None = None,
 ) -> dict:
-    """Run a single turn of text conversation with the Handoff agent.
+    """Run a single turn of text conversation with the Synapse agent.
 
     This is the R1 text-mode agent. It uses Gemini with function calling
     to navigate the skill graph and provide grounded answers.

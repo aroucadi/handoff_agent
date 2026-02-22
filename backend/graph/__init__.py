@@ -1,1 +1,1 @@
-"""Handoff Backend — Graph Package."""
+"""Synapse Backend — Graph Package."""

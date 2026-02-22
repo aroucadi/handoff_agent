@@ -112,7 +112,7 @@ graph TD
 
 ```
 handoff/
-├── backend/                    # Handoff API (FastAPI)
+├── backend/                    # Synapse API (FastAPI)
 │   ├── main.py                 # Routes + WebSocket handler
 │   ├── config.py               # Environment config
 │   ├── agent/                  # ADK agent
@@ -134,7 +134,7 @@ handoff/
 ├── crm-simulator/              # CRM Simulator (FastAPI + React)
 │   ├── main.py                 # Deal CRUD + webhooks
 │   └── frontend/               # Kanban board UI
-├── frontend/                   # Handoff Voice UI (React)
+├── frontend/                   # Synapse Voice UI (React)
 │   └── src/
 │       ├── App.tsx             # Dashboard ↔ Briefing routing
 │       ├── useVoiceSession.ts  # WebSocket audio hook

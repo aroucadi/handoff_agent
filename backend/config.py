@@ -1,4 +1,4 @@
-"""Handoff Backend — Configuration Module.
+"""Synapse Backend — Configuration Module.
 
 Reads configuration from environment variables.
 In production, secrets are pulled from GCP Secret Manager.

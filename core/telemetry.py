@@ -1,4 +1,4 @@
-"""Handoff Backend — Telemetry Engine.
+"""Synapse Backend — Telemetry Engine.
 
 Provides Level 5 AI Observability.
 A centralized service to log structured Agent execution traces
@@ -28,7 +28,7 @@ async def record_trace(
     """Write an agent execution trace to Firestore.
 
     Args:
-        agent_name: Logical name of the agent executing (e.g., 'handoff_text_agent', 'node_reviewer')
+        agent_name: Logical name of the agent executing (e.g., 'synapse_text_agent', 'node_reviewer')
         job_id: The session ID or graph generation job ID tracking this flow
         start_time: When the agent call began
         end_time: When the agent call completed

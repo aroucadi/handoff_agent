@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────
-# Handoff — Demo Setup Script
+# Synapse — Demo Setup Script
 #
 # Seeds static skill graphs and validates environment.
 # Run this before starting the demo.
@@ -9,7 +9,7 @@
 set -e
 
 echo "╔══════════════════════════════════════════════╗"
-echo "║        HANDOFF — Demo Environment Setup      ║"
+echo "║        SYNAPSE — Demo Environment Setup      ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 

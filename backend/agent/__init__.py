@@ -1,1 +1,1 @@
-"""Handoff Backend — Agent Package."""
+"""Synapse Backend — Agent Package."""

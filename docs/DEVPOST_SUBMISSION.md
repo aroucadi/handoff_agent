@@ -5,7 +5,7 @@
 A Level 5 Multimodal Customer Success Agent that replaces disjointed text-chat with real-time, grounded voice and vision collaboration. 
 
 ## The Inspiration
-In enterprise software, **80% of critical customer context is lost** during the messy handoff from Sales to Customer Success. CRM notes are buried, technical requirements are forgotten, and new CSMs start blind. We wanted to build an agent that *actually understands* the customer topology and can brief a CSM through a natural, human-like voice conversation while literally looking at their screen.
+In enterprise software, **80% of critical customer context is lost** during the messy synapse from Sales to Customer Success. CRM notes are buried, technical requirements are forgotten, and new CSMs start blind. We wanted to build an agent that *actually understands* the customer topology and can brief a CSM through a natural, human-like voice conversation while literally looking at their screen.
 
 ## What it does
 Synapse completely breaks the "text box" paradigm. It is an immersive, split-screen briefing environment for CSMs. 

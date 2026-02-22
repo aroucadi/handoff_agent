@@ -1,4 +1,4 @@
-"""Handoff Backend — Session Insights Extractor.
+"""Synapse Backend — Session Insights Extractor.
 
 Extracts "learnings" from completed voice sessions using Gemini.
 This fulfills Level 3 of the Agentic Architecture by extracting 

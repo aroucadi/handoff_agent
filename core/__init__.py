@@ -1,1 +1,1 @@
-"""Handoff Core Library."""
+"""Synapse Core Library."""

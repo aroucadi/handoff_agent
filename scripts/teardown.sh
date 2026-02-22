@@ -3,7 +3,7 @@ PROJECT_ID="${1:-handoff-dev}"
 REGION="${2:-us-central1}"
 
 echo -e "\033[31m=============================================\033[0m"
-echo -e "\033[31m🗑️ Handoff — Infrastructure Teardown\033[0m"
+echo -e "\033[31m🗑️ Synapse — Infrastructure Teardown\033[0m"
 echo -e "\033[31mProject: $PROJECT_ID | Region: $REGION\033[0m"
 echo -e "\033[31m=============================================\033[0m"
 

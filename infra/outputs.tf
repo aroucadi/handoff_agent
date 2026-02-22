@@ -14,7 +14,7 @@ output "firestore_database" {
 }
 
 output "api_url" {
-  description = "Handoff API Cloud Run URL"
+  description = "Synapse API Cloud Run URL"
   value       = module.cloud_run.api_url
 }
 

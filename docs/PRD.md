@@ -39,7 +39,7 @@
 
 When a B2B SaaS deal closes, a massive knowledge transfer problem occurs. The sales team spent months learning everything about the client — their pain points, internal politics, budget justification, technical constraints, and the specific promises made during the sales cycle. When the deal is marked "Closed Won," that institutional knowledge fragments: it lives in call recordings, CRM notes, email threads, and the salesperson's head.
 
-The Customer Success Manager assigned to the account has 48 hours before the kickoff call. They inherit a folder of documents, a CRM record, and a brief verbal handoff. The result is bad onboarding, slow time-to-value, and ultimately — churn. Gartner identifies poor onboarding as the #1 driver of year-1 SaaS churn.
+The Customer Success Manager assigned to the account has 48 hours before the kickoff call. They inherit a folder of documents, a CRM record, and a brief verbal synapse. The result is bad onboarding, slow time-to-value, and ultimately — churn. Gartner identifies poor onboarding as the #1 driver of year-1 SaaS churn.
 
 ### The Solution
 
@@ -85,7 +85,7 @@ Instead of dumping all knowledge into one prompt, Synapse uses a **skill graph**
 The system webhook fires. A Cloud Run job reads the CRM record, contract PDF, and sales call transcript. It generates a client-specific skill graph: 15–20 markdown nodes covering the client profile, negotiated scope, industry context, stakeholder map, risk flags, and success metrics.
 
 **Step 2 — CSM Briefing** (voice, ~10 minutes before kickoff):
-Alex opens the Handoff web app. Sees the GlobalManufacturing graph is ready. Clicks "Start Briefing." The Gemini Live agent begins: *"Hi Alex, your kickoff with GlobalManufacturing is tomorrow. Want me to walk you through the key things you need to know?"*
+Alex opens the Synapse web app. Sees the GlobalManufacturing graph is ready. Clicks "Start Briefing." The Gemini Live agent begins: *"Hi Alex, your kickoff with GlobalManufacturing is tomorrow. Want me to walk you through the key things you need to know?"*
 
 Alex speaks naturally: *"Yes, start with who I'm going to be talking to and what they care about."*
 
@@ -352,7 +352,7 @@ Kickoff time: {kickoff_datetime}
 **Description**: Real-time bidirectional voice conversation using Gemini Live API, with ADK agent handling graph traversal in the background.
 
 **Session lifecycle**:
-1. CSM opens Handoff app → selects assigned client → clicks "Start Briefing"
+1. CSM opens Synapse app → selects assigned client → clicks "Start Briefing"
 2. WebSocket connection opened to Gemini Live API
 3. ADK agent initialized with client context + graph traversal tools
 4. Microphone stream begins → continuous audio capture
@@ -615,7 +615,7 @@ resource "google_storage_bucket" "skill_graphs" {
 }
 
 # Firestore database
-resource "google_firestore_database" "handoff" {
+resource "google_firestore_database" "synapse" {
   name        = "(default)"
   location_id = var.region
   type        = "FIRESTORE_NATIVE"
@@ -688,7 +688,7 @@ resource "google_cloud_run_v2_service" "graph_generator" {
 }
 
 # Artifact Registry
-resource "google_artifact_registry_repository" "handoff" {
+resource "google_artifact_registry_repository" "synapse" {
   location      = var.region
   repository_id = "handoff"
   format        = "DOCKER"
@@ -713,7 +713,7 @@ set -e
 PROJECT_ID=$1
 REGION=${2:-"us-central1"}
 
-echo "🚀 Deploying Handoff to GCP project: $PROJECT_ID"
+echo "🚀 Deploying Synapse to GCP project: $PROJECT_ID"
 
 # Build and push containers
 echo "📦 Building containers..."
@@ -735,7 +735,7 @@ npm run build
 firebase deploy --only hosting --project $PROJECT_ID
 cd ..
 
-echo "✅ Handoff deployed successfully!"
+echo "✅ Synapse deployed successfully!"
 echo "API: $(gcloud run services describe handoff-api --region=$REGION --format='value(status.url)')"
 ```
 
@@ -815,21 +815,21 @@ DEMO_DEAL = {
 
 ### Scene 1: Deal Close → Graph Generation (0:00–1:00)
 
-**Narration**: "When a deal closes at VeloSaaS, the CSM typically has 48 hours before the kickoff call — and a massive knowledge gap to fill. Handoff fixes this automatically."
+**Narration**: "When a deal closes at VeloSaaS, the CSM typically has 48 hours before the kickoff call — and a massive knowledge gap to fill. Synapse fixes this automatically."
 
 **Show**:
 - Mock CRM UI: opportunity moves to "Closed Won" — GlobalManufacturing Co., $2M deal
-- Handoff dashboard: card appears with "Generating..." spinner
+- Synapse dashboard: card appears with "Generating..." spinner
 - Graph generator logs: nodes being created in real-time (Cloud Run console or terminal)
 - Graph ready notification appears. Node count: 17. Coverage: 100%.
 
-**Highlight**: "Handoff read the contract, the sales transcripts, and the CRM data — and generated a traversable knowledge graph. No hallucination possible. Every fact is in a node."
+**Highlight**: "Synapse read the contract, the sales transcripts, and the CRM data — and generated a traversable knowledge graph. No hallucination possible. Every fact is in a node."
 
 ---
 
 ### Scene 2: CSM Voice Briefing (1:00–3:00)
 
-**Narration**: "Alex is the assigned CSM. Kickoff is in 2 hours. She opens Handoff and starts her briefing."
+**Narration**: "Alex is the assigned CSM. Kickoff is in 2 hours. She opens Synapse and starts her briefing."
 
 **Show split-screen**:
 - Left: Transcript panel
@@ -859,7 +859,7 @@ Agent: *"Two KPIs: quote cycle from 3 weeks to 48 hours, and 80% CPQ adoption ac
 
 ### Scene 3: Architecture + Lifecycle Vision (3:00–4:00)
 
-**Narration**: "Handoff isn't just a briefing tool. It's the living memory of the client relationship."
+**Narration**: "Synapse isn't just a briefing tool. It's the living memory of the client relationship."
 
 **Show architecture diagram** (20 seconds):
 - CRM trigger → Graph Generator → Three-layer skill graph → ADK Traversal Engine → Gemini Live → CSM
@@ -868,7 +868,7 @@ Agent: *"Two KPIs: quote cycle from 3 weeks to 48 hours, and 80% CPQ adoption ac
 - Same graph, different stages highlighted: Sales prep → CSM Briefing → Implementation → Support → Renewal
 - "We built the schema to support every stage from day one."
 
-**Closing line**: "Handoff turns client knowledge from a liability into an asset — grounded, traversable, and always ready."
+**Closing line**: "Synapse turns client knowledge from a liability into an asset — grounded, traversable, and always ready."
 
 ---
 
@@ -1095,7 +1095,7 @@ description: Use this skill when creating, editing, or validating skill graph ma
 # Skill Graph Node Writer
 
 ## Goal
-Create well-structured skill graph nodes that follow the Handoff YAML schema and wikilink conventions. Every node must be independently meaningful and traversable.
+Create well-structured skill graph nodes that follow the Synapse YAML schema and wikilink conventions. Every node must be independently meaningful and traversable.
 
 ## YAML Frontmatter Schema (required fields)
 ```yaml
@@ -1155,7 +1155,7 @@ description: Use this skill when deploying services to Google Cloud Run, buildin
 # GCP Cloud Run Deployer
 
 ## Goal
-Deploy Handoff services to GCP with proper build, push, and verification steps. Always produce deployment proof for hackathon submission.
+Deploy Synapse services to GCP with proper build, push, and verification steps. Always produce deployment proof for hackathon submission.
 
 ## Instructions
 
@@ -1168,7 +1168,7 @@ Deploy Handoff services to GCP with proper build, push, and verification steps. 
 
 2. **Deploy**: Use Cloud Run v2
    ```bash
-   gcloud run deploy handoff-{service} \
+   gcloud run deploy synapse-{service} \
      --image {REGION}-docker.pkg.dev/{PROJECT_ID}/handoff/{service}:latest \
      --region {REGION} \
      --platform managed \
@@ -1236,7 +1236,7 @@ config = LiveConnectConfig(
     speech_config=SpeechConfig(
         voice_config=VoiceConfig(prebuilt_voice_config={"voice_name": "Aoede"})
     ),
-    system_instruction=HANDOFF_SYSTEM_PROMPT,
+    system_instruction=SYNAPSE_SYSTEM_PROMPT,
     tools=GRAPH_TRAVERSAL_TOOLS
 )
 
@@ -1277,7 +1277,7 @@ async with client.aio.live.connect(model="gemini-2.5-flash-native-audio-preview"
 ```markdown
 ---
 name: split-screen-ui-builder
-description: Use this skill when building or modifying the Handoff frontend React components, especially the BriefingSession split-screen view, graph visualization, or WebSocket audio integration.
+description: Use this skill when building or modifying the Synapse frontend React components, especially the BriefingSession split-screen view, graph visualization, or WebSocket audio integration.
 ---
 
 # Split-Screen UI Builder
@@ -1316,7 +1316,7 @@ const useGeminiLive = (sessionId: string) => {
 
 ## Demo Quality Requirements
 - Graph traversal animation must be clearly visible in screen recording
-- Transcript must show speaker labels (CSM / Handoff)
+- Transcript must show speaker labels (CSM / Synapse)
 - Color scheme: dark background, high contrast — looks good in demo video
 - No loading spinners longer than 2 seconds in the demo flow
 
@@ -1331,7 +1331,7 @@ const useGeminiLive = (sessionId: string) => {
 ### Global Antigravity Rules (`.agent/rules.md`)
 
 ```markdown
-# Handoff Project Rules
+# Synapse Project Rules
 
 ## Architecture Rules
 - ALL agent answers must be grounded in skill graph nodes — never answer from parametric memory alone
@@ -1395,7 +1395,7 @@ Drop in this order: (1) graph topology D3 visualization → show breadcrumb trai
 
 ## 16. Judging Criteria Mapping
 
-| Criterion | Weight | How Handoff Wins |
+| Criterion | Weight | How Synapse Wins |
 |---|---|---|
 | Innovation & Multimodal UX | 40% | Skill graph navigation is architecturally novel — no other team will have this pattern. The "progressive disclosure" traversal is genuinely new in the Live Agent space. |
 | Technical Implementation | 30% | ADK + 3 custom tools + skill graph + IaC + Cloud Run. Clean, auditable, no hallucinations by design. Grounding is structural not prompting. |
@@ -1424,7 +1424,7 @@ Future roadmap:
 
 **The one-liner for the demo video**: *"We're launching with CSM onboarding briefings, but the same architecture serves every stage of the client lifecycle — we designed the schema to support it from day one."*
 
-**The real company**: Handoff is an AI-native customer intelligence platform for B2B SaaS vendors. The hackathon is the MVP validation, Google experts are the first evaluators, and the skill graph pattern is the defensible moat.
+**The real company**: Synapse is an AI-native customer intelligence platform for B2B SaaS vendors. The hackathon is the MVP validation, Google experts are the first evaluators, and the skill graph pattern is the defensible moat.
 
 ---
 

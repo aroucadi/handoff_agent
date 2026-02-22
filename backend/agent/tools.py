@@ -1,4 +1,4 @@
-"""Handoff Backend — ADK Agent Tools.
+"""Synapse Backend — ADK Agent Tools.
 
 Defines the three graph traversal tools that the ADK agent uses
 during conversations to navigate the client skill graph.

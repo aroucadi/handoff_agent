@@ -1,6 +1,6 @@
 """CRM Simulator — Seed Data.
 
-Pre-loaded demo deal: GlobalManufacturing Co. — the scenario from HANDOFF PRD §3.
+Pre-loaded demo deal: GlobalManufacturing Co. — the scenario from SYNAPSE PRD §3.
 This data is used for hackathon demos and is fully realistic.
 """
 

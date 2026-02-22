@@ -1,1 +1,1 @@
-"""Handoff Backend — Live Package."""
+"""Synapse Backend — Live Package."""

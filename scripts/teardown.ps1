@@ -7,7 +7,7 @@ param(
 )
 
 Write-Host "=============================================" -ForegroundColor Red
-Write-Host "🗑️ Handoff — Infrastructure Teardown" -ForegroundColor Red
+Write-Host "🗑️ Synapse — Infrastructure Teardown" -ForegroundColor Red
 Write-Host "Project: $ProjectId | Region: $Region" -ForegroundColor Red
 Write-Host "=============================================" -ForegroundColor Red
 

@@ -1,4 +1,4 @@
-"""Handoff Backend — Gemini Live Session Handler.
+"""Synapse Backend — Gemini Live Session Handler.
 
 Manages real-time voice sessions using the Gemini Multimodal Live API
 (gemini-2.5-flash-native-audio-preview). Handles bidirectional audio

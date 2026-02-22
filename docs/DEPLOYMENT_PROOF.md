@@ -1,4 +1,4 @@
-# Handoff — Deployment Proof
+# Synapse — Deployment Proof
 
 ## Infrastructure Provisioned via Terraform
 
@@ -23,7 +23,7 @@
 ### Other GCP Resources
 | Resource | Purpose |
 |---|---|
-| Artifact Registry `handoff` | Docker image repository |
+| Artifact Registry `synapse` | Docker image repository |
 | Secret Manager `gemini-api-key` | Gemini API key storage |
 | Service Account `handoff-runner` | Cloud Run identity with GCS/Firestore/SM access |
 | Firebase Web App | Frontend hosting |
@@ -71,7 +71,7 @@ export PROJECT_ID="your-project"
 
 # 4. Open
 # CRM Simulator:  http://localhost:5173
-# Handoff Voice:   http://localhost:5174
+# Synapse Voice:   http://localhost:5174
 # Backend API:     http://localhost:8000/health
 # Graph Generator: http://localhost:8002/health
 ```
