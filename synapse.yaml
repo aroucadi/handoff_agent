@@ -1,0 +1,39 @@
+# Synapse Ecosystem Manifest
+# --------------------------
+# This file tracks the global version of the product and coordinates
+# multi-project deployments. 
+#
+# Use `.\scripts\bump-version.ps1` to sync this global version 
+# downward into all microservices (frontend, api, graph-generator, crm-simulator).
+
+name: synapse-ecosystem
+description: Level 5 AI Voice Agent for Customer Success
+global_version: 3.1.0
+
+# Shared Infrastructure Destinations
+infrastructure:
+  gcp_project: synapse-488201
+  firebase_project: synapse-488201-e74ac
+  region: us-central1
+
+# Monorepo Sub-projects
+services:
+  frontend:
+    type: react
+    path: ./frontend
+    artifact_id: handoff-voice-ui
+
+  api:
+    type: fastapi
+    path: ./backend
+    docker_image: synapse/api
+
+  graph-generator:
+    type: fastapi
+    path: ./graph-generator
+    docker_image: synapse/graph-generator
+
+  crm-simulator:
+    type: fastapi
+    path: ./crm-simulator
+    docker_image: synapse/crm-simulator

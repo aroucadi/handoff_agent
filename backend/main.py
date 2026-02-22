@@ -1,4 +1,4 @@
-"""Synapse Backend — FastAPI Application Entry Point.
+﻿"""Synapse Backend â€” FastAPI Application Entry Point.
 
 R2: Adds WebSocket endpoint for Gemini Live voice sessions, session management,
 and real-time bidirectional audio streaming.
@@ -55,13 +55,13 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "Internal Server Error", "details": str(exc)},
     )
 
-# ── Active Session Objects (for WebSocket connections only) ────
+# â”€â”€ Active Session Objects (for WebSocket connections only) â”€â”€â”€â”€
 # Note: Session metadata is persisted in Firestore. This dict holds
 # active LiveSession objects that have open WebSocket connections.
 active_sessions: dict[str, LiveSession] = {}
 
 
-# ── Health ──────────────────────────────────────────────────────
+# â”€â”€ Health â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.get("/health")
 async def health():
@@ -73,7 +73,7 @@ async def health():
     }
 
 
-# ── Webhook: CRM Deal Closed ───────────────────────────────────
+# â”€â”€ Webhook: CRM Deal Closed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.post("/api/webhooks/crm/deal-closed")
 async def webhook_deal_closed(request: Request):
@@ -81,7 +81,7 @@ async def webhook_deal_closed(request: Request):
     payload = await request.json()
     deal_id = payload.get("deal_id", "unknown")
     company = payload.get("company_name", "unknown")
-    print(f"[WEBHOOK] Deal closed: {deal_id} — {company}")
+    print(f"[WEBHOOK] Deal closed: {deal_id} â€” {company}")
 
     generator_url = "http://localhost:8002/generate"
     try:
@@ -110,7 +110,7 @@ async def webhook_deal_closed(request: Request):
         )
 
 
-# ── Session Management ─────────────────────────────────────────
+# â”€â”€ Session Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class SessionStartRequest(BaseModel):
     client_id: str
@@ -194,7 +194,7 @@ async def list_sessions():
     return {"sessions": sessions_list, "count": len(sessions_list)}
 
 
-# ── WebSocket: Gemini Live Voice ────────────────────────────────
+# â”€â”€ WebSocket: Gemini Live Voice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.websocket("/ws/sessions/{session_id}")
 async def websocket_voice_session(websocket: WebSocket, session_id: str):
@@ -281,7 +281,7 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
               f"Nodes visited: {len(set(session.nodes_visited))}")
 
 
-# ── Text Conversation (from R1) ────────────────────────────────
+# â”€â”€ Text Conversation (from R1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TextMessage(BaseModel):
     client_id: str
@@ -305,7 +305,7 @@ async def text_conversation(msg: TextMessage):
     return result
 
 
-# ── Client & Graph Status ──────────────────────────────────────
+# â”€â”€ Client & Graph Status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.get("/api/clients")
 async def list_clients():

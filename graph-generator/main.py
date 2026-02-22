@@ -1,4 +1,4 @@
-"""Graph Generator — Main Orchestrator.
+﻿"""Graph Generator â€” Main Orchestrator.
 
 Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline:
 1. Extract entities from CRM data and transcript (Gemini 3.1 Pro)
@@ -162,7 +162,7 @@ async def _run_generation(job_id: str, payload: dict):
             "deal_id": payload.get("deal_id", "unknown"),
         })
 
-        print(f"[JOB {job_id}] ✅ Graph generation complete for {company_name}")
+        print(f"[JOB {job_id}] âœ… Graph generation complete for {company_name}")
 
     except Exception as e:
         traceback.print_exc()
@@ -171,7 +171,7 @@ async def _run_generation(job_id: str, payload: dict):
             "error": str(e),
             "failed_at": datetime.utcnow().isoformat(),
         })
-        print(f"[JOB {job_id}] ❌ Graph generation failed: {e}")
+        print(f"[JOB {job_id}] âŒ Graph generation failed: {e}")
 
 
 @app.post("/generate")

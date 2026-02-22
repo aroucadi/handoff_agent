@@ -1,4 +1,4 @@
-"""CRM Simulator — FastAPI Application.
+﻿"""CRM Simulator â€” FastAPI Application.
 
 A lightweight but fully functional CRM simulator for Handoff demos.
 Supports deal CRUD, pipeline stage transitions, webhook dispatch on Closed Won,
@@ -24,7 +24,7 @@ from seed_data import DEMO_DEALS
 
 app = FastAPI(
     title="Handoff CRM Simulator",
-    description="Lightweight CRM simulator for Handoff demos — manages deals, contacts, and fires webhooks on Closed Won",
+    description="Lightweight CRM simulator for Handoff demos â€” manages deals, contacts, and fires webhooks on Closed Won",
     version="3.1.0",
 )
 
@@ -201,7 +201,7 @@ async def _fire_webhook(deal: Deal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# File Upload (contract PDFs → GCS)
+# File Upload (contract PDFs â†’ GCS)
 # ---------------------------------------------------------------------------
 UPLOADS_BUCKET = os.environ.get(
     "UPLOADS_BUCKET",
