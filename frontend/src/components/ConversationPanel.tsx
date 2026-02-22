@@ -5,8 +5,9 @@
  * Shows live transcript with speaker labels, text input, and mic controls.
  */
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { TranscriptEntry } from '../useVoiceSession';
+import SynapseOrb, { OrbState } from './SynapseOrb';
 
 interface ConversationPanelProps {
     transcript: TranscriptEntry[];
@@ -51,30 +52,33 @@ export default function ConversationPanel({
         }
     }, [handleSend]);
 
+    // Determine current orb state
+    const orbState: OrbState = useMemo(() => {
+        if (isAgentSpeaking) return 'speaking';
+        if (isMicActive) return 'listening';
+        return 'idle';
+    }, [isAgentSpeaking, isMicActive]);
+
     return (
         <div className="conv-panel">
-            <div className="conv-panel__header">
-                <div className="conv-panel__title-row">
-                    <h3>Conversation</h3>
-                    <div className="conv-panel__speaking">
-                        {isAgentSpeaking && (
-                            <div className="speaking-indicator">
-                                <div className="speaking-indicator__bars">
-                                    <span /><span /><span /><span /><span />
-                                </div>
-                                <span className="speaking-indicator__label">Agent speaking</span>
-                            </div>
-                        )}
+            <div className="conv-panel__header flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                    <SynapseOrb state={orbState} />
+                    <div>
+                        <h3>Synapse Agent</h3>
+                        <span className="conv-panel__session">
+                            {orbState === 'speaking' ? 'Speaking...' : orbState === 'listening' ? 'Listening...' : 'Standing by'}
+                        </span>
                     </div>
                 </div>
-                <span className="conv-panel__session">Session: {sessionId}</span>
+                <span className="conv-panel__session font-mono text-xs opacity-50">Session: {sessionId}</span>
             </div>
 
             <div className="conv-panel__transcript">
                 {transcript.length === 0 && (
                     <div className="conv-panel__empty">
                         <div className="conv-panel__empty-pulse" />
-                        <p>Connecting to Synapse agent...</p>
+                        <p>Connecting to Synapse...</p>
                         <p className="conv-panel__hint">The agent will start the briefing automatically</p>
                     </div>
                 )}
