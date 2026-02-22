@@ -1,4 +1,4 @@
-﻿"""Graph Generator Ã¢â‚¬â€ Main Orchestrator.
+"""Graph Generator Ã¢â‚¬â€ Main Orchestrator.
 
 Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline:
 1. Extract entities from CRM data and transcript (Gemini 3.1 Pro)

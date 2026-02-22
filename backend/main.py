@@ -1,4 +1,4 @@
-﻿"""Synapse Backend Ã¢â‚¬â€ FastAPI Application Entry Point.
+"""Synapse Backend Ã¢â‚¬â€ FastAPI Application Entry Point.
 
 R2: Adds WebSocket endpoint for Gemini Live voice sessions, session management,
 and real-time bidirectional audio streaming.

@@ -1,4 +1,4 @@
-﻿"""CRM Simulator Ã¢â‚¬â€ FastAPI Application.
+"""CRM Simulator Ã¢â‚¬â€ FastAPI Application.
 
 A lightweight but fully functional CRM simulator for Synapse demos.
 Supports deal CRUD, pipeline stage transitions, webhook dispatch on Closed Won,
