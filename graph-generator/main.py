@@ -34,7 +34,7 @@ from indexer import index_all_nodes, get_graph_status
 app = FastAPI(
     title="Handoff Graph Generator",
     description="Generates client skill graphs from CRM data using Gemini 3.1 Pro",
-    version="0.2.0",
+    version="3.1.0",
 )
 
 app.add_middleware(

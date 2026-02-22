@@ -20,7 +20,7 @@ from google.genai.types import (
 )
 
 from config import config
-from agent.prompts import HANDOFF_SYSTEM_PROMPT
+from agent.prompts import SYNAPSE_SYSTEM_PROMPT
 from agent.tools import TOOL_FUNCTIONS
 
 
@@ -110,7 +110,7 @@ async def run_text_conversation(
     contents.append(Content(role="user", parts=[Part.from_text(text=message)]))
 
     gen_config = GenerateContentConfig(
-        system_instruction=HANDOFF_SYSTEM_PROMPT,
+        system_instruction=SYNAPSE_SYSTEM_PROMPT,
         temperature=0.3,
         max_output_tokens=4096,
         tools=tools,
@@ -139,7 +139,7 @@ async def run_text_conversation(
     from google.genai.types import AutomaticFunctionCallingConfig
     
     gen_config = GenerateContentConfig(
-        system_instruction=HANDOFF_SYSTEM_PROMPT,
+        system_instruction=SYNAPSE_SYSTEM_PROMPT,
         temperature=0.3,
         tools=[get_index, follow_link, search_graph],
         automatic_function_calling=AutomaticFunctionCallingConfig(disable=False),
@@ -166,7 +166,7 @@ async def run_text_conversation(
         from core.telemetry import record_trace
         asyncio.create_task(
             record_trace(
-                agent_name="handoff_text_agent",
+                agent_name="synapse_text_agent",
                 job_id="chat-turn",
                 start_time=start_time,
                 end_time=datetime.utcnow(),

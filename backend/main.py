@@ -1,4 +1,4 @@
-"""Handoff Backend — FastAPI Application Entry Point.
+"""Synapse Backend — FastAPI Application Entry Point.
 
 R2: Adds WebSocket endpoint for Gemini Live voice sessions, session management,
 and real-time bidirectional audio streaming.
@@ -26,13 +26,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from core.config import config
 from core.db import get_firestore_client
-from agent.handoff_agent import run_text_conversation
+from agent.synapse_agent import run_text_conversation
 from live.session import LiveSession
 
 app = FastAPI(
-    title="Handoff API",
-    description="Gemini Live voice agent for B2B SaaS customer success handoffs",
-    version="0.3.0",
+    title="Synapse API",
+    description="Gemini Live voice agent for B2B SaaS customer success briefings",
+    version="3.1.0",
 )
 
 app.add_middleware(

@@ -25,7 +25,7 @@ from seed_data import DEMO_DEALS
 app = FastAPI(
     title="Handoff CRM Simulator",
     description="Lightweight CRM simulator for Handoff demos — manages deals, contacts, and fires webhooks on Closed Won",
-    version="0.1.0",
+    version="3.1.0",
 )
 
 app.add_middleware(

@@ -1,4 +1,4 @@
-# Handoff — Terraform Main Configuration
+# Synapse — Terraform Main Configuration
 
 terraform {
   required_version = ">= 1.5.0"
@@ -6,6 +6,10 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
       version = "~> 5.0"
     }
   }
@@ -22,25 +26,30 @@ provider "google" {
   region  = var.region
 }
 
+provider "google-beta" {
+  project = var.project_id
+  region  = var.region
+}
+
 # ---------------------------------------------------------------------------
 # Enable required GCP APIs
 # ---------------------------------------------------------------------------
-resource "google_project_service" "apis" {
-  for_each = toset([
-    "run.googleapis.com",
-    "firestore.googleapis.com",
-    "storage.googleapis.com",
-    "aiplatform.googleapis.com",
-    "secretmanager.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "firebase.googleapis.com",
-    "generativelanguage.googleapis.com",
-    "artifactregistry.googleapis.com",
-  ])
-  project            = var.project_id
-  service            = each.value
-  disable_on_destroy = false
-}
+# resource "google_project_service" "apis" {
+#   for_each = toset([
+#     "run.googleapis.com",
+#     "firestore.googleapis.com",
+#     "storage.googleapis.com",
+#     "aiplatform.googleapis.com",
+#     "secretmanager.googleapis.com",
+#     "cloudbuild.googleapis.com",
+#     "firebase.googleapis.com",
+#     "generativelanguage.googleapis.com",
+#     "artifactregistry.googleapis.com",
+#   ])
+#   project            = var.project_id
+#   service            = each.value
+#   disable_on_destroy = false
+# }
 
 # ---------------------------------------------------------------------------
 # Secret Manager — Gemini API Key
@@ -53,7 +62,7 @@ resource "google_secret_manager_secret" "gemini_key" {
     auto {}
   }
 
-  depends_on = [google_project_service.apis]
+  # depends_on = [google_project_service.apis]
 }
 
 # ---------------------------------------------------------------------------
@@ -65,7 +74,7 @@ module "storage" {
   region      = var.region
   environment = var.environment
 
-  depends_on = [google_project_service.apis]
+  # depends_on = [google_project_service.apis]
 }
 
 module "firestore" {
@@ -73,7 +82,7 @@ module "firestore" {
   project_id = var.project_id
   region     = var.region
 
-  depends_on = [google_project_service.apis]
+  # depends_on = [google_project_service.apis]
 }
 
 module "cloud_run" {
@@ -83,12 +92,12 @@ module "cloud_run" {
   skill_graphs_bucket = module.storage.skill_graphs_bucket_name
   uploads_bucket      = module.storage.uploads_bucket_name
 
-  depends_on = [google_project_service.apis, module.storage, module.firestore]
+  depends_on = [module.storage, module.firestore]
 }
 
-module "firebase" {
-  source     = "./modules/firebase"
-  project_id = var.project_id
-
-  depends_on = [google_project_service.apis]
-}
+# module "firebase" {
+#   source     = "./modules/firebase"
+#   project_id = var.project_id
+# 
+#   # depends_on = [google_project_service.apis]
+# }

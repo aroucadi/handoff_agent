@@ -1,0 +1,10 @@
+.git/
+frontend/
+video/
+infra/
+scripts/
+skill-graphs/
+__pycache__
+*.pyc
+.env
+.DS_Store

@@ -13,7 +13,7 @@
 set -e
 
 echo "╔══════════════════════════════════════════════╗"
-echo "║      HANDOFF — Starting All Services         ║"
+echo "║      SYNAPSE — Starting All Services         ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 

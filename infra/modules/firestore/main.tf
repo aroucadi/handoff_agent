@@ -1,6 +1,6 @@
-# Firestore Database for Handoff
+# Firestore Database for Synapse
 
-resource "google_firestore_database" "handoff" {
+resource "google_firestore_database" "synapse" {
   name        = "(default)"
   location_id = var.region
   type        = "FIRESTORE_NATIVE"
@@ -11,20 +11,25 @@ resource "google_firestore_database" "handoff" {
 }
 
 # Vector Index for R8 Skill Graph 'FindNearest' Search
-resource "google_firestore_index" "skill_graph_vector_index" {
-  project    = var.project_id
-  database   = google_firestore_database.handoff.name
-  collection = "nodes" # Collection group name
-
-  fields {
-    field_path = "embedding"
-    vector_config {
-      dimension = 768
-      flat {}
-    }
-  }
-}
+# resource "google_firestore_index" "skill_graph_vector_index" {
+#   project    = var.project_id
+#   database   = google_firestore_database.synapse.name
+#   collection = "nodes" # Collection group name
+# 
+#   fields {
+#     field_path = "__name__"
+#     order      = "ASCENDING"
+#   }
+# 
+#   fields {
+#     field_path = "embedding"
+#     vector_config {
+#       dimension = 768
+#       flat {}
+#     }
+#   }
+# }
 
 output "database_name" {
-  value = google_firestore_database.handoff.name
+  value = google_firestore_database.synapse.name
 }

@@ -109,7 +109,7 @@ Every answer is traceable to a specific graph node. No hallucination. Alex walks
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        HANDOFF SYSTEM                           │
+│                        SYNAPSE SYSTEM                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  CRM (VeloSaaS / Salesforce-mock)                              │
@@ -328,7 +328,7 @@ def search_graph(client_id: str, query: str, layers: list = ["client", "industry
 
 **ADK Agent System Prompt** (injected at session start):
 ```
-You are Handoff, a briefing agent for Customer Success Managers at VeloSaaS.
+You are Synapse, a briefing agent for Customer Success Managers at VeloSaaS.
 You have access to a three-layer knowledge graph: product knowledge, industry context, and client-specific deal data.
 
 Your traversal protocol:

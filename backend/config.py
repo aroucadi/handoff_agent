@@ -13,7 +13,7 @@ class Config:
     """Application configuration loaded from environment variables."""
 
     # GCP
-    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID", "handoff-dev"))
+    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID", "synapse-488201"))
     region: str = field(default_factory=lambda: os.environ.get("REGION", "us-central1"))
 
     # Gemini API
@@ -23,13 +23,13 @@ class Config:
     skill_graphs_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "SKILL_GRAPHS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'handoff-dev')}-skill-graphs",
+            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-graphs",
         )
     )
     uploads_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "UPLOADS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'handoff-dev')}-handoff-uploads",
+            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-uploads",
         )
     )
 

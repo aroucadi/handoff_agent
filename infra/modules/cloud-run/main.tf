@@ -1,17 +1,17 @@
-# Cloud Run Services for Handoff
+# Cloud Run Services for Synapse
 
 # Artifact Registry repository for container images
-resource "google_artifact_registry_repository" "handoff" {
+resource "google_artifact_registry_repository" "synapse" {
   location      = var.region
-  repository_id = "handoff"
+  repository_id = "synapse"
   format        = "DOCKER"
   project       = var.project_id
 }
 
 # Service Account for Cloud Run services
-resource "google_service_account" "handoff_runner" {
-  account_id   = "handoff-runner"
-  display_name = "Handoff Cloud Run Service Account"
+resource "google_service_account" "synapse_runner" {
+  account_id   = "synapse-runner"
+  display_name = "Synapse Cloud Run Service Account"
   project      = var.project_id
 }
 
@@ -19,32 +19,32 @@ resource "google_service_account" "handoff_runner" {
 resource "google_project_iam_member" "runner_gcs" {
   project = var.project_id
   role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${google_service_account.handoff_runner.email}"
+  member  = "serviceAccount:${google_service_account.synapse_runner.email}"
 }
 
 # IAM: Cloud Run SA → Firestore
 resource "google_project_iam_member" "runner_firestore" {
   project = var.project_id
   role    = "roles/datastore.user"
-  member  = "serviceAccount:${google_service_account.handoff_runner.email}"
+  member  = "serviceAccount:${google_service_account.synapse_runner.email}"
 }
 
 # IAM: Cloud Run SA → Secret Manager
 resource "google_project_iam_member" "runner_secrets" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.handoff_runner.email}"
+  member  = "serviceAccount:${google_service_account.synapse_runner.email}"
 }
 
-# ── Cloud Run: Handoff API ──────────────────────────────────────
+# ── Cloud Run: Synapse API ──────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "api" {
-  name     = "handoff-api"
+  name     = "synapse-api"
   location = var.region
   project  = var.project_id
 
   template {
-    service_account = google_service_account.handoff_runner.email
+    service_account = google_service_account.synapse_runner.email
 
     scaling {
       min_instance_count = 0
@@ -52,7 +52,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/api:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:latest"
 
       ports {
         container_port = 8000
@@ -117,12 +117,12 @@ resource "google_cloud_run_v2_service_iam_member" "api_public" {
 # ── Cloud Run: Graph Generator ───────────────────────────────────
 
 resource "google_cloud_run_v2_service" "graph_generator" {
-  name     = "handoff-graph-generator"
+  name     = "synapse-graph-generator"
   location = var.region
   project  = var.project_id
 
   template {
-    service_account = google_service_account.handoff_runner.email
+    service_account = google_service_account.synapse_runner.email
 
     scaling {
       min_instance_count = 0
@@ -130,7 +130,7 @@ resource "google_cloud_run_v2_service" "graph_generator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/graph-generator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:latest"
 
       ports {
         container_port = 8002
@@ -191,7 +191,7 @@ resource "google_cloud_run_v2_service_iam_member" "generator_public" {
 # ── Cloud Run: CRM Simulator ────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "crm_simulator" {
-  name     = "handoff-crm-simulator"
+  name     = "synapse-crm-simulator"
   location = var.region
   project  = var.project_id
 
@@ -202,7 +202,7 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/handoff/crm-simulator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/crm-simulator:latest"
 
       ports {
         container_port = 8001
@@ -252,5 +252,5 @@ output "crm_simulator_url" {
 }
 
 output "artifact_registry" {
-  value = google_artifact_registry_repository.handoff.name
+  value = google_artifact_registry_repository.synapse.name
 }

@@ -1,8 +1,5 @@
-# GCS Buckets for Handoff
-
-# Skill graphs bucket — stores markdown graph nodes (product, industry, client layers)
 resource "google_storage_bucket" "skill_graphs" {
-  name          = "${var.project_id}-skill-graphs"
+  name          = "${var.project_id}-synapse-graphs"
   location      = var.region
   force_destroy = false
   project       = var.project_id
@@ -23,7 +20,7 @@ resource "google_storage_bucket" "skill_graphs" {
 
 # Uploads bucket — stores contract PDFs and sales call transcripts
 resource "google_storage_bucket" "uploads" {
-  name          = "${var.project_id}-handoff-uploads"
+  name          = "${var.project_id}-synapse-uploads"
   location      = var.region
   force_destroy = false
   project       = var.project_id

@@ -29,7 +29,7 @@ from google.genai.types import (
 from core.config import config
 from core.db import get_firestore_async_client
 from agent.tools import TOOL_FUNCTIONS
-from agent.prompts import HANDOFF_SYSTEM_PROMPT
+from agent.prompts import SYNAPSE_SYSTEM_PROMPT
 
 
 def _build_live_tools() -> list[Tool]:
@@ -101,7 +101,7 @@ class LiveSession:
     def _build_system_prompt(self) -> str:
         """Build the system prompt with client context."""
         return (
-            f"{HANDOFF_SYSTEM_PROMPT}\n\n"
+            f"{SYNAPSE_SYSTEM_PROMPT}\n\n"
             f"## Current Session Context\n"
             f"- Client ID: {self.client_id}\n"
             f"- CSM Name: {self.csm_name}\n"

@@ -32,6 +32,20 @@ When a B2B SaaS deal closes, critical context is trapped in CRM data and sales t
 
 ---
 
+## 📚 Documentation Hub
+
+Explore the `docs/` folder for in-depth technical breakdowns of the platform:
+- **[Product Requirements Document (PRD)](docs/PRD.md)** — The original vision and UX flows.
+- **[System Architecture](docs/ARCHITECTURE.md)** — Core design decisions and data models.
+- **[AI Agents Deep Dive](docs/AI_AGENTS.md)** — How the Multi-Agent Generator and Gemini Live Vision interact.
+- **[Cloud Infrastructure](docs/INFRASTRUCTURE.md)** — Detailed GCP Terraform diagrams and Cloud Run topologies.
+- **[API Reference](docs/API_REFERENCE.md)** — Webhook payloads, internal endpoints, and WebSocket negotiation.
+- **[Observability & Telemetry](docs/OBSERVABILITY.md)** — Level 5 Agent tracing, token counting, and tool-call logging.
+- **[Hackathon Submission Pitch](docs/DEVPOST_SUBMISSION.md)** — The elevator pitch, inspiration, and judging criteria responses.
+- **[Demo Scipt](docs/DEMO_SCRIPT.md)** — The narrative flow for the 4-minute demonstration.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -87,7 +101,7 @@ bash scripts/start-local.sh
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram.
 
 ```
-CRM Simulator → webhook → Handoff API → Graph Generator
+CRM Simulator → webhook → Synapse API → Graph Generator
                                 ↕                 ↓
                           Gemini Live        GCS + Firestore
                           (voice)            (skill graphs)
@@ -97,18 +111,28 @@ CRM Simulator → webhook → Handoff API → Graph Generator
 
 ---
 
+## Tech Stack
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript 5, Vite 6, React Flow |
+| Backend | Python 3.11, FastAPI, WebSockets |
+| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
+| Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
+
+---
+
 ## Project Structure
 
 ```
-handoff/
-├── backend/                # Handoff API (FastAPI)
-│   ├── agent/              # ADK agent (tools, prompts, handoff_agent)
+synapse/
+├── backend/                # Synapse API (FastAPI)
+│   ├── agent/              # ADK agent (tools, prompts, synapse_agent)
 │   ├── graph/              # Graph traversal engine
 │   └── live/               # Gemini Live session handler
 ├── graph-generator/        # Graph Generator (FastAPI)
 │   └── extractors/         # Gemini 3.1 Pro entity extraction
 ├── crm-simulator/          # CRM Simulator (FastAPI + React)
-├── frontend/               # Handoff Voice UI (React + React Flow)
+├── frontend/               # Synapse Voice UI (React + React Flow)
 ├── skill-graphs/           # 12 static knowledge nodes
 ├── infra/                  # Terraform IaC (4 modules)
 └── scripts/                # Deploy, demo-setup, start-local
