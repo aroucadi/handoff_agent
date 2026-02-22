@@ -1,87 +1,44 @@
 #!/bin/bash
-# ─────────────────────────────────────────────────────
-# Handoff — Cloud Deploy Script
-#
-# Builds and deploys all services to Cloud Run.
-# Requires: gcloud CLI, Docker, Terraform
-# ─────────────────────────────────────────────────────
-
 set -e
 
-echo "╔══════════════════════════════════════════════╗"
-echo "║       HANDOFF — Cloud Deployment             ║"
-echo "╚══════════════════════════════════════════════╝"
-echo ""
+PROJECT_ID="${1:-handoff-dev}"
+REGION="${2:-us-central1}"
+FIREBASE_PROJECT="${3:-$PROJECT_ID}"
 
-PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required}"
-REGION="${REGION:-us-central1}"
-REPO="${REGION}-docker.pkg.dev/${PROJECT_ID}/handoff"
+echo -e "\033[36m=============================================\033[0m"
+echo -e "\033[36m🚀 Synapse — One-Click Terraform Deployment\033[0m"
+echo -e "\033[36mProject: $PROJECT_ID | Region: $REGION\033[0m"
+echo -e "\033[36m=============================================\033[0m"
 
-echo "📋 Configuration:"
-echo "   PROJECT_ID: $PROJECT_ID"
-echo "   REGION:     $REGION"
-echo "   REPO:       $REPO"
-echo ""
+echo -e "\n\033[33m[1/4] Checking gcloud auth...\033[0m"
+gcloud config set project "$PROJECT_ID"
 
-# Step 1: Terraform
-echo "🏗️  Step 1: Applying Terraform infrastructure..."
+echo -e "\n\033[33m[2/4] Building and Pushing Containers to GCP...\033[0m"
+gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+echo '--> Building Backend API'
+docker build -f backend/Dockerfile -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest" .
+docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest"
+
+echo '--> Building Graph Generator'
+docker build -f graph-generator/Dockerfile -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest" .
+docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest"
+
+echo '--> Building CRM Simulator'
+docker build -f crm-simulator/Dockerfile -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest" .
+docker push "${REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest"
+
+echo -e "\n\033[33m[3/4] Applying Terraform Infrastructure...\033[0m"
 cd infra
 terraform init
-terraform apply -auto-approve \
-    -var="project_id=${PROJECT_ID}" \
-    -var="region=${REGION}" \
-    -var="environment=production"
+terraform apply -auto-approve -var="project_id=$PROJECT_ID" -var="region=$REGION"
 cd ..
-echo "   ✅ Infrastructure ready"
 
-# Step 2: Build and push API image
-echo ""
-echo "🐳 Step 2: Building Handoff API image..."
-docker build -t "${REPO}/api:latest" backend/
-docker push "${REPO}/api:latest"
-echo "   ✅ API image pushed"
-
-# Step 3: Build and push Graph Generator image
-echo ""
-echo "🐳 Step 3: Building Graph Generator image..."
-docker build -t "${REPO}/graph-generator:latest" graph-generator/
-docker push "${REPO}/graph-generator:latest"
-echo "   ✅ Graph Generator image pushed"
-
-# Step 4: Build frontend
-echo ""
-echo "📦 Step 4: Building frontend..."
+echo -e "\n\033[33m[4/4] Deploying React Voice UI to Firebase...\033[0m"
 cd frontend
-npm ci
 npm run build
+firebase deploy --only hosting --project "$FIREBASE_PROJECT" --non-interactive
 cd ..
-echo "   ✅ Frontend built"
 
-# Step 5: Deploy Cloud Run services
-echo ""
-echo "🚀 Step 5: Deploying Cloud Run services..."
-gcloud run services update handoff-api \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --image="${REPO}/api:latest"
-
-gcloud run services update handoff-graph-generator \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
-    --image="${REPO}/graph-generator:latest"
-
-echo "   ✅ Cloud Run services deployed"
-
-# Step 6: Seed static graphs
-echo ""
-echo "📚 Step 6: Seeding static skill graphs..."
-bash scripts/seed-graphs.sh
-echo "   ✅ Static graphs seeded"
-
-echo ""
-echo "═══════════════════════════════════════════════"
-echo "  Deployment complete!"
-echo ""
-echo "  API URL:       $(terraform -chdir=infra output -raw api_url)"
-echo "  Generator URL: $(terraform -chdir=infra output -raw graph_generator_url)"
-echo "═══════════════════════════════════════════════"
+echo -e "\033[32mDeployment Complete! The Voice Agent is now LIVE.\033[0m"
+echo -e "\033[32mCheck output variables from Terraform for URLs.\033[0m"
