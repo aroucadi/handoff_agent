@@ -4,7 +4,8 @@
  * The Living Memory of Your Customer Journey.
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import BriefingSession from './components/BriefingSession';
 
@@ -17,12 +18,15 @@ export default function App() {
                         <h1 className="header__title">Synapse</h1>
                         <span className="header__subtitle">Multimodal Live Agent</span>
                     </div>
+                    <nav className="header__nav">
+                        <a className="btn btn--nav" href="/dashboard">Dashboard</a>
+                    </nav>
                 </header>
 
                 <Routes>
+                    <Route path="/" element={<LandingPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/session/:clientId" element={<BriefingSession />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </div>
         </BrowserRouter>
