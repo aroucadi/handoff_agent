@@ -124,7 +124,7 @@ ALL: Agreed.
 
 JAMES: Perfect. I'll get the contract over today. Welcome to VeloSaaS.
 """,
-        webhook_url="http://localhost:8000/api/webhooks/crm/deal-closed",
+        webhook_url="https://synapse-graph-generator-uicugotuta-uc.a.run.app/generate",
     ),
     Deal(
         deal_id="OPP-2026-TF002",
@@ -145,6 +145,6 @@ JAMES: Perfect. I'll get the contract over today. Welcome to VeloSaaS.
                 pain_point="Manual pricing approvals taking 5+ days",
             ),
         ],
-        webhook_url="http://localhost:8000/api/webhooks/crm/deal-closed",
+        webhook_url="https://synapse-graph-generator-uicugotuta-uc.a.run.app/generate",
     ),
 ]

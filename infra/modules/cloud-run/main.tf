@@ -212,6 +212,10 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
         name  = "PYTHONUNBUFFERED"
         value = "1"
       }
+      env {
+        name  = "REDEPLOY_TRIGGER"
+        value = "2026-02-23"
+      }
 
       resources {
         limits = {

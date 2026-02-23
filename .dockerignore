@@ -1,5 +1,22 @@
+# Synapse .dockerignore
+
+# Exclude source frontend (main app)
+/frontend/
+
+# Exclude node_modules everywhere
+**/node_modules/
+
+# Exclude crm source but allow its dist
+crm-simulator/frontend/src/
+crm-simulator/frontend/node_modules/
+crm-simulator/frontend/public/
+crm-simulator/frontend/*.ts
+crm-simulator/frontend/*.json
+
+# Keep these
+!crm-simulator/frontend/dist/
+
 .git/
-frontend/
 video/
 infra/
 scripts/

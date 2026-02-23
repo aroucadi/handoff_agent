@@ -285,8 +285,23 @@ async def reset_data():
 
 
 # ---------------------------------------------------------------------------
-# Serve uploaded files (legacy fallback)
+# Serve Frontend & Uploads
 # ---------------------------------------------------------------------------
 _upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(_upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
+
+# Serve the React frontend (built in frontend/dist)
+_frontend_dir = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+print(f"[CRM] Looking for frontend at: {_frontend_dir} (Exists: {os.path.exists(_frontend_dir)})")
+
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    index_path = os.path.join(_frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        from fastapi.responses import FileResponse
+        return FileResponse(index_path)
+    return {"message": "SalesClaw CRM Simulator API. Frontend not found.", "frontend_path": _frontend_dir}
+
+if os.path.exists(_frontend_dir):
+    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")

@@ -22,3 +22,8 @@ output "graph_generator_url" {
   description = "Graph Generator Cloud Run URL"
   value       = module.cloud_run.graph_generator_url
 }
+
+output "crm_simulator_url" {
+  description = "SalesClaw CRM Simulator URL"
+  value       = module.cloud_run.crm_simulator_url
+}

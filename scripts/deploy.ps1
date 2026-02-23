@@ -28,6 +28,13 @@ gcloud config set project $ProjectId
 Write-Host "`n[2/4] Building and Pushing Containers to GCP..." -ForegroundColor Yellow
 gcloud auth configure-docker ${Region}-docker.pkg.dev --quiet
 
+# Build CRM Frontend first
+Write-Host '--> Building SalesClaw CRM Frontend'
+Push-Location -Path crm-simulator/frontend
+npm install
+npm run build
+Pop-Location
+
 # Push API
 Write-Host '--> Building Backend API'
 docker build -f backend/Dockerfile -t ${Region}-docker.pkg.dev/${ProjectId}/synapse/api:latest .
