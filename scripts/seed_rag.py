@@ -14,6 +14,7 @@ from pathlib import Path
 crm_sim_path = Path(__file__).parent.parent / "crm-simulator"
 sys.path.append(str(crm_sim_path))
 
+from core.config import config
 from seed_data import DEMO_DEALS
 
 # The Synapse API endpoint for CRM webhooks
@@ -37,7 +38,7 @@ async def seed_rag():
                     "contacts": [{"name": c.name, "title": c.title, "role": c.role} for c in deal.contacts],
                     "risks": [{"description": r.description, "severity": r.severity} for r in deal.risks],
                     "sales_transcript": deal.sales_transcript or "Standard historical win: customer migrated to Synapse for unified sales orchestration.",
-                    "contract_pdf_url": f"gs://synapse-488201-synapse-uploads/contracts/{deal.deal_id}.pdf" if deal.deal_id == "OPP-2026-PM005" else None
+                    "contract_pdf_url": f"gs://{config.uploads_bucket}/contracts/{deal.deal_id}.pdf"
                 }
                 
             try:
