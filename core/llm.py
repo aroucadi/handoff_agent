@@ -36,6 +36,7 @@ async def generate_content_with_fallback(
     client = genai.Client(api_key=config.gemini_api_key)
 
     try:
+        print(f"[LLM] Attempting generation with primary model: {primary_model}")
         response = await client.aio.models.generate_content(
             model=primary_model,
             contents=contents,
@@ -54,5 +55,5 @@ async def generate_content_with_fallback(
             )
             return fallback_response.text.strip()
         except Exception as fallback_error:
-            print(f"[LLM] Fatal: Fallback model also failed: {fallback_error}")
+            print(f"[LLM] Fatal: Fallback model ({fallback_model}) also failed: {fallback_error}")
             return None

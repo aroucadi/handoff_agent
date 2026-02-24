@@ -27,76 +27,69 @@ function DealCard({ deal, onStageChange }: { deal: Deal; onStageChange: (dealId:
 
     const available = nextStages[deal.stage] ?? [];
 
+    const getDealModifier = () => {
+        if (deal.stage === 'closed_won') return 'deal-card--won';
+        if (deal.stage === 'closed_lost') return 'deal-card--lost';
+        return '';
+    };
+
     return (
-        <div className={`deal-card ${deal.webhook_fired ? 'deal-card--webhook-fired' : ''}`}>
+        <div className={`deal-card ${getDealModifier()}`}>
             <div className="deal-card__header" onClick={() => setExpanded(!expanded)}>
-                <h3 className="deal-card__company">{deal.company_name}</h3>
+                <div>
+                    <div className="deal-card__company">💼 {deal.company_name}</div>
+                    <div className="deal-card__meta">
+                        {deal.industry} • {deal.contacts.length} Contacts
+                    </div>
+                </div>
                 <span className="deal-card__value">{formatCurrency(deal.deal_value)}</span>
             </div>
 
-            <div className="deal-card__meta">
-                <span className="deal-card__industry">{deal.industry}</span>
-                {deal.contacts.length > 0 && (
-                    <span className="deal-card__contacts">{deal.contacts.length} contacts</span>
-                )}
+            <div className="deal-card__products">
+                {deal.products.map((p, i) => (
+                    <span key={i} className="product-pill">{p.name}</span>
+                ))}
             </div>
 
-            {deal.products.length > 0 && (
-                <div className="deal-card__products">
-                    {deal.products.map((p, i) => (
-                        <span key={i} className="deal-card__product-tag">{p.name}</span>
-                    ))}
-                </div>
-            )}
-
             {deal.webhook_fired && (
-                <div className="deal-card__webhook-badge">
-                    ✅ Webhook sent to Synapse
+                <div className="deal-card__webhook-badge" style={{ marginTop: '8px', fontSize: '0.7rem', color: '#2e844a' }}>
+                    ✅ Synapse Integrated
                 </div>
             )}
 
             {expanded && (
-                <div className="deal-card__details">
-                    {deal.contacts.length > 0 && (
-                        <div className="deal-card__section">
-                            <h4>Contacts</h4>
-                            {deal.contacts.map((c, i) => (
-                                <div key={i} className="deal-card__contact">
-                                    <strong>{c.name}</strong> — {c.title}
-                                    <span className={`role-tag role-tag--${c.role}`}>{c.role}</span>
-                                    {c.pain_point && <div className="deal-card__pain">{c.pain_point}</div>}
-                                </div>
-                            ))}
+                <div className="record-details">
+                    <div className="detail-row">
+                        <div className="detail-row__label">Account</div>
+                        <div className="detail-row__value">{deal.company_name}</div>
+                    </div>
+                    {deal.contacts.map((c, i) => (
+                        <div key={i} className="detail-row">
+                            <div className="detail-row__label">Contact</div>
+                            <div className="detail-row__value">
+                                {c.name} <span className={`role-badge role-badge--${c.role}`}>{c.role}</span>
+                                <div style={{ fontSize: '0.65rem', color: '#706e6b' }}>{c.title}</div>
+                            </div>
                         </div>
-                    )}
-
+                    ))}
                     {deal.risks.length > 0 && (
-                        <div className="deal-card__section">
-                            <h4>Risks ({deal.risks.length})</h4>
-                            {deal.risks.map((r, i) => (
-                                <div key={i} className={`deal-card__risk risk--${r.severity}`}>
-                                    {r.description}
-                                </div>
-                            ))}
+                        <div className="detail-row">
+                            <div className="detail-row__label">Risks</div>
+                            <div className="detail-row__value">
+                                {deal.risks.map((r, i) => (
+                                    <div key={i} style={{ color: r.severity === 'high' ? '#ea001b' : '#3e3e3c' }}>• {r.description}</div>
+                                ))}
+                            </div>
                         </div>
                     )}
-
-                    {deal.success_metrics.length > 0 && (
-                        <div className="deal-card__section">
-                            <h4>Success Metrics</h4>
-                            {deal.success_metrics.map((m, i) => (
-                                <div key={i} className="deal-card__metric">
-                                    <strong>{m.metric}</strong>: {m.current_value} → {m.target_value}
-                                    {m.timeframe && <span className="deal-card__timeframe">({m.timeframe})</span>}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
                     {deal.sales_transcript && (
-                        <div className="deal-card__section">
-                            <h4>Sales Transcript</h4>
-                            <pre className="deal-card__transcript">{deal.sales_transcript.slice(0, 300)}...</pre>
+                        <div className="detail-row">
+                            <div className="detail-row__label">Transcript</div>
+                            <div className="detail-row__value">
+                                <div style={{ fontStyle: 'italic', background: '#f3f3f3', padding: '4px', borderRadius: '4px' }}>
+                                    "{deal.sales_transcript.slice(0, 100)}..."
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -107,10 +100,10 @@ function DealCard({ deal, onStageChange }: { deal: Deal; onStageChange: (dealId:
                     {available.map(stage => (
                         <button
                             key={stage}
-                            className={`stage-btn stage-btn--${stage}`}
+                            className={`slds-button ${stage === 'closed_won' ? 'slds-button--brand' : ''} ${stage === 'closed_lost' ? 'slds-button--destructive' : ''}`}
                             onClick={(e) => { e.stopPropagation(); onStageChange(deal.deal_id, stage); }}
                         >
-                            Move to {STAGE_LABELS[stage]}
+                            {stage === 'closed_won' ? 'Won' : stage === 'closed_lost' ? 'Lost' : `To ${STAGE_LABELS[stage]}`}
                         </button>
                     ))}
                 </div>
@@ -126,19 +119,10 @@ function PipelineColumn({ stage, deals, onStageChange }: {
     deals: Deal[];
     onStageChange: (dealId: string, stage: DealStage) => void;
 }) {
-    const stageColors: Record<DealStage, string> = {
-        prospecting: '#6366f1',
-        qualification: '#8b5cf6',
-        negotiation: '#f59e0b',
-        closed_won: '#10b981',
-        closed_lost: '#ef4444',
-    };
-
     return (
         <div className="pipeline-column">
-            <div className="pipeline-column__header" style={{ borderTopColor: stageColors[stage] }}>
-                <h2 className="pipeline-column__title">{STAGE_LABELS[stage]}</h2>
-                <span className="pipeline-column__count">{deals.length}</span>
+            <div className="pipeline-column__header">
+                <h2 className="pipeline-column__title">{STAGE_LABELS[stage]} ({deals.length})</h2>
             </div>
             <div className="pipeline-column__cards">
                 {deals.map(deal => (
@@ -205,17 +189,28 @@ export default function App() {
         <div className="app">
             <header className="app-header">
                 <div className="app-header__brand">
-                    <h1 className="app-header__title">SalesClaw CRM</h1>
-                    <span className="app-header__subtitle">Synapse Simulator</span>
+                    <div className="brand-icon">☁️</div>
+                    <div>
+                        <h1 className="app-header__title">SalesClaw CRM</h1>
+                        <span className="app-header__subtitle">Lightning Experience • Global Sales</span>
+                    </div>
                 </div>
                 <div className="app-header__actions">
-                    <span className="app-header__deal-count">{deals.length} deals</span>
-                    <button className="reset-btn" onClick={handleReset}>Reset Demo Data</button>
+                    <button className="slds-button" onClick={handleReset}>Refresh Records</button>
+                    <div className="brand-icon" style={{ background: '#706e6b', fontSize: '0.9rem' }}>👤</div>
                 </div>
             </header>
 
+            <div className="tabs-container">
+                <div className="tab-item">Home</div>
+                <div className="tab-item active">Opportunities</div>
+                <div className="tab-item">Accounts</div>
+                <div className="tab-item">Leads</div>
+                <div className="tab-item">Reports</div>
+            </div>
+
             {notification && (
-                <div className="notification">{notification}</div>
+                <div className="slds-notify">{notification}</div>
             )}
 
             <div className="pipeline">

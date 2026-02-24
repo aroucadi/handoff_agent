@@ -83,7 +83,7 @@ async def webhook_deal_closed(request: Request):
     company = payload.get("company_name", "unknown")
     print(f"[WEBHOOK] Deal closed: {deal_id} Ã¢â‚¬â€ {company}")
 
-    generator_url = "http://localhost:8002/generate"
+    generator_url = config.graph_generator_url
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(generator_url, json=payload)

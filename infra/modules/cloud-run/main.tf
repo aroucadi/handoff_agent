@@ -79,6 +79,10 @@ resource "google_cloud_run_v2_service" "api" {
         value = "1"
       }
       env {
+        name  = "GRAPH_GENERATOR_URL"
+        value = "${google_cloud_run_v2_service.graph_generator.uri}/generate"
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
@@ -86,6 +90,10 @@ resource "google_cloud_run_v2_service" "api" {
             version = "latest"
           }
         }
+      }
+      env {
+        name  = "REDEPLOY_TRIGGER"
+        value = "v3.7.3-FINAL-VERIFIED"
       }
 
       resources {
@@ -161,6 +169,10 @@ resource "google_cloud_run_v2_service" "graph_generator" {
           }
         }
       }
+      env {
+        name  = "REDEPLOY_TRIGGER"
+        value = "v3.7.3-FINAL-VERIFIED"
+      }
 
       resources {
         limits = {
@@ -214,7 +226,7 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
       }
       env {
         name  = "REDEPLOY_TRIGGER"
-        value = "2026-02-23"
+        value = "v3.7.0-GEMINI-2.5-UPGRADE"
       }
 
       resources {

@@ -106,13 +106,26 @@ async def extract_from_contract(client_id: str, contract_pdf_url: str | None = N
         return None
 
     print(f"[CONTRACT] Extracting terms from PDF ({len(pdf_bytes)} bytes)...")
-
     try:
         gen_config = GenerateContentConfig(
             response_mime_type="application/json",
-            temperature=0.1,  # Low temperature for factual extraction
+            temperature=0.1,
             max_output_tokens=8192,
         )
+
+        # Try to detect if it's actually text (for simulator mocks) or a real PDF
+        is_pdf = pdf_bytes[:4] == b"%PDF"
+        
+        if is_pdf:
+            pdf_part = Part.from_bytes(data=pdf_bytes, mime_type="application/pdf")
+        else:
+            # Fallback for text-based mocks
+            pdf_part = Part.from_text(text=pdf_bytes.decode("utf-8", errors="ignore"))
+
+        contents = [
+            pdf_part,
+            CONTRACT_EXTRACTION_PROMPT,
+        ]
         
         raw_text = await generate_content_with_fallback(
             contents=contents,

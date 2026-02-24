@@ -59,10 +59,14 @@ Set-Location -Path ..
 
 # 4. Deploy Frontend
 Write-Host "`n[4/4] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow
-Set-Location -Path ./frontend
-npm run build
-firebase deploy --only hosting --project $FirebaseProject --non-interactive
-Set-Location -Path ..
+if (Get-Command firebase -ErrorAction SilentlyContinue) {
+    Set-Location -Path ./frontend
+    npm run build
+    firebase deploy --only hosting --project $FirebaseProject --non-interactive
+    Set-Location -Path ..
+} else {
+    Write-Host "⚠️ Firebase CLI not found. Skipping frontend deployment. Please deploy manually or install the CLI." -ForegroundColor Yellow
+}
 
 Write-Host -Object 'Deployment Complete! The Voice Agent is now LIVE.' -ForegroundColor Green
 Write-Host -Object 'Check output variables from Terraform for URLs.' -ForegroundColor Green

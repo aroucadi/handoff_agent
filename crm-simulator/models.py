@@ -28,7 +28,7 @@ class Contact(BaseModel):
 
     name: str
     title: str
-    email: str
+    email: Optional[str] = None
     role: str = Field(description="champion | economic_buyer | technical_evaluator | blocker")
     pain_point: Optional[str] = None
     commitment: Optional[str] = None

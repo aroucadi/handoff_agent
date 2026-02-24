@@ -18,12 +18,14 @@ class CoreConfig:
     environment: str = field(default_factory=lambda: os.environ.get("ENVIRONMENT", "dev"))
 
     # Gemini API
-    gemini_api_key: str = field(default_factory=lambda: os.environ.get("GEMINI_API_KEY", ""))
+    gemini_api_key: str = field(
+        default_factory=lambda: os.environ.get("GEMINI_API_KEY", "").replace("\ufeff", "").strip()
+    )
 
     # Gemini Model Strategy
-    gen_model: str = "gemini-3.1-pro-preview"
-    fallback_model: str = "gemini-3.0-flash"
-    summary_model: str = "gemini-3.0-flash"
+    gen_model: str = "models/gemini-2.5-pro"
+    fallback_model: str = "models/gemini-2.5-flash"
+    summary_model: str = "models/gemini-2.5-flash"
     # Switch to 2.0-flash-exp for Hackathon True Multimodal Vision (2.5 audio does not support video frames yet)
     live_agent_model: str = "gemini-2.0-flash-exp"
     embedding_model: str = "gemini-embedding-001"
@@ -44,6 +46,9 @@ class CoreConfig:
     )
 
     # Simulator URLs (for local dev callbacks)
+    graph_generator_url: str = field(
+        default_factory=lambda: os.environ.get("GRAPH_GENERATOR_URL", "http://localhost:8002/generate")
+    )
     crm_simulator_url: str = field(
         default_factory=lambda: os.environ.get("CRM_SIMULATOR_URL", "http://localhost:8001")
     )
