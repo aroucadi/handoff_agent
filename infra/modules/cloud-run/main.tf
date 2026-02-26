@@ -93,7 +93,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v3.7.3-FINAL-VERIFIED"
+        value = "v4.0.5-WORKLET-AUDIO-PROMPTS"
       }
 
       resources {
@@ -171,7 +171,7 @@ resource "google_cloud_run_v2_service" "graph_generator" {
       }
       env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v3.7.3-FINAL-VERIFIED"
+        value = "v4.3.0-LIVE-AUDIO-FIXES"
       }
 
       resources {

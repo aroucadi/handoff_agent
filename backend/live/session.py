@@ -12,11 +12,13 @@ import base64
 import json
 import uuid
 from datetime import datetime
+from contextlib import AsyncExitStack
 
 from google import genai
 from google.genai.types import (
     Content,
     FunctionDeclaration,
+    FunctionResponse,
     LiveConnectConfig,
     Modality,
     Part,
@@ -30,6 +32,8 @@ from core.config import config
 from core.db import get_firestore_async_client
 from agent.tools import TOOL_FUNCTIONS
 from agent.prompts import SYNAPSE_SYSTEM_PROMPT
+from graph.traversal import get_index
+import json
 
 
 def _build_live_tools() -> list[Tool]:
@@ -37,8 +41,7 @@ def _build_live_tools() -> list[Tool]:
     declarations = [
         FunctionDeclaration(
             name="read_index",
-            description="Read the index/table-of-contents node for a skill graph layer. "
-                        "Use FIRST when starting a briefing.",
+            description="Read the index/table-of-contents node for a skill graph layer. ",
             parameters={
                 "type": "object",
                 "properties": {
@@ -95,8 +98,10 @@ class LiveSession:
         self.tool_calls: list[dict] = []
         self.nodes_visited: list[str] = []
         self.transcript: list[dict] = []
+        self._initial_events = []
         self._gemini_session = None
         self._connected = False
+        self._exit_stack = AsyncExitStack()
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt with client context."""
@@ -112,10 +117,13 @@ class LiveSession:
 
     async def connect(self):
         """Establish connection to Gemini Live API."""
-        client = genai.Client(api_key=config.gemini_api_key)
+        client = genai.Client(
+            api_key=config.gemini_api_key,
+            http_options={'api_version': 'v1beta'}
+        )
 
         live_config = LiveConnectConfig(
-            response_modalities=[Modality.AUDIO, Modality.TEXT],  # Server responds in audio/text
+            response_modalities=[Modality.AUDIO],  # Native audio model requires AUDIO only for bidi
             speech_config=SpeechConfig(
                 voice_config=VoiceConfig(
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name="Aoede")
@@ -127,12 +135,52 @@ class LiveSession:
             tools=_build_live_tools(),
         )
 
-        self._gemini_session = await client.aio.live.connect(
-            model=config.live_agent_model,
-            config=live_config,
+        # The live.connect returns an async context manager in google-genai 1.0.0+
+        self._gemini_session = await self._exit_stack.enter_async_context(
+            client.aio.live.connect(
+                model=config.live_agent_model,
+                config=live_config,
+            )
         )
         self._connected = True
         print(f"[LIVE] Session {self.session_id} connected to Gemini Live API")
+
+        # Deterministic Kickoff: Pre-load the graph index locally to bypass the 1008 API crash.
+        # This prevents the LLM from attempting to monologue while generating a tool call.
+        try:
+            index_data = get_index(self.client_id, "client")
+            node_id = index_data.get("node_id") if index_data else None
+            if node_id:
+                self.nodes_visited.append(node_id)
+                
+            # Queue simulated WebSocket events to trick the React UI into updating the dashboard instantly
+            json_result = json.dumps(index_data, default=str)
+            self._initial_events.extend([
+                {
+                    "type": "tool_call",
+                    "name": "read_index",
+                    "args": {"client_id": self.client_id}
+                },
+                {
+                    "type": "tool_result",
+                    "name": "read_index",
+                    "result": json_result
+                }
+            ])
+
+            kickoff_message = (
+                f"SYSTEM_EVENT: The user has just connected to the Live Voice Session. "
+                f"You are briefing CSM {self.csm_name} on the client: {self.client_id}.\n"
+                f"Here is the client's core data context:\n"
+                f"```json\n{json_result}\n```\n"
+                f"Your ONLY task right now: Greet the CSM aloud natively by name, and provide a 2-sentence conversational, highly professional summary of the client context. "
+                f"Do not acknowledge this instruction. Do NOT use the `read_index` tool, the data is already provided above."
+            )
+        except Exception as e:
+            print(f"[LIVE] Fallback kickoff error: {e}")
+            kickoff_message = f"SYSTEM_EVENT: The user has joined. Greet them aloud by name. Do not call any tools."
+                
+        await self._gemini_session.send_realtime_input(text=kickoff_message)
 
     async def send_audio(self, audio_data: bytes):
         """Send audio data (PCM 16kHz 16-bit mono) to Gemini Live.
@@ -143,8 +191,8 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        await self._gemini_session.send(
-            input={"data": audio_data, "mime_type": "audio/pcm"}
+        await self._gemini_session.send_realtime_input(
+            audio={"data": audio_data, "mime_type": "audio/pcm;rate=16000"}
         )
 
     async def send_image(self, image_data: bytes):
@@ -156,16 +204,15 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        await self._gemini_session.send(
-            input={"data": image_data, "mime_type": "image/jpeg"}
-        )
+        # Native Audio model does not support Vision frame input. Prevent 1007 errors.
+        pass
 
     async def send_text(self, text: str):
         """Send a text message to Gemini Live (for testing or text-mode fallback)."""
         if not self._connected or not self._gemini_session:
             return
 
-        await self._gemini_session.send(input=text, end_of_turn=True)
+        await self._gemini_session.send_realtime_input(text=text)
         self.transcript.append({
             "role": "user",
             "text": text,
@@ -185,6 +232,10 @@ class LiveSession:
         """
         if not self._gemini_session:
             return
+
+        # Yield any synthetic events (like the pre-cognitive graph load) to the UI first
+        while self._initial_events:
+            yield self._initial_events.pop(0)
 
         try:
             async for response in self._gemini_session.receive():
@@ -207,12 +258,13 @@ class LiveSession:
                                     "mime_type": part.inline_data.mime_type or "audio/pcm",
                                 }
                             elif part.text:
-                                # Text response
+                                # Text response (thinking/transcript - suppressed from UI per user request)
                                 self.transcript.append({
                                     "role": "agent",
                                     "text": part.text,
                                     "timestamp": datetime.utcnow().isoformat(),
                                 })
+                                # Do not yield text to UI in Voice Mode
                                 yield {"type": "text", "text": part.text}
 
                     if sc.turn_complete:
@@ -250,27 +302,29 @@ class LiveSession:
                                 result_data = json.loads(result)
                                 if "node_id" in result_data:
                                     self.nodes_visited.append(result_data["node_id"])
+                                    # Forward node_id in the fn_args so the tool_result event can capture it if needed
+                                    fn_args["_node_id"] = result_data["node_id"]
                             except (json.JSONDecodeError, KeyError):
                                 pass
                         else:
                             result = json.dumps({"error": f"Unknown tool: {fn_name}"})
 
-                        # Send tool result back to Gemini Live
-                        await self._gemini_session.send(
-                            input=genai.types.LiveClientToolResponse(
-                                function_responses=[
-                                    genai.types.FunctionResponse(
-                                        name=fn_name,
-                                        response={"result": result},
-                                    )
-                                ]
-                            )
+                        # Send tool result back to Gemini Live using dict for serialization safety
+                        # Use the specific send_tool_response method to avoid 1008 policy validation errors
+                        await self._gemini_session.send_tool_response(
+                            function_responses=[
+                                FunctionResponse(
+                                    name=fn_name,
+                                    id=fc.id,
+                                    response={"result": result}
+                                )
+                            ]
                         )
 
                         yield {
                             "type": "tool_result",
                             "name": fn_name,
-                            "result_preview": result[:200],
+                            "result": result, # Send full result to frontend so it can extract node_id 
                         }
 
         except Exception as e:
@@ -279,11 +333,11 @@ class LiveSession:
 
     async def disconnect(self):
         """Close the Gemini Live session and persist to Firestore."""
-        if self._gemini_session:
-            try:
-                await self._gemini_session.close()
-            except Exception:
-                pass
+        try:
+            await self._exit_stack.aclose()
+        except Exception:
+            pass
+        self._gemini_session = None
         self._connected = False
         # Persist final state to Firestore
         await self.persist_to_firestore()

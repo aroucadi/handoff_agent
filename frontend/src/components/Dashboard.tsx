@@ -26,7 +26,8 @@ export default function Dashboard() {
 
     const loadClients = useCallback(async () => {
         try {
-            const res = await fetch('/api/clients');
+            const baseUrl = import.meta.env.VITE_API_URL || "";
+            const res = await fetch(`${baseUrl}/api/clients`);
             const data = await res.json();
             setClients(data.clients || []);
         } catch {
@@ -38,7 +39,8 @@ export default function Dashboard() {
 
     const handleStartBriefing = async (clientId: string) => {
         try {
-            const res = await fetch('/api/sessions/start', {
+            const baseUrl = import.meta.env.VITE_API_URL || "";
+            const res = await fetch(`${baseUrl}/api/sessions/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ client_id: clientId, csm_name: 'CSM' }),

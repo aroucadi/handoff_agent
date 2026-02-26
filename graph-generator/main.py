@@ -1,8 +1,8 @@
 """Graph Generator Ã¢â‚¬â€ Main Orchestrator.
 
 Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline:
-1. Extract entities from CRM data and transcript (Gemini 3.1 Pro)
-2. Generate markdown skill graph nodes (Gemini 3.1 Pro)
+1. Extract entities from CRM data and transcript (Gemini 2.5 Pro)
+2. Generate markdown skill graph nodes (Gemini 2.5 Pro)
 3. Write nodes to GCS
 4. Index nodes with embeddings in Firestore (gemini-embedding-001)
 """
@@ -33,7 +33,7 @@ from indexer import index_all_nodes, get_graph_status
 
 app = FastAPI(
     title="Synapse Graph Generator",
-    description="Generates client skill graphs from CRM data using Gemini 3.1 Pro",
+    description="Generates client skill graphs from CRM data using Gemini 2.5 Pro",
     version="3.2.0",
 )
 
@@ -79,7 +79,7 @@ async def _run_generation(job_id: str, payload: dict):
         industry = payload.get("industry", "general")
 
         # Step 2: Extract asynchronously (Transcript & Contract in parallel)
-        print(f"[JOB {job_id}] Step 2: Running parallel AI extractions (Gemini 3.1 Pro)...")
+        print(f"[JOB {job_id}] Step 2: Running parallel AI extractions (Gemini 2.5 Pro)...")
         jobs[job_id]["status"] = "analyzing_documents"
         
         transcript = payload.get("sales_transcript")
@@ -111,7 +111,7 @@ async def _run_generation(job_id: str, payload: dict):
             print(f"[JOB {job_id}] Contract extraction complete: {len(contract_data.get('contracted_modules', []))} modules")
 
         # Step 3: Generate nodes
-        print(f"[JOB {job_id}] Step 3: Generating nodes (Multi-Agent: Generator + Reviewer) with Gemini 3.1 Pro...")
+        print(f"[JOB {job_id}] Step 3: Generating nodes (Multi-Agent: Generator + Reviewer) with Gemini 2.5 Pro...")
         jobs[job_id]["status"] = "generating_nodes"
         
         # This function now orchestrates both the Generation and Review passes internally

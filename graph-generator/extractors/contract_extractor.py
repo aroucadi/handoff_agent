@@ -1,6 +1,6 @@
 """Graph Generator — Contract PDF Extractor.
 
-Uses Gemini 3.1 Pro multimodal to extract structured contract terms from PDF files
+Uses Gemini 2.5 Pro multimodal to extract structured contract terms from PDF files
 stored in GCS. Returns JSON with contracted modules, SLA terms, pricing,
 support tiers, and custom clauses.
 """

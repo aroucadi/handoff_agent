@@ -23,6 +23,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { ToolCallEntry } from '../useVoiceSession';
 
+interface ServerNodeMetadata {
+    node_id: string;
+    title: string;
+    layer: string;
+    links: string[];
+    description: string;
+}
+
 /* ── Custom Node Component ─────────────────────────────── */
 
 interface SkillNodeData {
@@ -87,55 +95,57 @@ function layoutNodes(nodeIds: string[], activeId: string | null, visitedIds: Set
                 isActive: id === activeId,
                 isVisited: visitedIds.has(id),
             },
+            style: { transition: 'all 0.5s ease-in-out' }
         });
     });
 
     return nodes;
 }
 
-function buildEdges(nodeIds: string[], toolCalls: ToolCallEntry[]): Edge[] {
+function buildEdges(
+    nodeIds: string[],
+    toolCalls: ToolCallEntry[],
+    metadata: ServerNodeMetadata[]
+): Edge[] {
     const edges: Edge[] = [];
     const seenEdges = new Set<string>();
 
-    // Build edges from follow_link tool calls (traversal path)
+    // 1. Build inherent links from metadata (static structure)
+    metadata.forEach(node => {
+        node.links.forEach(targetId => {
+            if (nodeIds.includes(targetId)) {
+                const edgeId = `inherent-${node.node_id}-${targetId}`;
+                seenEdges.add(`${node.node_id}->${targetId}`);
+                edges.push({
+                    id: edgeId,
+                    source: node.node_id,
+                    target: targetId,
+                    animated: false,
+                    style: { stroke: 'rgba(58, 64, 96, 0.4)', strokeWidth: 1 },
+                });
+            }
+        });
+    });
+
+    // 2. Build edges from follow_link tool calls (traversal path)
     for (let i = 1; i < toolCalls.length; i++) {
         const prev = toolCalls[i - 1];
         const curr = toolCalls[i];
         if (prev.name === 'follow_link' && curr.name === 'follow_link') {
             const sourceId = prev.args?.node_id as string;
             const targetId = curr.args?.node_id as string;
-            if (sourceId && targetId && !seenEdges.has(`${sourceId}->${targetId}`)) {
-                seenEdges.add(`${sourceId}->${targetId}`);
+            if (sourceId && targetId) {
+                const edgeId = `traversal-${sourceId}-${targetId}`;
                 edges.push({
-                    id: `${sourceId}->${targetId}`,
+                    id: edgeId,
                     source: sourceId,
                     target: targetId,
                     animated: true,
-                    style: { stroke: '#6366f1', strokeWidth: 2 },
+                    style: { stroke: '#38bdf8', strokeWidth: 3 },
+                    zIndex: 10,
                 });
             }
         }
-    }
-
-    // Add edges from index to first visited nodes
-    const indexNode = nodeIds.find(n => n.includes('index'));
-    if (indexNode) {
-        const firstLinks = toolCalls
-            .filter(tc => tc.name === 'follow_link')
-            .slice(0, 3);
-        firstLinks.forEach(tc => {
-            const targetId = tc.args?.node_id as string;
-            if (targetId && !seenEdges.has(`${indexNode}->${targetId}`)) {
-                seenEdges.add(`${indexNode}->${targetId}`);
-                edges.push({
-                    id: `${indexNode}->${targetId}`,
-                    source: indexNode,
-                    target: targetId,
-                    animated: true,
-                    style: { stroke: '#06b6d4', strokeWidth: 1.5 },
-                });
-            }
-        });
     }
 
     return edges;
@@ -144,22 +154,37 @@ function buildEdges(nodeIds: string[], toolCalls: ToolCallEntry[]): Edge[] {
 export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPanelProps) {
     const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
+    const [allClientNodes, setAllClientNodes] = useState<ServerNodeMetadata[]>([]);
 
-    // Collect all discovered node IDs from tool calls
+    // Fetch all nodes for this client on mount to populate the graph
+    useEffect(() => {
+        const fetchAllNodes = async () => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${apiUrl}/api/clients/${clientId}/graph/nodes`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.nodes) setAllClientNodes(data.nodes);
+                }
+            } catch (err) {
+                console.error('Failed to fetch client nodes:', err);
+            }
+        };
+        fetchAllNodes();
+    }, [clientId]);
+
+    // Collect all node IDs
     const discoveredNodes = useMemo(() => {
-        const ids = new Set<string>();
+        const ids = new Set<string>(allClientNodes.map(n => n.node_id));
         toolCalls.forEach(tc => {
             if (tc.name === 'follow_link' && tc.args?.node_id) {
                 ids.add(tc.args.node_id as string);
-            }
-            if (tc.name === 'read_index') {
-                ids.add(`${clientId}-index`);
             }
         });
         // Always include index
         if (ids.size === 0) ids.add(`${clientId}-index`);
         return Array.from(ids);
-    }, [toolCalls, clientId]);
+    }, [toolCalls, clientId, allClientNodes]);
 
     const visitedNodes = useMemo(() => {
         return new Set(toolCalls
@@ -174,8 +199,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     );
 
     const initialEdges = useMemo(
-        () => buildEdges(discoveredNodes, toolCalls),
-        [discoveredNodes, toolCalls]
+        () => buildEdges(discoveredNodes, toolCalls, allClientNodes),
+        [discoveredNodes, toolCalls, allClientNodes]
     );
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -184,8 +209,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     // Update nodes when tool calls change
     useEffect(() => {
         setNodes(layoutNodes(discoveredNodes, currentNode, visitedNodes));
-        setEdges(buildEdges(discoveredNodes, toolCalls));
-    }, [discoveredNodes, currentNode, visitedNodes, toolCalls, setNodes, setEdges]);
+        setEdges(buildEdges(discoveredNodes, toolCalls, allClientNodes));
+    }, [discoveredNodes, currentNode, visitedNodes, toolCalls, allClientNodes, setNodes, setEdges]);
 
     // Breadcrumb trail
     useEffect(() => {
@@ -197,7 +222,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     // Fetch node content when current node changes
     const fetchNodeContent = useCallback(async (nodeId: string) => {
         try {
-            const res = await fetch(`/api/clients/${clientId}/graph/nodes/${nodeId}`);
+            const apiUrl = import.meta.env.VITE_API_URL || '';
+            const res = await fetch(`${apiUrl}/api/clients/${clientId}/graph/nodes/${nodeId}`);
             if (res.ok) {
                 const data = await res.json();
                 setNodeContent(data.content);
@@ -225,7 +251,9 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                     </span>
                 ))}
                 {breadcrumb.length === 0 && (
-                    <span className="breadcrumb__empty">Waiting for graph traversal...</span>
+                    allClientNodes.length > 0
+                        ? <span className="breadcrumb__empty">Waiting for ADK Agent traversal...</span>
+                        : <span className="breadcrumb__empty animate-pulse">Loading Client Skill Graph...</span>
                 )}
             </div>
 

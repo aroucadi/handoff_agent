@@ -7,6 +7,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { audioStreamer } from './infrastructure/audio/AudioStreamer';
 
 export interface TranscriptEntry {
     role: 'user' | 'agent';
@@ -35,14 +36,14 @@ interface UseVoiceSessionReturn {
     sendText: (text: string) => void;
 }
 
-const SAMPLE_RATE = 16000;
-const PLAYBACK_RATE = 24000;
+const INPUT_SAMPLE_RATE = 16000;
 
 export function useVoiceSession(): UseVoiceSessionReturn {
     const wsRef = useRef<WebSocket | null>(null);
-    const audioCtxRef = useRef<AudioContext | null>(null);
+    // Audio Refs
+    const micWorkletRef = useRef<AudioWorkletNode | null>(null);
+    const micCtxRef = useRef<AudioContext | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
-    const processorRef = useRef<ScriptProcessorNode | null>(null);
 
     // Screen Sharing Refs
     const screenStreamRef = useRef<MediaStream | null>(null);
@@ -55,35 +56,42 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
     const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
     const [currentNode, setCurrentNode] = useState<string | null>(null);
+    const isStartingMicRef = useRef(false);
 
-    const playAudio = useCallback((base64Data: string) => {
-        if (!audioCtxRef.current) {
-            audioCtxRef.current = new AudioContext({ sampleRate: PLAYBACK_RATE });
-        }
-        const ctx = audioCtxRef.current;
+    const handleAudioChunk = useCallback((base64Data: string) => {
         const raw = atob(base64Data);
         const bytes = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
 
-        // Convert Int16 PCM to Float32
-        const int16 = new Int16Array(bytes.buffer);
-        const float32 = new Float32Array(int16.length);
-        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
-
-        const buffer = ctx.createBuffer(1, float32.length, PLAYBACK_RATE);
-        buffer.getChannelData(0).set(float32);
-
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start();
+        audioStreamer.enqueue(bytes.buffer);
+        audioStreamer.resume();
         setIsAgentSpeaking(true);
-        source.onended = () => setIsAgentSpeaking(false);
     }, []);
 
-    const connect = useCallback((sessionId: string) => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/sessions/${sessionId}`;
+    const connect = useCallback(async (sessionId: string) => {
+        // Enforce strict WebSocket singleton. 
+        if (wsRef.current) {
+            wsRef.current.close();
+            wsRef.current = null;
+        }
+
+        // KILL the playback context so ghost voices from buffered chunks stop immediately
+        await audioStreamer.close();
+        await audioStreamer.initialize();
+
+        setTranscript([]);
+        setToolCalls([]);
+        setCurrentNode(null);
+
+        let wsUrl: string;
+        const envWsUrl = import.meta.env.VITE_WS_URL;
+
+        if (envWsUrl) {
+            wsUrl = `${envWsUrl}/ws/sessions/${sessionId}`;
+        } else {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            wsUrl = `${protocol}//${window.location.host}/ws/sessions/${sessionId}`;
+        }
 
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
@@ -98,7 +106,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
             switch (data.type) {
                 case 'audio':
-                    playAudio(data.data);
+                    handleAudioChunk(data.data);
                     break;
 
                 case 'text':
@@ -122,10 +130,18 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                     break;
 
                 case 'tool_result':
-                    // Could update UI with result preview
+                    try {
+                        const parsedResult = JSON.parse(data.result);
+                        if (parsedResult.node_id) {
+                            setCurrentNode(parsedResult.node_id);
+                        }
+                    } catch (e) {
+                        // ignore parse errors if result is not json
+                    }
                     break;
 
                 case 'interrupted':
+                    audioStreamer.stop();
                     setIsAgentSpeaking(false);
                     break;
 
@@ -145,60 +161,16 @@ export function useVoiceSession(): UseVoiceSessionReturn {
             setIsScreenShared(false);
             console.log('[WS] Disconnected');
         };
-    }, [playAudio]);
-
-    const startMic = useCallback(async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    sampleRate: SAMPLE_RATE,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                },
-            });
-
-            mediaStreamRef.current = stream;
-            const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
-            audioCtxRef.current = ctx;
-
-            const source = ctx.createMediaStreamSource(stream);
-            // Use ScriptProcessor (deprecated but widely supported)
-            const processor = ctx.createScriptProcessor(4096, 1, 1);
-            processorRef.current = processor;
-
-            processor.onaudioprocess = (e) => {
-                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-
-                const float32 = e.inputBuffer.getChannelData(0);
-                // Convert Float32 → Int16 PCM
-                const int16 = new Int16Array(float32.length);
-                for (let i = 0; i < float32.length; i++) {
-                    const s = Math.max(-1, Math.min(1, float32[i]));
-                    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-                }
-
-                // Base64 encode and send
-                const bytes = new Uint8Array(int16.buffer);
-                let binary = '';
-                for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-                const b64 = btoa(binary);
-
-                wsRef.current.send(JSON.stringify({ type: 'audio', data: b64 }));
-            };
-
-            source.connect(processor);
-            processor.connect(ctx.destination);
-            setIsMicActive(true);
-        } catch (err) {
-            console.error('[MIC] Failed to start:', err);
-        }
-    }, []);
+    }, [handleAudioChunk]);
 
     const stopMic = useCallback(() => {
-        if (processorRef.current) {
-            processorRef.current.disconnect();
-            processorRef.current = null;
+        if (micWorkletRef.current) {
+            micWorkletRef.current.disconnect();
+            micWorkletRef.current = null;
+        }
+        if (micCtxRef.current) {
+            micCtxRef.current.close().catch(console.error);
+            micCtxRef.current = null;
         }
         if (mediaStreamRef.current) {
             mediaStreamRef.current.getTracks().forEach(t => t.stop());
@@ -206,6 +178,62 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         }
         setIsMicActive(false);
     }, []);
+
+    const startMic = useCallback(async () => {
+        if (isStartingMicRef.current) return;
+        try {
+            isStartingMicRef.current = true;
+            stopMic(); // Enforce singleton mic
+
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: INPUT_SAMPLE_RATE,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                },
+            });
+
+            mediaStreamRef.current = stream;
+
+            const micCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
+                sampleRate: INPUT_SAMPLE_RATE
+            });
+            micCtxRef.current = micCtx;
+
+            await micCtx.audioWorklet.addModule('/mic-processor.js');
+
+            // Check for race condition during async addModule
+            if (micCtx.state === 'closed') return;
+
+            const source = micCtx.createMediaStreamSource(stream);
+            const micNode = new AudioWorkletNode(micCtx, 'mic-processor');
+            micWorkletRef.current = micNode;
+
+            micNode.port.onmessage = (e) => {
+                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+                const int16 = e.data as Int16Array;
+
+                // Base64 encode and send
+                const bytes = new Uint8Array(int16.buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                const b64 = btoa(binary);
+
+                wsRef.current.send(JSON.stringify({ type: 'audio', data: b64 }));
+            };
+
+            source.connect(micNode);
+            setIsMicActive(true);
+        } catch (err) {
+            console.error('[MIC] Failed to start:', err);
+        } finally {
+            isStartingMicRef.current = false;
+        }
+    }, [stopMic]);
 
     const toggleMic = useCallback(() => {
         if (isMicActive) {
@@ -251,9 +279,10 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                 if (ctx) {
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     // Get base64 JPEG
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    const b64 = dataUrl.split(',')[1];
-                    wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
+                    // const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    // const b64 = dataUrl.split(',')[1];
+                    // wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
+                    // Disable image send for 2.5-flash-native-audio-latest as it throws 1007 errors
                 }
             }, 1000);
 
@@ -291,6 +320,10 @@ export function useVoiceSession(): UseVoiceSessionReturn {
             wsRef.current.close();
             wsRef.current = null;
         }
+
+        // KILL the playback context so ghost voices from buffered chunks stop immediately
+        audioStreamer.close().catch(console.error);
+
         setIsConnected(false);
     }, [stopMic]);
 

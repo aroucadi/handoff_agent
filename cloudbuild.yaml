@@ -1,0 +1,21 @@
+steps:
+  # 1. Build & Push API
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest', '-f', 'backend/Dockerfile', '.']
+  
+  # 2. Build & Push Graph Generator
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest', '-f', 'graph-generator/Dockerfile', '.']
+
+  # 3. Build & Push CRM Simulator
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest', '-f', 'crm-simulator/Dockerfile', '.']
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}'
+
+substitutions:
+  _REGION: us-central1
+  _TAG: latest

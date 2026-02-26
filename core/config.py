@@ -23,11 +23,11 @@ class CoreConfig:
     )
 
     # Gemini Model Strategy
-    gen_model: str = "models/gemini-2.5-pro"
-    fallback_model: str = "models/gemini-2.5-flash"
-    summary_model: str = "models/gemini-2.5-flash"
-    # Switch to 2.0-flash-exp for Hackathon True Multimodal Vision (2.5 audio does not support video frames yet)
-    live_agent_model: str = "gemini-2.0-flash-exp"
+    gen_model: str = "models/gemini-3.1-pro-preview"
+    fallback_model: str = "models/gemini-3-flash-preview"
+    summary_model: str = "models/gemini-3-flash-preview"
+    # Switch to 2.5-flash-native-audio for Hackathon True Multimodal Vision
+    live_agent_model: str = "models/gemini-2.5-flash-native-audio-latest"
     embedding_model: str = "gemini-embedding-001"
     embedding_dims: int = 768  # Hackathon/demo standard
 

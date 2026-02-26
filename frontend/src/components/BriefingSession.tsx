@@ -125,11 +125,16 @@ export default function BriefingSession() {
                 <div className="briefing__metrics">
                     <div className="metric">
                         <span className="metric__value">{toolCalls.length}</span>
-                        <span className="metric__label">Tool calls</span>
+                        <span className="metric__label">Agent Actions</span>
                     </div>
                     <div className="metric">
-                        <span className="metric__value">{new Set(toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)).size}</span>
-                        <span className="metric__label">Nodes</span>
+                        <span className="metric__value">
+                            {new Set([
+                                currentNode,
+                                ...toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)
+                            ].filter(Boolean)).size}
+                        </span>
+                        <span className="metric__label">Nodes Visited</span>
                     </div>
                     <div className="metric">
                         <span className="metric__value">{transcript.length}</span>

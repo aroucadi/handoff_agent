@@ -212,8 +212,19 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
     """
     session = active_sessions.get(session_id)
     if not session:
-        await websocket.close(code=4004, reason="Session not found")
-        return
+        # Check Firestore if a different Cloud Run instance created it
+        doc = get_firestore_client().collection("sessions").document(session_id).get()
+        if doc.exists:
+            data = doc.to_dict()
+            session = LiveSession(
+                session_id=session_id,
+                client_id=data.get("client_id", "unknown"),
+                csm_name=data.get("csm_name", "CSM")
+            )
+            active_sessions[session_id] = session
+        else:
+            await websocket.close(code=4004, reason="Session not found")
+            return
 
     await websocket.accept()
     print(f"[WS] Client connected to session {session_id}")
@@ -351,10 +362,34 @@ async def get_graph_status(client_id: str):
 
 @app.get("/api/clients/{client_id}/graph/nodes")
 async def list_graph_nodes(client_id: str):
-    """List all nodes in a client's skill graph."""
+    """List all nodes in a client's skill graph with full metadata.
+    
+    This pre-fetches the links and layers so the UI can draw a connected graph.
+    """
     from core.storage import list_client_nodes
-    nodes = list_client_nodes(client_id)
-    return {"client_id": client_id, "nodes": nodes, "count": len(nodes)}
+    from graph.traversal import follow_link
+    
+    node_ids = list_client_nodes(client_id)
+    nodes_metadata = []
+    
+    for nid in node_ids:
+        # fetch basic metadata (links/layer) without full body content to keep payload small
+        # reuse follow_link logic for consistency
+        data = follow_link(client_id, nid)
+        if "error" not in data:
+            nodes_metadata.append({
+                "node_id": nid,
+                "title": data.get("title"),
+                "layer": data.get("layer"),
+                "links": data.get("links", []),
+                "description": data.get("description", "")
+            })
+            
+    return {
+        "client_id": client_id, 
+        "nodes": nodes_metadata, 
+        "count": len(nodes_metadata)
+    }
 
 
 @app.get("/api/clients/{client_id}/graph/nodes/{node_id}")

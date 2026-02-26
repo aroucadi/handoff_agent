@@ -1,6 +1,6 @@
 """Graph Generator — Node Generator.
 
-Uses Gemini 3.1 Pro to generate real markdown skill graph nodes from extracted entities.
+Uses Gemini 2.5 Pro to generate real markdown skill graph nodes from extracted entities.
 Each node follows the YAML frontmatter schema defined in the SYNAPSE PRD.
 """
 

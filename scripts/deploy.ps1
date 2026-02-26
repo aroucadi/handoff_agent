@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string]$ProjectId = "synapse-dev",
+    [string]$ProjectId = "synapse-488201",
     
     [Parameter(Mandatory = $false)]
     [string]$Region = "us-central1",
@@ -20,53 +20,60 @@ Write-Host '🚀 Synapse — One-Click Terraform Deployment' -ForegroundColor Cy
 Write-Host "Project: $ProjectId | Region: $Region" -ForegroundColor Cyan
 Write-Host '=============================================' -ForegroundColor Cyan
 
-# 1. Login verification
-Write-Host "`n[1/4] Checking gcloud auth..." -ForegroundColor Yellow
-gcloud config set project $ProjectId
+# 1. Login verification & Generate Tag
+Write-Host "`n[1/4] Checking gcloud auth & Generating Deploy Tag..." -ForegroundColor Yellow
+gcloud config set project $ProjectId --quiet
 
-# 2. Build and push containers to Artifact Registry
+$DeployTag = $(Get-Date -Format 'yyyyMMdd-HHmmss')
+Write-Host "Generated Deploy Tag: $DeployTag" -ForegroundColor Cyan
+
+# 2. Build and push containers to GCP (Remote Build)
 Write-Host "`n[2/4] Building and Pushing Containers to GCP..." -ForegroundColor Yellow
-gcloud auth configure-docker ${Region}-docker.pkg.dev --quiet
 
-# Build CRM Frontend first
+# Build CRM Frontend first locally (required for CRM Simulator image)
 Write-Host '--> Building SalesClaw CRM Frontend'
 Push-Location -Path crm-simulator/frontend
 npm install
 npm run build
 Pop-Location
 
-# Push API
-Write-Host '--> Building Backend API'
-docker build -f backend/Dockerfile -t ${Region}-docker.pkg.dev/${ProjectId}/synapse/api:latest .
-docker push ${Region}-docker.pkg.dev/${ProjectId}/synapse/api:latest
-
-# Push Graph Generator
-Write-Host '--> Building Graph Generator'
-docker build -f graph-generator/Dockerfile -t ${Region}-docker.pkg.dev/${ProjectId}/synapse/graph-generator:latest .
-docker push ${Region}-docker.pkg.dev/${ProjectId}/synapse/graph-generator:latest
-
-# Push CRM Simulator
-Write-Host '--> Building CRM Simulator'
-docker build -f crm-simulator/Dockerfile -t ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:latest .
-docker push ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:latest
+Write-Host "--> Submitting Remote Build to Google Cloud Build with tag $DeployTag"
+gcloud builds submit --config cloudbuild.yaml . --project $ProjectId --substitutions "_REGION=$Region,_TAG=$DeployTag"
+if ($LASTEXITCODE -ne 0) { throw "Cloud Build failed with exit code $LASTEXITCODE" }
 
 # 3. Apply Terraform
 Write-Host "`n[3/4] Applying Terraform Infrastructure..." -ForegroundColor Yellow
 Set-Location -Path ./infra
 terraform init
 terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region"
+
+Write-Host "--> Exporting Terraform Outputs to Frontend..." -ForegroundColor Yellow
+$apiUrl = terraform output -raw api_url
+$wsUrl = $apiUrl -replace "^https://", "wss://"
+
+$envContent = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl"
+Set-Content -Path ../frontend/.env.production -Value $envContent
+
 Set-Location -Path ..
+
+Write-Host "--> Forcing Cloud Run to pull latest image digests..." -ForegroundColor Yellow
+gcloud run deploy synapse-api --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/api:${DeployTag} --region $Region --project $ProjectId --quiet
+gcloud run deploy synapse-graph-generator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/graph-generator:${DeployTag} --region $Region --project $ProjectId --quiet
+gcloud run deploy synapse-crm-simulator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:${DeployTag} --region $Region --project $ProjectId --quiet
 
 # 4. Deploy Frontend
 Write-Host "`n[4/4] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow
+Set-Location -Path ./frontend
+npm install
+npm run build
+
 if (Get-Command firebase -ErrorAction SilentlyContinue) {
-    Set-Location -Path ./frontend
-    npm run build
     firebase deploy --only hosting --project $FirebaseProject --non-interactive
-    Set-Location -Path ..
 } else {
-    Write-Host "⚠️ Firebase CLI not found. Skipping frontend deployment. Please deploy manually or install the CLI." -ForegroundColor Yellow
+    Write-Host "⚠️ Global Firebase CLI not found. Trying npx..." -ForegroundColor Yellow
+    npx -y firebase-tools deploy --only hosting --project $FirebaseProject --non-interactive
 }
+Set-Location -Path ..
 
 Write-Host -Object 'Deployment Complete! The Voice Agent is now LIVE.' -ForegroundColor Green
 Write-Host -Object 'Check output variables from Terraform for URLs.' -ForegroundColor Green
