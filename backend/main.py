@@ -263,6 +263,12 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
                 elif msg_type == "text":
                     # Text message (for testing or fallback)
                     await session.send_text(data.get("text", ""))
+                    # [NATIVE AUDIO FIX] The AI model will drop this input. Force an immediate UI reset.
+                    await websocket.send_json({
+                        "type": "text",
+                        "text": "[SYSTEM] My current API model is locked strictly to Voice input. Please speak to me using your microphone."
+                    })
+                    await websocket.send_json({"type": "turn_complete"})
 
                 elif msg_type == "end":
                     # Client requested end of session
