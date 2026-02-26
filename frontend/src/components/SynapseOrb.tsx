@@ -6,7 +6,7 @@
  * without complex JS orchestration.
  */
 
-export type OrbState = 'idle' | 'listening' | 'speaking';
+export type OrbState = 'idle' | 'listening' | 'speaking' | 'thinking';
 
 interface SynapseOrbProps {
     state: OrbState;
@@ -47,7 +47,7 @@ export default function SynapseOrb({ state }: SynapseOrbProps) {
                     {state === 'idle' && (
                         <animate attributeName="r" values="28; 32; 28" dur="4s" repeatCount="indefinite" />
                     )}
-                    {state === 'listening' && (
+                    {(state === 'listening' || state === 'thinking') && (
                         <animate attributeName="r" values="29; 35; 29" dur="2s" repeatCount="indefinite" />
                     )}
                     {state === 'speaking' && (
@@ -59,6 +59,9 @@ export default function SynapseOrb({ state }: SynapseOrbProps) {
                 <circle cx="50" cy="50" r="10" fill="#fff" opacity={state === 'idle' ? 0.3 : 0.8}>
                     {state === 'speaking' && (
                         <animate attributeName="r" values="8; 14; 10; 16; 8" dur="0.75s" repeatCount="indefinite" />
+                    )}
+                    {state === 'thinking' && (
+                        <animate attributeName="opacity" values="0.8; 0.3; 0.8" dur="1s" repeatCount="indefinite" />
                     )}
                 </circle>
 

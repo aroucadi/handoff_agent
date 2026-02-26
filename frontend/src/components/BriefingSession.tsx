@@ -28,7 +28,7 @@ export default function BriefingSession() {
         isConnected,
         isMicActive,
         isScreenShared,
-        isAgentSpeaking,
+        agentStatus,
         transcript,
         toolCalls,
         currentNode,
@@ -146,12 +146,18 @@ export default function BriefingSession() {
                 </div>
             </div>
 
+            <div className="briefing__agent-status flex justify-center gap-2 m-2">
+                {agentStatus === 'listening' ? <span className="status-badge text-xs font-mono bg-cyan-900/40 text-cyan-400 px-3 py-1 rounded-full border border-cyan-500/30">⬤ Listening</span> : null}
+                {agentStatus === 'thinking' ? <span className="status-badge text-xs font-mono bg-purple-900/40 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30 animate-pulse">⬤ Thinking...</span> : null}
+                {agentStatus === 'speaking' ? <span className="status-badge text-xs font-mono bg-emerald-900/40 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30">🔊 Speaking</span> : null}
+            </div>
+
             <div className="briefing__split">
                 <ConversationPanel
                     transcript={transcript}
                     isMicActive={isMicActive}
                     isScreenShared={isScreenShared}
-                    isAgentSpeaking={isAgentSpeaking}
+                    agentStatus={agentStatus}
                     sessionId={sessionId}
                     onToggleMic={toggleMic}
                     onToggleScreenShare={toggleScreenShare}

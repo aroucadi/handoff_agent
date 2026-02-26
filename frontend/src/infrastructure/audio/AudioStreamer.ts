@@ -53,9 +53,9 @@ export class AudioStreamer {
     }
 
     /**
-     * Stop playback immediately (Barge-In)
+     * Stop playback immediately and dump queue (Barge-In)
      */
-    stop() {
+    flush() {
         if (!this.workletNode) return;
         // Tell worklet to flush
         this.workletNode.port.postMessage({ type: 'flush' });

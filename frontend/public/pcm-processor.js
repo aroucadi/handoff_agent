@@ -59,6 +59,7 @@ class PCMProcessor extends AudioWorkletProcessor {
         const newData = e.data
         if (newData.type === 'flush') {
             this.buffer = new Float32Array(0)
+            this.isBuffering = true;
             return
         }
 

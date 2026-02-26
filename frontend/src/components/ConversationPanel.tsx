@@ -6,14 +6,14 @@
  */
 
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import type { TranscriptEntry } from '../useVoiceSession';
+import type { TranscriptEntry, AgentStatus } from '../useVoiceSession';
 import SynapseOrb, { OrbState } from './SynapseOrb';
 
 interface ConversationPanelProps {
     transcript: TranscriptEntry[];
     isMicActive: boolean;
     isScreenShared: boolean;
-    isAgentSpeaking: boolean;
+    agentStatus: AgentStatus;
     sessionId: string;
     onToggleMic: () => void;
     onToggleScreenShare: () => void;
@@ -25,7 +25,7 @@ export default function ConversationPanel({
     transcript,
     isMicActive,
     isScreenShared,
-    isAgentSpeaking,
+    agentStatus,
     sessionId,
     onToggleMic,
     onToggleScreenShare,
@@ -54,10 +54,11 @@ export default function ConversationPanel({
 
     // Determine current orb state
     const orbState: OrbState = useMemo(() => {
-        if (isAgentSpeaking) return 'speaking';
+        if (agentStatus === 'speaking') return 'speaking';
+        if (agentStatus === 'thinking') return 'thinking';
         if (isMicActive) return 'listening';
         return 'idle';
-    }, [isAgentSpeaking, isMicActive]);
+    }, [agentStatus, isMicActive]);
 
     return (
         <div className="conv-panel">
@@ -67,7 +68,7 @@ export default function ConversationPanel({
                     <div>
                         <h3>Synapse Agent</h3>
                         <span className="conv-panel__session">
-                            {orbState === 'speaking' ? 'Speaking...' : orbState === 'listening' ? 'Listening...' : 'Standing by'}
+                            {agentStatus === 'speaking' ? 'Speaking...' : agentStatus === 'thinking' ? 'Thinking...' : isMicActive ? 'Listening...' : 'Standing by'}
                         </span>
                     </div>
                 </div>

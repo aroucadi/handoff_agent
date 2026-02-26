@@ -21,11 +21,13 @@ export interface ToolCallEntry {
     timestamp: string;
 }
 
+export type AgentStatus = 'listening' | 'thinking' | 'speaking';
+
 interface UseVoiceSessionReturn {
     isConnected: boolean;
     isMicActive: boolean;
     isScreenShared: boolean;
-    isAgentSpeaking: boolean;
+    agentStatus: AgentStatus;
     transcript: TranscriptEntry[];
     toolCalls: ToolCallEntry[];
     currentNode: string | null;
@@ -52,7 +54,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
     const [isConnected, setIsConnected] = useState(false);
     const [isMicActive, setIsMicActive] = useState(false);
     const [isScreenShared, setIsScreenShared] = useState(false);
-    const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+    const [agentStatus, setAgentStatus] = useState<AgentStatus>('listening');
     const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
     const [toolCalls, setToolCalls] = useState<ToolCallEntry[]>([]);
     const [currentNode, setCurrentNode] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
         audioStreamer.enqueue(bytes.buffer);
         audioStreamer.resume();
-        setIsAgentSpeaking(true);
+        setAgentStatus('speaking');
     }, []);
 
     const connect = useCallback(async (sessionId: string) => {
@@ -85,9 +87,14 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
         let wsUrl: string;
         const envWsUrl = import.meta.env.VITE_WS_URL;
+        const envApiUrl = import.meta.env.VITE_API_URL;
 
         if (envWsUrl) {
             wsUrl = `${envWsUrl}/ws/sessions/${sessionId}`;
+        } else if (envApiUrl) {
+            // Bulletproof derivation from the known-working API URL
+            const derivedWsUrl = envApiUrl.replace(/^http/, 'ws');
+            wsUrl = `${derivedWsUrl}/ws/sessions/${sessionId}`;
         } else {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             wsUrl = `${protocol}//${window.location.host}/ws/sessions/${sessionId}`;
@@ -127,6 +134,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                     if (data.name === 'follow_link' && data.args?.node_id) {
                         setCurrentNode(data.args.node_id as string);
                     }
+                    setAgentStatus('thinking'); // Agent is processing the tool call
                     break;
 
                 case 'tool_result':
@@ -141,12 +149,12 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                     break;
 
                 case 'interrupted':
-                    audioStreamer.stop();
-                    setIsAgentSpeaking(false);
+                    audioStreamer.flush(); // Instant Barge-in!
+                    setAgentStatus('listening');
                     break;
 
                 case 'turn_complete':
-                    setIsAgentSpeaking(false);
+                    setAgentStatus('listening');
                     break;
 
                 case 'error':
@@ -213,7 +221,8 @@ export function useVoiceSession(): UseVoiceSessionReturn {
             micNode.port.onmessage = (e) => {
                 if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
-                const int16 = e.data as Int16Array;
+                const { data } = e.data;
+                const int16 = data as Int16Array;
 
                 // Base64 encode and send
                 const bytes = new Uint8Array(int16.buffer);
@@ -329,6 +338,11 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
     const sendText = useCallback((text: string) => {
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+        // Text interruption instantly kills current audio
+        audioStreamer.flush();
+        setAgentStatus('thinking');
+
         wsRef.current.send(JSON.stringify({ type: 'text', text }));
         setTranscript(prev => [...prev, {
             role: 'user',
@@ -352,7 +366,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         isConnected,
         isMicActive,
         isScreenShared,
-        isAgentSpeaking,
+        agentStatus,
         transcript,
         toolCalls,
         currentNode,

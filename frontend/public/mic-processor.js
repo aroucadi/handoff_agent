@@ -23,7 +23,15 @@ class MicProcessor extends AudioWorkletProcessor {
             this.buffer[this.offset++] = val
 
             if (this.offset >= this.buffer.length) {
-                this.port.postMessage(this.buffer)
+                // Calculate RMS Volume for UI Telemetry
+                let sum = 0;
+                for (let j = 0; j < this.buffer.length; j++) {
+                    const norm = this.buffer[j] / 32768.0;
+                    sum += norm * norm;
+                }
+                const rms = Math.sqrt(sum / this.buffer.length);
+
+                this.port.postMessage({ type: 'audio', data: this.buffer, volume: rms })
                 this.buffer = new Int16Array(1024)
                 this.offset = 0
             }
