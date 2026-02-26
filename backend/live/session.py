@@ -212,9 +212,9 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        # Use send(Content) rather than send_realtime_input(text=) to force text 
+        # Use send(input=Content) rather than send_realtime_input(text=) to force text 
         # interruption against a strict AUDIO-only response modality.
-        await self._gemini_session.send(Content(parts=[Part.from_text(text=text)], role="user"))
+        await self._gemini_session.send(input=Content(parts=[Part.from_text(text=text)], role="user"))
         
         self.transcript.append({
             "role": "user",

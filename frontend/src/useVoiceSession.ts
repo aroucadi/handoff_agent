@@ -209,6 +209,11 @@ export function useVoiceSession(): UseVoiceSessionReturn {
             });
             micCtxRef.current = micCtx;
 
+            // Browser Autoplay Policy: Force resume after user gesture
+            if (micCtx.state === 'suspended') {
+                await micCtx.resume();
+            }
+
             await micCtx.audioWorklet.addModule('/mic-processor.js');
 
             // Check for race condition during async addModule
