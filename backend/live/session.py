@@ -212,9 +212,14 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        # Use send(input=Content) rather than send_realtime_input(text=) to force text 
-        # interruption against a strict AUDIO-only response modality.
-        await self._gemini_session.send(input=Content(parts=[Part.from_text(text=text)], role="user"))
+        # [NATIVE AUDIO FIX] The gemini-2.5-flash-native-audio model throws a 1007 
+        # error if we send text over the live socket. We will log the text to the 
+        # transcript but silently drop the payload until gemini-2.0-flash is available.
+        try:
+            # We attempt the send in case a future model supports it, but catch the 1007.
+            await self._gemini_session.send(input=text)
+        except Exception as e:
+            print(f"[LIVE] Text input dropped by Native Audio model bounds: {e}")
         
         self.transcript.append({
             "role": "user",
