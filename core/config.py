@@ -26,8 +26,8 @@ class CoreConfig:
     gen_model: str = "models/gemini-3.1-pro-preview"
     fallback_model: str = "models/gemini-3-flash-preview"
     summary_model: str = "models/gemini-3-flash-preview"
-    # Switch to 2.5-flash-native-audio for Hackathon True Multimodal Vision
-    live_agent_model: str = "models/gemini-2.5-flash-native-audio-latest"
+    # Switch to 2.5-flash for Hackathon True Multimodal Vision and Text natively over Vertex AI
+    live_agent_model: str = "gemini-live-2.5-flash-native-audio"
     embedding_model: str = "gemini-embedding-001"
     embedding_dims: int = 768  # Hackathon/demo standard
 

@@ -118,8 +118,9 @@ class LiveSession:
     async def connect(self):
         """Establish connection to Gemini Live API."""
         client = genai.Client(
-            api_key=config.gemini_api_key,
-            http_options={'api_version': 'v1beta'}
+            vertexai=True,
+            project=config.project_id,
+            location=config.region
         )
 
         live_config = LiveConnectConfig(
@@ -183,7 +184,7 @@ class LiveSession:
         await self._gemini_session.send_realtime_input(text=kickoff_message)
 
     async def send_audio(self, audio_data: bytes):
-        """Send audio data (PCM 16kHz 16-bit mono) to Gemini Live.
+        """Send a chunk of PCM audio to Gemini Live.
 
         Args:
             audio_data: Raw PCM audio bytes from the client microphone.
@@ -192,7 +193,7 @@ class LiveSession:
             return
 
         await self._gemini_session.send_realtime_input(
-            audio={"data": audio_data, "mime_type": "audio/pcm;rate=16000"}
+            media={"data": audio_data, "mime_type": "audio/pcm;rate=16000"}
         )
 
     async def send_image(self, image_data: bytes):
@@ -204,22 +205,19 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        # Native Audio model does not support Vision frame input. Prevent 1007 errors.
-        pass
+        await self._gemini_session.send_realtime_input(
+            media={"data": image_data, "mime_type": "image/jpeg"}
+        )
 
     async def send_text(self, text: str):
         """Send a text message to Gemini Live (for testing or text-mode fallback)."""
         if not self._connected or not self._gemini_session:
             return
 
-        # [NATIVE AUDIO FIX] The gemini-2.5-flash-native-audio model throws a 1007 
-        # error if we send text over the live socket. We will log the text to the 
-        # transcript but silently drop the payload until gemini-2.0-flash is available.
-        try:
-            # We attempt the send in case a future model supports it, but catch the 1007.
-            await self._gemini_session.send(input=text)
-        except Exception as e:
-            print(f"[LIVE] Text input dropped by Native Audio model bounds: {e}")
+        # gemini-2.0-flash natively supports text interruption via the live socket.
+        await self._gemini_session.send_client_content(
+            contents=[Content(parts=[Part.from_text(text=text)])]
+        )
         
         self.transcript.append({
             "role": "user",

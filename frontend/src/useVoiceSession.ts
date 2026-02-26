@@ -293,10 +293,10 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                 if (ctx) {
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     // Get base64 JPEG
-                    // const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                    // const b64 = dataUrl.split(',')[1];
-                    // wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
-                    // Disable image send for 2.5-flash-native-audio-latest as it throws 1007 errors
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const b64 = dataUrl.split(',')[1];
+                    wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
+                    // Image sending enabled for gemini-2.0-flash
                 }
             }, 1000);
 

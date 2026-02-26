@@ -261,14 +261,8 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
                     await session.send_image(image_bytes)
 
                 elif msg_type == "text":
-                    # Text message (for testing or fallback)
+                    # Text message natively supported by gemini-2.0-flash
                     await session.send_text(data.get("text", ""))
-                    # [NATIVE AUDIO FIX] The AI model will drop this input. Force an immediate UI reset.
-                    await websocket.send_json({
-                        "type": "text",
-                        "text": "[SYSTEM] My current API model is locked strictly to Voice input. Please speak to me using your microphone."
-                    })
-                    await websocket.send_json({"type": "turn_complete"})
 
                 elif msg_type == "end":
                     # Client requested end of session

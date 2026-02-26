@@ -36,6 +36,13 @@ resource "google_project_iam_member" "runner_secrets" {
   member  = "serviceAccount:${google_service_account.synapse_runner.email}"
 }
 
+# IAM: Cloud Run SA → Vertex AI
+resource "google_project_iam_member" "runner_vertexai" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.synapse_runner.email}"
+}
+
 # ── Cloud Run: Synapse API ──────────────────────────────────────
 
 resource "google_cloud_run_v2_service" "api" {

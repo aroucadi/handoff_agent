@@ -95,7 +95,7 @@ async def run_text_conversation(
     Returns:
         Dict with agent response, tool calls made, and nodes visited.
     """
-    client = genai.Client(api_key=config.gemini_api_key)
+    client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
     tools = _build_tools()
 
     # Build conversation history

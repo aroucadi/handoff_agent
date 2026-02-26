@@ -33,7 +33,7 @@ async def generate_content_with_fallback(
     Returns:
         The generated text string, or None if both models fail.
     """
-    client = genai.Client(api_key=config.gemini_api_key)
+    client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
 
     try:
         print(f"[LLM] Attempting generation with primary model: {primary_model}")

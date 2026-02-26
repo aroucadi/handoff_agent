@@ -57,7 +57,7 @@ async def generate_embedding(text: str) -> list[float]:
     Returns:
         List of float values (768 dimensions for hackathon config).
     """
-    client = genai.Client(api_key=config.gemini_api_key)
+    client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
 
     result = await client.aio.models.embed_content(
         model=config.embedding_model,

@@ -23,7 +23,7 @@ def _get_firestore() -> firestore.Client:
 
 def embed_query(query: str) -> list[float]:
     """Generate embedding for a search query using gemini-embedding-001."""
-    client = genai.Client(api_key=config.gemini_api_key)
+    client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
 
     result = client.models.embed_content(
         model=config.embedding_model,
