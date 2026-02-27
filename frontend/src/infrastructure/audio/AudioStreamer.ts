@@ -10,6 +10,19 @@ export class AudioStreamer {
     private isInitialized = false;
     private initPromise: Promise<void> | null = null;
 
+    /**
+     * Bypasses Chrome AudioContext Autoplay Policy 
+     * MUST be called synchronously inside an onClick DOM event handler
+     */
+    unlock() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+        }
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+    }
+
     async initialize() {
         if (this.isInitialized) return;
         if (this.initPromise) return this.initPromise;

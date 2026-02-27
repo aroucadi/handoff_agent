@@ -112,6 +112,7 @@ class LiveSession:
             f"- CSM Name: {self.csm_name}\n"
             f"- Session ID: {self.session_id}\n\n"
             f"IMPORTANT: When using tools, always pass client_id=\"{self.client_id}\".\n"
+            f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality). Do not just output text silently.\n"
             f"Start by greeting the CSM by name and reading the client index to prepare."
         )
 
@@ -124,7 +125,7 @@ class LiveSession:
         )
 
         live_config = LiveConnectConfig(
-            response_modalities=[Modality.AUDIO],  # Native audio model requires AUDIO only for bidi
+            response_modalities=[Modality.AUDIO, Modality.TEXT],  # Allow Vertex AI to construct Dual-Mode responses (Text internally, Audio physically)
             speech_config=SpeechConfig(
                 voice_config=VoiceConfig(
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name="Aoede")
@@ -214,10 +215,8 @@ class LiveSession:
         if not self._connected or not self._gemini_session:
             return
 
-        # gemini-2.0-flash natively supports text interruption via the live socket.
-        await self._gemini_session.send_client_content(
-            contents=[Content(parts=[Part.from_text(text=text)])]
-        )
+        # gemini-live-2.5-flash natively supports text interruption via the live socket.
+        await self._gemini_session.send_realtime_input(text=text)
         
         self.transcript.append({
             "role": "user",

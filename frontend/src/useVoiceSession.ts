@@ -80,6 +80,9 @@ export function useVoiceSession(): UseVoiceSessionReturn {
         // KILL the playback context so ghost voices from buffered chunks stop immediately
         await audioStreamer.close();
         await audioStreamer.initialize();
+        // Force the context to resume immediately under this explicit user click gesture
+        // to bypass the Google Chrome AudioContext Autoplay restrictions.
+        await audioStreamer.resume();
 
         setTranscript([]);
         setToolCalls([]);
@@ -122,6 +125,8 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                         text: data.text,
                         timestamp: new Date().toISOString(),
                     }]);
+                    // If the modality strictly returned text without audio, reset the UI state.
+                    setAgentStatus('listening');
                     break;
 
                 case 'tool_call':
@@ -285,20 +290,19 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                 if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
                 if (!video.videoWidth) return;
 
-                // Lock native resolution, or downscale if too large
-                const scale = Math.min(1, 1280 / video.videoWidth);
+                // Downscale aggressively to prevent 1011 WebSocket congestion crash
+                const scale = Math.min(1, 640 / video.videoWidth);
                 canvas.width = video.videoWidth * scale;
                 canvas.height = video.videoHeight * scale;
 
                 if (ctx) {
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    // Get base64 JPEG
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    // Max compress to 40% JPEG quality
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
                     const b64 = dataUrl.split(',')[1];
                     wsRef.current.send(JSON.stringify({ type: 'image', data: b64 }));
-                    // Image sending enabled for gemini-2.0-flash
                 }
-            }, 1000);
+            }, 2500); // 1 Frame every 2.5s allows audio/pings to pass unharmed
 
             setIsScreenShared(true);
         } catch (err) {

@@ -8,6 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 import { useNavigate } from 'react-router-dom';
+import { audioStreamer } from '../infrastructure/audio/AudioStreamer';
 
 interface ClientAccount {
     client_id: string;
@@ -39,6 +40,9 @@ export default function Dashboard() {
 
     const handleStartBriefing = async (clientId: string) => {
         try {
+            // Unlock Chrome WebAudio Autoplay policy instantaneously on user click
+            audioStreamer.unlock();
+
             const baseUrl = import.meta.env.VITE_API_URL || "";
             const res = await fetch(`${baseUrl}/api/sessions/start`, {
                 method: 'POST',
