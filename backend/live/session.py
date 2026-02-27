@@ -26,6 +26,7 @@ from google.genai.types import (
     SpeechConfig,
     Tool,
     VoiceConfig,
+    ActivityEnd,
 )
 
 from core.config import config
@@ -125,7 +126,7 @@ class LiveSession:
         )
 
         live_config = LiveConnectConfig(
-            response_modalities=[Modality.AUDIO, Modality.TEXT],  # Allow Vertex AI to construct Dual-Mode responses (Text internally, Audio physically)
+            response_modalities=[Modality.AUDIO],  # Native audio model strictly allows ONE response modality
             speech_config=SpeechConfig(
                 voice_config=VoiceConfig(
                     prebuilt_voice_config=PrebuiltVoiceConfig(voice_name="Aoede")
@@ -183,6 +184,7 @@ class LiveSession:
             kickoff_message = f"SYSTEM_EVENT: The user has joined. Greet them aloud by name. Do not call any tools."
                 
         await self._gemini_session.send_realtime_input(text=kickoff_message)
+        await self._gemini_session.send_realtime_input(activity_end=ActivityEnd())
 
     async def send_audio(self, audio_data: bytes):
         """Send a chunk of PCM audio to Gemini Live.
@@ -217,6 +219,7 @@ class LiveSession:
 
         # gemini-live-2.5-flash natively supports text interruption via the live socket.
         await self._gemini_session.send_realtime_input(text=text)
+        await self._gemini_session.send_realtime_input(activity_end=ActivityEnd())
         
         self.transcript.append({
             "role": "user",
@@ -243,95 +246,106 @@ class LiveSession:
             yield self._initial_events.pop(0)
 
         try:
-            async for response in self._gemini_session.receive():
-                # Handle server content (audio/text responses)
-                if response.server_content:
-                    sc = response.server_content
+            while True:
+                try:
+                    async for response in self._gemini_session.receive():
+                        # Handle server content (audio/text responses)
+                        if response.server_content:
+                            sc = response.server_content
 
-                    if sc.interrupted:
-                        yield {"type": "interrupted"}
-                        continue
+                            if sc.interrupted:
+                                yield {"type": "interrupted"}
+                                continue
 
-                    if sc.model_turn and sc.model_turn.parts:
-                        for part in sc.model_turn.parts:
-                            if part.inline_data:
-                                # Audio response
-                                audio_b64 = base64.b64encode(part.inline_data.data).decode()
-                                yield {
-                                    "type": "audio",
-                                    "data": audio_b64,
-                                    "mime_type": part.inline_data.mime_type or "audio/pcm",
-                                }
-                            elif part.text:
-                                # Text response (thinking/transcript - suppressed from UI per user request)
-                                self.transcript.append({
-                                    "role": "agent",
-                                    "text": part.text,
+                            if sc.model_turn and sc.model_turn.parts:
+                                for part in sc.model_turn.parts:
+                                    if part.inline_data:
+                                        # Audio response
+                                        audio_b64 = base64.b64encode(part.inline_data.data).decode()
+                                        yield {
+                                            "type": "audio",
+                                            "data": audio_b64,
+                                            "mime_type": part.inline_data.mime_type or "audio/pcm",
+                                        }
+                                    elif part.text:
+                                        # Text response (thinking/transcript - suppressed from UI per user request)
+                                        self.transcript.append({
+                                            "role": "agent",
+                                            "text": part.text,
+                                            "timestamp": datetime.utcnow().isoformat(),
+                                        })
+                                        # Do not yield text to UI in Voice Mode
+                                        yield {"type": "text", "text": part.text}
+
+                            if sc.turn_complete:
+                                yield {"type": "turn_complete"}
+
+                        # Handle tool calls
+                        if response.tool_call:
+                            for fc in response.tool_call.function_calls:
+                                fn_name = fc.name
+                                fn_args = dict(fc.args) if fc.args else {}
+
+                                # Inject client_id
+                                if "client_id" not in fn_args:
+                                    fn_args["client_id"] = self.client_id
+
+                                print(f"[LIVE] Tool call: {fn_name}({fn_args})")
+                                self.tool_calls.append({
+                                    "tool": fn_name,
+                                    "args": fn_args,
                                     "timestamp": datetime.utcnow().isoformat(),
                                 })
-                                # Do not yield text to UI in Voice Mode
-                                yield {"type": "text", "text": part.text}
 
-                    if sc.turn_complete:
-                        yield {"type": "turn_complete"}
+                                yield {
+                                    "type": "tool_call",
+                                    "name": fn_name,
+                                    "args": fn_args,
+                                }
 
-                # Handle tool calls
-                if response.tool_call:
-                    for fc in response.tool_call.function_calls:
-                        fn_name = fc.name
-                        fn_args = dict(fc.args) if fc.args else {}
+                                # Execute the tool
+                                tool_fn = TOOL_FUNCTIONS.get(fn_name)
+                                if tool_fn:
+                                    result = tool_fn(**fn_args)
+                                    # Track visited nodes
+                                    try:
+                                        result_data = json.loads(result)
+                                        if "node_id" in result_data:
+                                            self.nodes_visited.append(result_data["node_id"])
+                                            # Forward node_id in the fn_args so the tool_result event can capture it if needed
+                                            fn_args["_node_id"] = result_data["node_id"]
+                                    except (json.JSONDecodeError, KeyError):
+                                        pass
+                                else:
+                                    result = json.dumps({"error": f"Unknown tool: {fn_name}"})
 
-                        # Inject client_id
-                        if "client_id" not in fn_args:
-                            fn_args["client_id"] = self.client_id
-
-                        print(f"[LIVE] Tool call: {fn_name}({fn_args})")
-                        self.tool_calls.append({
-                            "tool": fn_name,
-                            "args": fn_args,
-                            "timestamp": datetime.utcnow().isoformat(),
-                        })
-
-                        yield {
-                            "type": "tool_call",
-                            "name": fn_name,
-                            "args": fn_args,
-                        }
-
-                        # Execute the tool
-                        tool_fn = TOOL_FUNCTIONS.get(fn_name)
-                        if tool_fn:
-                            result = tool_fn(**fn_args)
-                            # Track visited nodes
-                            try:
-                                result_data = json.loads(result)
-                                if "node_id" in result_data:
-                                    self.nodes_visited.append(result_data["node_id"])
-                                    # Forward node_id in the fn_args so the tool_result event can capture it if needed
-                                    fn_args["_node_id"] = result_data["node_id"]
-                            except (json.JSONDecodeError, KeyError):
-                                pass
-                        else:
-                            result = json.dumps({"error": f"Unknown tool: {fn_name}"})
-
-                        # Send tool result back to Gemini Live using dict for serialization safety
-                        # Use the specific send_tool_response method to avoid 1008 policy validation errors
-                        await self._gemini_session.send_tool_response(
-                            function_responses=[
-                                FunctionResponse(
-                                    name=fn_name,
-                                    id=fc.id,
-                                    response={"result": result}
+                                # Send tool result back to Gemini Live using dict for serialization safety
+                                # Use the specific send_tool_response method to avoid 1008 policy validation errors
+                                await self._gemini_session.send_tool_response(
+                                    function_responses=[
+                                        FunctionResponse(
+                                            name=fn_name,
+                                            id=fc.id,
+                                            response={"result": result}
+                                        )
+                                    ]
                                 )
-                            ]
-                        )
 
-                        yield {
-                            "type": "tool_result",
-                            "name": fn_name,
-                            "result": result, # Send full result to frontend so it can extract node_id 
-                        }
+                                yield {
+                                    "type": "tool_result",
+                                    "name": fn_name,
+                                    "result": result, # Send full result to frontend so it can extract node_id 
+                                }
+                except asyncio.CancelledError:
+                    raise  # Break the while loop if the task was cancelled
+                except Exception as e:
+                    print(f"[LIVE] Receive iteration yielded an inner loop break or error: {e}")
+                    # If it's a normal disconnect from turn_complete, we loop again!
+                    pass
 
+        except asyncio.CancelledError:
+            print(f"[LIVE] Session {self.session_id} receive loop cancelled cleanly.")
+            raise
         except Exception as e:
             print(f"[LIVE] Session {self.session_id} receive error: {e}")
             yield {"type": "error", "error": str(e)}
