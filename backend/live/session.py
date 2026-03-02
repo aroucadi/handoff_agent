@@ -337,12 +337,14 @@ class LiveSession:
                                     "result": result, # Send full result to frontend so it can extract node_id 
                                 }
                 except asyncio.CancelledError:
-                    raise  # Break the while loop if the task was cancelled
+                    raise
                 except Exception as e:
                     print(f"[LIVE] Receive iteration yielded an inner loop break or error: {e}")
                     # If it's a normal disconnect from turn_complete, we loop again!
-                    pass
-
+                    # BUT: prevent event loop exhaustion if we're in a tight error loop
+                    await asyncio.sleep(0.1)
+                    if not self._connected:
+                        break
         except asyncio.CancelledError:
             print(f"[LIVE] Session {self.session_id} receive loop cancelled cleanly.")
             raise

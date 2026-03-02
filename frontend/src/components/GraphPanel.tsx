@@ -6,8 +6,11 @@
  * breadcrumb navigation, and a node content card.
  */
 
-import { useMemo, useCallback, useEffect, useState } from 'react';
+import dagre from 'dagre';
+import { useCallback, useEffect, useState } from 'react';
 import {
+    ReactFlowProvider,
+    useReactFlow,
     ReactFlow,
     type Node,
     type Edge,
@@ -57,38 +60,85 @@ function SkillNode({ data }: { data: SkillNodeData }) {
 
 const nodeTypes: NodeTypes = { skillNode: SkillNode };
 
-/* ── Graph Panel ───────────────────────────────────────── */
+/* ── Auto Layout Fitter ────────────────────────────────── */
 
-interface GraphPanelProps {
-    clientId: string;
-    toolCalls: ToolCallEntry[];
-    currentNode: string | null;
+function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId: string | null }) {
+    const { fitView, setCenter } = useReactFlow();
+
+    useEffect(() => {
+        if (nodes.length === 0) return; // Nothing to fit
+
+        const timeout = setTimeout(() => {
+            if (activeNodeId) {
+                const activeNode = nodes.find(n => n.id === activeNodeId);
+                if (activeNode && activeNode.position.x !== 0 && activeNode.position.y !== 0) {
+                    // Node has been fully layouted by dagre
+                    setCenter(
+                        activeNode.position.x + 130, // nodeWidth / 2
+                        activeNode.position.y + 50,  // nodeHeight / 2
+                        { zoom: 1, duration: 800 }
+                    );
+                    return;
+                }
+            }
+
+            // Fallback or first load before traversal
+            fitView({ padding: 0.2, duration: 800 });
+        }, 50);
+
+        return () => clearTimeout(timeout);
+    }, [nodes, activeNodeId, fitView, setCenter]);
+
+    return null;
 }
 
-// Layout positions for nodes in a hierarchical tree
-function layoutNodes(nodeIds: string[], activeId: string | null, visitedIds: Set<string>): Node[] {
-    const nodes: Node[] = [];
-    const centerX = 300;
-    const startY = 40;
-    const spacingY = 100;
-    const spacingX = 180;
+/* ── Graph Layout Logic (Dagre) ─────────────────────────── */
 
-    nodeIds.forEach((id, i) => {
-        const row = Math.floor(i / 3);
-        const col = i % 3;
-        const x = centerX + (col - 1) * spacingX;
-        const y = startY + row * spacingY;
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
 
+const nodeWidth = 260;
+const nodeHeight = 100;
+
+function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
+    dagreGraph.setGraph({ rankdir: direction, nodesep: 160, ranksep: 200 });
+
+    nodes.forEach((node) => {
+        dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    });
+
+    edges.forEach((edge) => {
+        dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    return nodes.map((node) => {
+        const nodeWithPosition = dagreGraph.node(node.id);
+        return {
+            ...node,
+            position: {
+                x: nodeWithPosition.x - nodeWidth / 2,
+                y: nodeWithPosition.y - nodeHeight / 2,
+            },
+        };
+    });
+}
+
+/* ── Helper Functions ──────────────────────────────────── */
+
+function createNodes(nodeIds: string[], activeId: string | null, visitedIds: Set<string>): Node[] {
+    return nodeIds.map((id) => {
         const layer = id.includes('product') || id.includes('cpq') || id.includes('revenue')
             ? 'product'
             : id.includes('manufacturing') || id.includes('industry')
                 ? 'industry'
                 : 'client';
 
-        nodes.push({
+        return {
             id,
             type: 'skillNode',
-            position: { x, y },
+            position: { x: 0, y: 0 },
             data: {
                 label: id.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                 layer,
@@ -96,10 +146,8 @@ function layoutNodes(nodeIds: string[], activeId: string | null, visitedIds: Set
                 isVisited: visitedIds.has(id),
             },
             style: { transition: 'all 0.5s ease-in-out' }
-        });
+        } as Node;
     });
-
-    return nodes;
 }
 
 function buildEdges(
@@ -114,20 +162,19 @@ function buildEdges(
     metadata.forEach(node => {
         node.links.forEach(targetId => {
             if (nodeIds.includes(targetId)) {
-                const edgeId = `inherent-${node.node_id}-${targetId}`;
                 seenEdges.add(`${node.node_id}->${targetId}`);
                 edges.push({
-                    id: edgeId,
+                    id: `inherent-${node.node_id}-${targetId}`,
                     source: node.node_id,
                     target: targetId,
                     animated: false,
-                    style: { stroke: 'rgba(58, 64, 96, 0.4)', strokeWidth: 1 },
+                    style: { stroke: 'rgba(100, 116, 139, 0.3)', strokeWidth: 1.5 },
                 });
             }
         });
     });
 
-    // 2. Build edges from follow_link tool calls (traversal path)
+    // 2. Build edges from traversal path
     for (let i = 1; i < toolCalls.length; i++) {
         const prev = toolCalls[i - 1];
         const curr = toolCalls[i];
@@ -135,9 +182,8 @@ function buildEdges(
             const sourceId = prev.args?.node_id as string;
             const targetId = curr.args?.node_id as string;
             if (sourceId && targetId) {
-                const edgeId = `traversal-${sourceId}-${targetId}`;
                 edges.push({
-                    id: edgeId,
+                    id: `traversal-${sourceId}-${targetId}-${i}`,
                     source: sourceId,
                     target: targetId,
                     animated: true,
@@ -151,12 +197,23 @@ function buildEdges(
     return edges;
 }
 
+/* ── Main Component ────────────────────────────────────── */
+
+interface GraphPanelProps {
+    clientId: string;
+    toolCalls: ToolCallEntry[];
+    currentNode: string | null;
+}
+
 export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPanelProps) {
     const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
     const [allClientNodes, setAllClientNodes] = useState<ServerNodeMetadata[]>([]);
 
-    // Fetch all nodes for this client on mount to populate the graph
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+    // Fetch all nodes for this client on mount
     useEffect(() => {
         const fetchAllNodes = async () => {
             try {
@@ -173,44 +230,29 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         fetchAllNodes();
     }, [clientId]);
 
-    // Collect all node IDs
-    const discoveredNodes = useMemo(() => {
-        const ids = new Set<string>(allClientNodes.map(n => n.node_id));
+    // Update graph based on discovery and metadata
+    useEffect(() => {
+        const nodeIdsSet = new Set<string>(allClientNodes.map(n => n.node_id));
         toolCalls.forEach(tc => {
             if (tc.name === 'follow_link' && tc.args?.node_id) {
-                ids.add(tc.args.node_id as string);
+                nodeIdsSet.add(tc.args.node_id as string);
             }
         });
-        // Always include index
-        if (ids.size === 0) ids.add(`${clientId}-index`);
-        return Array.from(ids);
-    }, [toolCalls, clientId, allClientNodes]);
+        if (nodeIdsSet.size === 0) nodeIdsSet.add(`${clientId}-index`);
 
-    const visitedNodes = useMemo(() => {
-        return new Set(toolCalls
+        const nodeIds = Array.from(nodeIdsSet);
+        const visitedNodes = new Set(toolCalls
             .filter(tc => tc.name === 'follow_link')
             .map(tc => tc.args?.node_id as string)
             .filter(Boolean));
-    }, [toolCalls]);
 
-    const initialNodes = useMemo(
-        () => layoutNodes(discoveredNodes, currentNode, visitedNodes),
-        [discoveredNodes, currentNode, visitedNodes]
-    );
+        const rawNodes = createNodes(nodeIds, currentNode, visitedNodes);
+        const rawEdges = buildEdges(nodeIds, toolCalls, allClientNodes);
 
-    const initialEdges = useMemo(
-        () => buildEdges(discoveredNodes, toolCalls, allClientNodes),
-        [discoveredNodes, toolCalls, allClientNodes]
-    );
-
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-    // Update nodes when tool calls change
-    useEffect(() => {
-        setNodes(layoutNodes(discoveredNodes, currentNode, visitedNodes));
-        setEdges(buildEdges(discoveredNodes, toolCalls, allClientNodes));
-    }, [discoveredNodes, currentNode, visitedNodes, toolCalls, allClientNodes, setNodes, setEdges]);
+        const layouted = getLayoutedElements(rawNodes, rawEdges);
+        setNodes(layouted);
+        setEdges(rawEdges);
+    }, [allClientNodes, toolCalls, currentNode, clientId, setNodes, setEdges]);
 
     // Breadcrumb trail
     useEffect(() => {
@@ -219,7 +261,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         }
     }, [currentNode, breadcrumb]);
 
-    // Fetch node content when current node changes
+    // Fetch node content
     const fetchNodeContent = useCallback(async (nodeId: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '';
@@ -239,7 +281,6 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
 
     return (
         <div className="graph-panel">
-            {/* Breadcrumb */}
             <div className="graph-panel__breadcrumb">
                 <span className="breadcrumb__label">Path:</span>
                 {breadcrumb.map((nodeId, i) => (
@@ -257,23 +298,26 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                 )}
             </div>
 
-            {/* React Flow Graph */}
             <div className="graph-panel__flow">
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    nodeTypes={nodeTypes}
-                    fitView
-                    proOptions={{ hideAttribution: true }}
-                >
-                    <Background variant={BackgroundVariant.Dots} color="#2a2f45" gap={20} size={1} />
-                    <Controls position="bottom-right" />
-                </ReactFlow>
+                <ReactFlowProvider>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        proOptions={{ hideAttribution: true }}
+                        minZoom={0.2}
+                        maxZoom={2}
+                    >
+                        <Background variant={BackgroundVariant.Dots} color="#2a2f45" gap={24} size={1} />
+                        <Controls position="bottom-right" />
+                        <AutoGraphFitter nodes={nodes} activeNodeId={currentNode} />
+                    </ReactFlow>
+                </ReactFlowProvider>
             </div>
 
-            {/* Node Content Card */}
             {currentNode && nodeContent && (
                 <div className="graph-panel__content-card">
                     <div className="content-card__header">
