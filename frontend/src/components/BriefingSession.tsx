@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
@@ -16,6 +16,10 @@ interface ClientDetails {
 export default function BriefingSession() {
     const { clientId } = useParams<{ clientId: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Get deal context from dashboard state if available
+    const dealId = location.state?.dealId;
 
     // session_id is now managed by a local state after calling /api/sessions/start
     const [realSessionId, setRealSessionId] = useState<string | null>(null);
@@ -69,6 +73,7 @@ export default function BriefingSession() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         client_id: clientId,
+                        deal_id: dealId,
                         role: 'csm' // Default to CSM for briefing
                     })
                 });

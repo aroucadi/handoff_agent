@@ -16,7 +16,8 @@ import {
 import BackgroundVideo from './BackgroundVideo';
 
 interface Deal {
-    id: string;
+    id: string; // The deal_id (e.g. WON-2025-CS01)
+    client_id: string; // The slug for graph lookup (e.g. precisionmetal-ltd)
     account_name: string;
     stage: string;
     amount: number;
@@ -64,6 +65,7 @@ export default function Dashboard() {
 
                 const mapped = filtered.map((d: any) => ({
                     id: d.deal_id || d.id,
+                    client_id: d.client_id,
                     account_name: d.account_name || d.company_name,
                     stage: d.stage,
                     amount: d.amount || d.deal_value,
@@ -191,7 +193,12 @@ export default function Dashboard() {
 
                                 <button
                                     className="relative z-10 w-full py-4 bg-primary-purple text-white font-bold font-cabin text-sm uppercase tracking-widest rounded-xl hover:bg-primary-purple-hover shadow-lg shadow-primary-purple/20 transition-all flex items-center justify-center gap-3 group/btn hover:scale-[1.02] active:scale-95"
-                                    onClick={() => navigate(`/briefing/${deal.id}`, { state: { sessionId: deal.id } })}
+                                    onClick={() => navigate(`/briefing/${deal.client_id}`, {
+                                        state: {
+                                            dealId: deal.id,
+                                            companyName: deal.account_name
+                                        }
+                                    })}
                                 >
                                     Ground Context <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </button>
