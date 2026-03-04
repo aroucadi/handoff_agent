@@ -101,18 +101,19 @@ const nodeTypes: NodeTypes = { skillNode: SkillNode };
 
 /* ── Premium Custom Edge ───────────────────────────────────── */
 
-function SkillEdge({
-    id,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    style = {},
-    markerEnd,
-    data,
-}: EdgeProps) {
+function SkillEdge(props: EdgeProps) {
+    const {
+        sourceX,
+        sourceY,
+        targetX,
+        targetY,
+        sourcePosition,
+        targetPosition,
+        style = {},
+        markerEnd,
+        data,
+    } = props;
+
     const [edgePath] = getBezierPath({
         sourceX,
         sourceY,
