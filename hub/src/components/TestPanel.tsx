@@ -28,51 +28,80 @@ const TestPanel: React.FC<TestPanelProps> = ({ tenantId, config }) => {
 
     return (
         <div className="test-panel">
-            <h2 style={{ marginBottom: '24px' }}>Review & Launch</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gradient">System Verification</h2>
+            <p className="text-slate-400 mb-10">
+                Execute a low-latency pipeline handshake to verify end-to-end grounding integrity.
+            </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="config-summary">
-                    <h3 style={{ marginBottom: '16px' }}>Summary</h3>
-                    <div className="card" style={{ padding: '16px', fontSize: '14px' }}>
-                        <div style={{ marginBottom: '12px' }}>
-                            <strong style={{ color: 'var(--text-secondary)' }}>Tenant:</strong> {config.name}
+                    <h3 className="text-[10px] font-black uppercase tracking-widest mb-4 text-slate-500">Neural Configuration</h3>
+                    <div className="glass-card p-6 space-y-4">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                            <span className="text-xs text-slate-500 font-medium">Active Tenant</span>
+                            <span className="text-sm font-bold text-white">{config.name}</span>
                         </div>
-                        <div style={{ marginBottom: '12px' }}>
-                            <strong style={{ color: 'var(--text-secondary)' }}>Brand:</strong> {config.brand_name}
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                            <span className="text-xs text-slate-500 font-medium">Brand Entity</span>
+                            <span className="text-sm font-bold text-primary-purple">{config.brand_name}</span>
                         </div>
-                        <div style={{ marginBottom: '12px' }}>
-                            <strong style={{ color: 'var(--text-secondary)' }}>CRM:</strong> {config.crm.crm_type.toUpperCase()}
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                            <span className="text-xs text-slate-500 font-medium">Link Protocol</span>
+                            <span className="text-sm font-bold text-cyan-400 uppercase tracking-tighter">{config.crm.crm_type}</span>
                         </div>
-                        <div>
-                            <strong style={{ color: 'var(--text-secondary)' }}>Agent Roles:</strong> {config.agent.roles.join(', ')}
+                        <div className="flex flex-col gap-2">
+                            <span className="text-xs text-slate-500 font-medium">Enabled Perspectives</span>
+                            <div className="flex flex-wrap gap-2">
+                                {config.agent.roles.map((role: string) => (
+                                    <span key={role} className="bg-white/5 px-2 py-1 rounded text-[9px] uppercase font-black tracking-widest border border-white/10">
+                                        {role}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="test-runner">
-                    <h3 style={{ marginBottom: '16px' }}>Live Pipeline Test</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest mb-4 text-slate-500">Multimodal Handshake</h3>
                     <button
-                        className="btn btn-primary"
-                        style={{ width: '100%', marginBottom: '20px' }}
+                        className={`
+                            btn w-full mb-6 h-12 justify-center group relative overflow-hidden
+                            ${testing ? 'opacity-70 bg-white/5' : 'bg-white/5 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10'}
+                        `}
                         onClick={runTest}
                         disabled={testing}
                     >
-                        {testing ? 'Pipeline testing...' : '🚀 Fire Test Webhook'}
+                        {testing ? (
+                            <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Pipeline Analysis...</span>
+                            </div>
+                        ) : (
+                            <span className="text-[11px] font-black uppercase tracking-widest group-hover:scale-105 transition-transform">
+                                🚀 Trigger Neural Webhook
+                            </span>
+                        )}
                     </button>
 
-                    <div className="test-results" style={{ fontSize: '14px' }}>
+                    <div className="test-results space-y-3">
                         {status.map((s, i) => (
-                            <div key={i} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                marginBottom: '10px',
-                                color: s.status === 'failed' ? 'var(--red)' :
-                                    s.status === 'ok' ? 'var(--green)' : 'var(--text-primary)'
-                            }}>
-                                <span>{s.status === 'ok' ? '✅' : s.status === 'failed' ? '❌' : '⏳'}</span>
-                                <div>{s.step}</div>
-                                {s.timestamp && <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>{new Date(s.timestamp).toLocaleTimeString()}</span>}
+                            <div key={i} className={`
+                                glass-card p-4 flex items-center gap-4 border-l-2 text-[11px] font-medium transition-all duration-500
+                                ${s.status === 'failed' ? 'border-l-rose-500 bg-rose-500/5' :
+                                    s.status === 'ok' ? 'border-l-emerald-500 bg-emerald-500/5' :
+                                        'border-l-cyan-500 bg-white/5 animate-pulse'}
+                                stagger-${(i % 5) + 1}
+                            `}>
+                                <div className="text-lg">
+                                    {s.status === 'ok' ? '✅' : s.status === 'failed' ? '❌' : '⏳'}
+                                </div>
+                                <div className="flex-1 text-slate-200 tracking-tight">{s.step}</div>
+                                {s.timestamp && (
+                                    <div className="text-[9px] font-mono text-slate-500 bg-black/20 px-1.5 py-0.5 rounded">
+                                        {new Date(s.timestamp).toLocaleTimeString()}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

@@ -119,85 +119,89 @@ const TenantWizard: React.FC = () => {
     ];
 
     return (
-        <div className="wizard">
-            <div className="wizard-header" style={{ marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>
-                    {id ? `Edit ${config.name}` : 'New Tenant Setup'}
+        <div className="wizard max-w-5xl mx-auto">
+            <div className="wizard-header mb-12">
+                <h1 className="text-4xl font-black mb-2 text-gradient">
+                    {id ? `Reconfiguring ${config.name}` : 'Initialize Neural Tenant'}
                 </h1>
-                <p style={{ color: 'var(--text-secondary)' }}>
-                    Complete the steps below to initialize a Synapse instance for your client.
+                <p className="text-slate-400">
+                    Precision configuration for Synapse high-fidelity agent grounding.
                 </p>
             </div>
 
-            <div className="wizard-progress" style={{ display: 'flex', gap: '2px', marginBottom: '40px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '4px' }}>
+            <div className="wizard-progress flex gap-2 mb-12 bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-3xl">
                 {steps.map(s => (
                     <div
                         key={s.n}
-                        className="progress-step"
-                        style={{
-                            flex: 1,
-                            padding: '16px',
-                            textAlign: 'center',
-                            borderRadius: 'var(--radius-sm)',
-                            background: step === s.n ? 'var(--accent)' : 'transparent',
-                            color: step === s.n ? 'var(--text-primary)' : 'var(--text-muted)',
-                            fontWeight: step === s.n ? 700 : 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease'
-                        }}
+                        className={`
+                            flex-1 py-4 text-center rounded-xl cursor-pointer transition-all duration-500 flex items-center justify-center gap-2
+                            ${step === s.n
+                                ? 'bg-primary-purple text-white font-bold shadow-lg shadow-primary-purple/20 scale-[1.02]'
+                                : step > s.n
+                                    ? 'text-emerald-400/80 hover:text-emerald-400'
+                                    : 'text-slate-500 hover:text-slate-300 font-semibold'
+                            }
+                            text-[10px] uppercase tracking-widest
+                        `}
                         onClick={() => setStep(s.n)}
                     >
-                        {s.n}. {s.title}
+                        <span className="opacity-40">{s.n}</span>
+                        <span>{s.title}</span>
+                        {step > s.n && <span className="text-[10px]">✓</span>}
                     </div>
                 ))}
             </div>
 
-            <div className="wizard-container">
-                {step === 1 && (
-                    <CrmConfig
-                        crm={config.crm}
-                        onChange={(crm) => setConfig({ ...config, crm })}
-                        onTest={() => { }} // TODO: trigger test
-                    />
-                )}
+            <div className="wizard-container min-h-[500px]">
+                <div className="glass-card p-10 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-purple via-transparent to-cyan-400 opacity-30" />
 
-                {step === 2 && (
-                    <ProductCatalog
-                        products={config.products}
-                        onAdd={addProduct}
-                        onRemove={removeProduct}
-                        onGenerate={generateKnowledge}
-                    />
-                )}
+                    {step === 1 && (
+                        <CrmConfig
+                            crm={config.crm}
+                            onChange={(crm) => setConfig({ ...config, crm })}
+                            onTest={() => { }} // TODO: trigger test
+                        />
+                    )}
 
-                {step === 3 && (
-                    <AgentConfig
-                        agent={config.agent}
-                        brandName={config.brand_name}
-                        onChange={(agent) => setConfig({ ...config, agent })}
-                        onBrandChange={(brand_name) => setConfig({ ...config, brand_name, agent: { ...config.agent, brand_name } })}
-                    />
-                )}
+                    {step === 2 && (
+                        <ProductCatalog
+                            products={config.products}
+                            onAdd={addProduct}
+                            onRemove={removeProduct}
+                            onGenerate={generateKnowledge}
+                        />
+                    )}
 
-                {step === 4 && (
-                    <TestPanel tenantId={id || ''} config={config} />
-                )}
+                    {step === 3 && (
+                        <AgentConfig
+                            agent={config.agent}
+                            brandName={config.brand_name}
+                            onChange={(agent) => setConfig({ ...config, agent })}
+                            onBrandChange={(brand_name) => setConfig({ ...config, brand_name, agent: { ...config.agent, brand_name } })}
+                        />
+                    )}
 
-                <div className="wizard-actions" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '60px', paddingTop: '32px', borderTop: '1px solid var(--border)' }}>
+                    {step === 4 && (
+                        <TestPanel tenantId={id || ''} config={config} />
+                    )}
+                </div>
+
+                <div className="wizard-actions flex justify-between mt-12 pt-8 border-t border-white/5">
                     <button
                         className="btn btn-secondary"
                         onClick={() => step > 1 ? setStep(step - 1) : navigate('/')}
                     >
-                        {step === 1 ? 'Cancel Configuration' : '← Back to Step ' + (step - 1)}
+                        {step === 1 ? 'Abort Nexus' : '← Previous Protocol'}
                     </button>
 
                     {step < 4 ? (
                         <button className="btn btn-primary" onClick={() => setStep(step + 1)}>
-                            Next Step: {steps[step].title} →
+                            Progress to {steps[step].title} →
                         </button>
                     ) : (
-                        <button className="btn btn-primary" style={{ background: 'var(--green)', boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)' }} onClick={handleSave}>
-                            Complete & Launch 🚀
+                        <button className="btn btn-primary bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20" onClick={handleSave}>
+                            Finalize & Launch Session 🚀
                         </button>
                     )}
                 </div>
