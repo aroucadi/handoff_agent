@@ -114,7 +114,8 @@ async def ingest_webhook(
     # 5. Write deal summary to Firestore (for Voice UI dashboard)
     deal_id = normalized.get("deal_id", f"deal-{tenant_id[:8]}")
     company_name = normalized.get("company_name", "Unknown Company")
-    client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+    raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+    client_id = f"{tenant_id}_{raw_client_id}"
 
     deal_summary = {
         "deal_id": deal_id,

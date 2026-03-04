@@ -1,5 +1,5 @@
 import { useEffect, useState, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Handshake, TrendingUp, Headset, Target, ArrowRight } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
 
@@ -10,75 +10,109 @@ interface RoleDef {
     desc: string;
     color: string;
     stages: string[];
-    enabled: boolean;
 }
 
-const ROLES: RoleDef[] = [
-    {
+const ROLE_DEFS: Record<string, RoleDef> = {
+    csm: {
         id: 'csm',
         title: 'Customer Success',
         icon: <Handshake size={32} strokeWidth={1.5} />,
         desc: 'Ground every kickoff in the living memory of the deal journey.',
         color: '#7b39fc',
         stages: ['closed_won'],
-        enabled: true,
     },
-    {
+    sales: {
         id: 'sales',
         title: 'Sales Intelligence',
         icon: <TrendingUp size={32} strokeWidth={1.5} />,
         desc: 'Extract deep account insights from active CRM opportunities.',
         color: '#f87b52',
         stages: ['prospecting', 'qualification', 'negotiation'],
-        enabled: true,
     },
-    {
+    support: {
         id: 'support',
         title: 'Customer Support',
         icon: <Headset size={32} strokeWidth={1.5} />,
         desc: 'Understand implementation history to resolve tickets faster.',
         color: '#10b981',
         stages: ['implemented'],
-        enabled: true,
     },
-    {
+    strategy: {
         id: 'strategy',
         title: 'Win-Back Analysis',
         icon: <Target size={32} strokeWidth={1.5} />,
         desc: 'Analyze competitive losses to improve product-market fit.',
         color: '#f43f5e',
         stages: ['closed_lost'],
-        enabled: true,
     },
-];
+};
+
+interface TenantInfo {
+    tenant_id: string;
+    name: string;
+    brand_name: string;
+    roles: string[];
+}
 
 export default function RoleSelection() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const tenantId = searchParams.get('tenant_id');
+
+    const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
     const [dealCounts, setDealCounts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        (async () => {
+        const baseUrl = import.meta.env.VITE_API_URL || '';
+
+        const fetchData = async () => {
             try {
-                const baseUrl = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${baseUrl}/api/crm/deals`);
-                const data = await res.json();
+                // Fetch tenant info if tenant_id is provided
+                if (tenantId) {
+                    const tenantRes = await fetch(`${baseUrl}/api/tenants/${tenantId}`);
+                    if (tenantRes.ok) {
+                        const data = await tenantRes.json();
+                        setTenantInfo(data);
+                    }
+                }
+
+                // Fetch deal counts (tenant-scoped if available)
+                const dealsUrl = tenantId
+                    ? `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`
+                    : `${baseUrl}/api/crm/deals`;
+                const dealsRes = await fetch(dealsUrl);
+                const dealsData = await dealsRes.json();
+
                 const counts: Record<string, number> = {};
-                for (const deal of data.deals || []) {
+                for (const deal of dealsData.deals || []) {
                     const stage = deal.stage;
                     counts[stage] = (counts[stage] || 0) + 1;
                 }
                 setDealCounts(counts);
             } catch {
-                console.error('Failed to load deal counts');
+                console.error('Failed to load role data');
             } finally {
                 setLoading(false);
             }
-        })();
-    }, []);
+        };
+
+        fetchData();
+    }, [tenantId]);
+
+    // Determine which roles to show based on tenant config
+    const enabledRoleIds = tenantInfo?.roles || ['csm', 'sales', 'support', 'strategy'];
+    const rolesToShow = Object.values(ROLE_DEFS);
 
     const getCount = (stages: string[]) =>
         stages.reduce((sum, s) => sum + (dealCounts[s] || 0), 0);
+
+    const handleRoleSelect = (roleId: string) => {
+        const params = new URLSearchParams();
+        params.set('role', roleId);
+        if (tenantId) params.set('tenant_id', tenantId);
+        navigate(`/dashboard?${params.toString()}`);
+    };
 
     return (
         <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
@@ -93,7 +127,9 @@ export default function RoleSelection() {
                 <div className="text-center mb-20 animate-fade-in">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 glass-card mb-8 border-white/10">
                         <div className="w-1.5 h-1.5 bg-primary-purple rounded-full shadow-[0_0_8px_#7b39fc] animate-pulse" />
-                        <span className="text-[11px] font-bold font-cabin uppercase tracking-[0.2em] text-white/60">SYNAPSE INTELLIGENCE HUB</span>
+                        <span className="text-[11px] font-bold font-cabin uppercase tracking-[0.2em] text-white/60">
+                            {tenantInfo ? tenantInfo.brand_name || tenantInfo.name : 'SYNAPSE INTELLIGENCE HUB'}
+                        </span>
                     </div>
 
                     <h2 className="text-4xl md:text-[64px] font-medium font-inter tracking-tight leading-tight mb-6 text-gradient">
@@ -106,13 +142,14 @@ export default function RoleSelection() {
 
                 {/* Role Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-[1280px]">
-                    {ROLES.map((role) => {
+                    {rolesToShow.map((role) => {
                         const count = getCount(role.stages);
+                        const isEnabled = enabledRoleIds.includes(role.id);
                         return (
                             <div
                                 key={role.id}
-                                className={`group relative glass-card p-8 flex flex-col gap-8 transition-all duration-500 hover:-translate-y-2 hover:border-white/30 cursor-pointer ${!role.enabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
-                                onClick={() => role.enabled && navigate(`/dashboard?role=${role.id}`)}
+                                className={`group relative glass-card p-8 flex flex-col gap-8 transition-all duration-500 hover:-translate-y-2 hover:border-white/30 cursor-pointer ${!isEnabled ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                                onClick={() => isEnabled && handleRoleSelect(role.id)}
                             >
                                 {/* Accent Glow Overlay */}
                                 <div
@@ -152,9 +189,9 @@ export default function RoleSelection() {
                                     </div>
                                 </div>
 
-                                {!role.enabled && (
+                                {!isEnabled && (
                                     <div className="absolute top-4 right-4 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
-                                        <span className="text-[9px] font-bold font-cabin uppercase tracking-widest text-white/40">In Beta</span>
+                                        <span className="text-[9px] font-bold font-cabin uppercase tracking-widest text-white/40">Not Enabled</span>
                                     </div>
                                 )}
                             </div>

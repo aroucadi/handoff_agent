@@ -53,16 +53,19 @@ Set-Location -Path ./infra
 terraform init
 terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region"
 
-Write-Host "--> Exporting Terraform Outputs..." -ForegroundColor Yellow
+Write-Host "---> Exporting Terraform Outputs..." -ForegroundColor Yellow
 $apiUrl = terraform output -raw api_url
 $hubUrl = terraform output -raw hub_url
 $wsUrl = $apiUrl -replace "^https://", "wss://"
 
+# Voice UI is hosted on Firebase Hosting — resolve URL from project ID
+$voiceUiUrl = "https://${FirebaseProject}.web.app"
+
 $envContent = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl`nVITE_HUB_URL=$hubUrl"
 Set-Content -Path ../frontend/.env.production -Value $envContent
 
-# Hub also needs its production API URL
-$hubEnv = "VITE_API_URL=$hubUrl"
+# Hub needs its own API URL + the Voice UI URL for 'Launch Agent' button
+$hubEnv = "VITE_API_URL=$hubUrl`nVITE_VOICE_UI_URL=$voiceUiUrl"
 Set-Content -Path ../hub/.env.production -Value $hubEnv
 
 Set-Location -Path ..

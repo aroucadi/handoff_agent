@@ -111,7 +111,7 @@ async def webhook_deal_closed(request: Request):
         )
 
 
-# —— CRM Deal Proxy (for role-based dashboard) ————————————————————
+# —— Tenant Proxy (for Voice UI Tenant Picker + Role Selector) ——
 
 from google.cloud import firestore as _firestore
 
@@ -122,6 +122,52 @@ def get_firestore_client() -> _firestore.Client:
     if _fs_client is None:
         _fs_client = _firestore.Client(project=config.project_id)
     return _fs_client
+
+
+@app.get("/api/tenants")
+async def list_tenants_for_voice_ui():
+    """List all tenants for the Voice UI Tenant Picker.
+
+    In production this would be scoped to the authenticated user's org.
+    For demo purposes, returns all tenants from the Hub's Firestore collection.
+    """
+    db = get_firestore_client()
+    tenants = []
+    docs = db.collection("tenants").stream()
+    for doc in docs:
+        data = doc.to_dict()
+        tenants.append({
+            "tenant_id": data.get("tenant_id", doc.id),
+            "name": data.get("name", "Unnamed"),
+            "brand_name": data.get("brand_name", ""),
+            "crm_type": data.get("crm", {}).get("crm_type", "custom"),
+            "integration_status": data.get("integration_status", "not_configured"),
+            "roles": data.get("agent", {}).get("roles", ["csm", "sales", "support"]),
+            "product_count": len(data.get("products", [])),
+        })
+    return {"tenants": tenants, "count": len(tenants)}
+
+
+@app.get("/api/tenants/{tenant_id}")
+async def get_tenant_for_voice_ui(tenant_id: str):
+    """Get tenant config for Voice UI (roles, brand name, CRM type)."""
+    db = get_firestore_client()
+    doc = db.collection("tenants").document(tenant_id).get()
+    if not doc.exists:
+        return JSONResponse(status_code=404, content={"error": f"Tenant {tenant_id} not found"})
+    data = doc.to_dict()
+    return {
+        "tenant_id": data.get("tenant_id", tenant_id),
+        "name": data.get("name", "Unnamed"),
+        "brand_name": data.get("brand_name", ""),
+        "crm_type": data.get("crm", {}).get("crm_type", "custom"),
+        "integration_status": data.get("integration_status", "not_configured"),
+        "roles": data.get("agent", {}).get("roles", ["csm", "sales", "support"]),
+        "products": [{"name": p.get("name"), "id": p.get("product_id")} for p in data.get("products", [])],
+    }
+
+
+# —— CRM Deal Proxy (for role-based dashboard) ————————————————————
 
 @app.get("/api/crm/deals")
 async def proxy_crm_deals(tenant_id: str = None):

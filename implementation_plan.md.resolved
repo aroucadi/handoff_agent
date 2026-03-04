@@ -1,0 +1,128 @@
+# Full Orchestration Fix — Tenant Picker + Gap Remediation
+
+## The Real-Life Scenario
+
+```mermaid
+sequenceDiagram
+    participant Admin as Tenant Admin
+    participant Hub as Synapse Hub
+    participant CRM as Salesforce/HubSpot/etc
+    participant Ingest as /ingest/{tenant_id}
+    participant GG as Graph Generator
+    participant FS as Firestore
+    participant CSM as CSM (Voice UI)
+    participant Agent as AI Agent
+
+    Note over Admin,Hub: Phase 1: Setup (one-time)
+    Admin->>Hub: Create tenant + configure CRM
+    Hub->>FS: Store config + webhook URL + secret
+    Admin->>CRM: Paste webhook URL into CRM settings
+
+    Note over CRM,FS: Phase 2: Webhook triggers (automatic)
+    CRM->>Ingest: POST /ingest/{tenant_id} (deal closed)
+    Ingest->>Ingest: HMAC verify + field mapping
+    Ingest->>FS: Write deal summary (deals/{tid}/items/*)
+    Ingest->>GG: Generate knowledge graph
+    GG->>FS: Write skill_graphs/{tid}_{client}
+
+    Note over CSM,Agent: Phase 3: Voice Briefing
+    CSM->>Hub: Click "Launch Voice UI"
+    Hub-->>CSM: Redirect to Voice UI ?tenant_id=X
+    CSM->>CSM: Tenant Picker → Role Select → Dashboard
+    CSM->>FS: GET deals (Firestore, tenant-scoped)
+    CSM->>Agent: Start briefing session
+    Agent->>FS: Read skill graph (tenant-scoped)
+```
+
+## Gaps Found
+
+| # | Severity | Gap | Root Cause |
+|---|----------|-----|-----------|
+| 1 | 🔴 Critical | `client_id` mismatch | [ingest.py](file:///d:/rouca/DVM/workPlace/handoff/graph-generator/ingest.py) uses `"google"`, graph generator uses `"tid_google"` |
+| 2 | 🔴 Critical | No tenant context in Voice UI | Landing → Roles → Dashboard drops `tenant_id` |
+| 3 | 🟡 Major | RoleSelection CRM-coupled | Fetches `/api/crm/deals` without `tenant_id` |
+| 4 | 🟡 Major | No Voice UI launch from Hub | Hub has no link to open Voice UI for a tenant |
+
+## Proposed Changes
+
+### Component 1: Voice UI — New Tenant Picker Page
+
+#### [NEW] [TenantPicker.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/components/TenantPicker.tsx)
+
+A new page at `/tenants` that replaces the login screen for demo purposes.
+
+- Fetches tenant list from the **Backend API** (new endpoint proxying Hub)
+- Shows each tenant as a card with: name, brand, CRM type, integration status
+- On click → navigates to `/roles?tenant_id={id}`
+- In production this would be replaced by SSO/login
+
+#### [MODIFY] [LandingPage.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/components/LandingPage.tsx)
+- CTA ("Get Started Free") → navigates to `/tenants` instead of `/roles`
+
+#### [MODIFY] [App.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/App.tsx)
+- Add route: `/tenants` → `<TenantPicker />`
+
+---
+
+### Component 2: Tenant Context Propagation
+
+#### [MODIFY] [RoleSelection.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/components/RoleSelection.tsx)
+- Read `tenant_id` from URL search params
+- Fetch deals with `?tenant_id=X` for accurate deal counts
+- Fetch tenant config from backend to get **enabled roles** for this tenant
+- Navigate to `/dashboard?role=X&tenant_id=X` (preserving tenant context)
+
+#### [MODIFY] [Dashboard.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/components/Dashboard.tsx)
+- Already reads `tenant_id` ✅ — no change needed
+
+#### [MODIFY] [BriefingSession.tsx](file:///d:/rouca/DVM/workPlace/handoff/frontend/src/components/BriefingSession.tsx)
+- Already reads `tenant_id` ✅ — no change needed
+
+---
+
+### Component 3: Backend — Tenant Proxy for Voice UI
+
+#### [MODIFY] [backend/main.py](file:///d:/rouca/DVM/workPlace/handoff/backend/main.py)
+
+Add a new endpoint for the Voice UI to list tenants:
+```python
+@app.get("/api/tenants")
+async def list_tenants_for_voice_ui():
+    # Proxy to Hub API or read directly from Firestore
+```
+
+Add endpoint to get tenant config (roles, brand name):
+```python
+@app.get("/api/tenants/{tenant_id}")
+async def get_tenant_config(tenant_id: str):
+    # Returns: name, brand_name, roles, crm_type, integration_status
+```
+
+---
+
+### Component 4: Fix `client_id` Consistency
+
+#### [MODIFY] [ingest.py](file:///d:/rouca/DVM/workPlace/handoff/graph-generator/ingest.py)
+- Line 117: Change `client_id = company_name.lower()...` to `client_id = f"{tenant_id}_{raw_id}"`
+- This makes the deal summary's `client_id` match the graph generator's `client_id`
+
+#### [MODIFY] [backend/main.py](file:///d:/rouca/DVM/workPlace/handoff/backend/main.py)
+- In [proxy_crm_deals](file:///d:/rouca/DVM/workPlace/handoff/backend/main.py#126-155) simulator fallback: prefix `client_id` with `"default_"` for consistency
+
+---
+
+### Component 5: Hub — Launch Voice UI Button
+
+#### [MODIFY] [TenantList.tsx](file:///d:/rouca/DVM/workPlace/handoff/hub/src/components/TenantList.tsx)
+- Add "Launch Voice UI" button per tenant → opens `{VOICE_UI_URL}/?tenant_id={id}`
+
+---
+
+## Verification Plan
+
+1. Create tenant "AcmeCorp" (salesforce) via Hub
+2. Fire a Salesforce webhook → ingest endpoint maps, stores deal + generates graph
+3. Open Voice UI → Tenant Picker shows "AcmeCorp"
+4. Select AcmeCorp → Role Selector shows correct roles + deal counts from Firestore
+5. Select CSM → Dashboard shows deals from Firestore (not simulator)
+6. Click deal → Briefing Session → agent reads graph with correct `client_id`

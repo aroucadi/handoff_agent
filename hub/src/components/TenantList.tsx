@@ -89,9 +89,20 @@ const TenantList: React.FC = () => {
                                 <span className="text-[11px] text-slate-500 font-medium uppercase tracking-widest">
                                     REF_{tenant.tenant_id.slice(-6).toUpperCase()}
                                 </span>
-                                <span className="text-primary-purple font-bold text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-                                    Configure Nexus →
-                                </span>
+                                <div className="flex items-center gap-4">
+                                    <a
+                                        href={`${(import.meta as any).env?.VITE_VOICE_UI_URL || 'http://localhost:5173'}/tenants?auto=${tenant.tenant_id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-emerald-400 font-bold text-xs uppercase tracking-widest hover:text-emerald-300 transition-colors"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Launch Agent ↗
+                                    </a>
+                                    <span className="text-primary-purple font-bold text-xs uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+                                        Configure →
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </Link>

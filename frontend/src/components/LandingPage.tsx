@@ -50,13 +50,13 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row items-center gap-[22px] mb-20 animate-fade-in-up">
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-primary-purple text-white rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-primary-purple-hover transition-all hover:scale-105 shadow-xl shadow-primary-purple/20 flex items-center justify-center gap-2"
-                        onClick={() => navigate('/roles')}
+                        onClick={() => navigate('/tenants')}
                     >
                         Get Started Free
                     </button>
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-[#2b2344] text-[#f6f7f9] rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-[#352b54] transition-all hover:scale-105 border border-white/5 flex items-center justify-center gap-2 group"
-                        onClick={() => navigate('/roles')}
+                        onClick={() => navigate('/tenants')}
                     >
                         <Play size={16} className="fill-current group-hover:scale-110 transition-transform" />
                         Watch 2min Demo
