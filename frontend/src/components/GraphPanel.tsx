@@ -1,11 +1,3 @@
-/**
- * Synapse — Graph Panel Component
- *
- * Right side of the split-screen briefing view.
- * Shows a React Flow graph topology with animated node traversal,
- * breadcrumb navigation, and a node content card.
- */
-
 import dagre from 'dagre';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -24,7 +16,7 @@ import {
     Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { User, Package, Factory, Share2, FileText, ChevronRight } from 'lucide-react';
+import { User, Package, Factory, ChevronRight, Activity, Zap, FileText } from 'lucide-react';
 import type { ToolCallEntry } from '../useVoiceSession';
 
 interface ServerNodeMetadata {
@@ -35,7 +27,7 @@ interface ServerNodeMetadata {
     description: string;
 }
 
-/* ── Custom Node Component ─────────────────────────────── */
+/* ── High-Fidelity Custom Node ─────────────────────────────── */
 
 interface SkillNodeData {
     label: string;
@@ -49,21 +41,62 @@ function SkillNode({ data }: { data: SkillNodeData }) {
     const Icon = data.layer === 'client' ? User : data.layer === 'product' ? Package : Factory;
 
     return (
-        <div className={`graph-node graph-node--${data.layer} ${data.isActive ? 'graph-node--active' : ''} ${data.isVisited ? 'graph-node--visited' : ''}`}>
-            <Handle type="target" position={Position.Top} className="graph-node__handle" />
-            <div className="graph-node__icon-wrapper">
-                <Icon size={18} strokeWidth={2.5} />
+        <div className={`
+            relative px-8 py-5 rounded-[20px] border transition-all duration-700 overflow-hidden min-w-[260px]
+            ${data.isActive
+                ? 'bg-primary-purple/20 border-primary-purple/60 scale-105 z-50 shadow-[0_0_40px_rgba(123,57,252,0.25)] ring-1 ring-primary-purple/30'
+                : data.isVisited
+                    ? 'bg-white/[0.03] border-white/20 hover:border-white/40'
+                    : 'bg-white/[0.01] border-white/5 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 hover:border-white/10'
+            }
+        `}>
+            {/* Connection Handles - Hidden but required for XYFlow logic */}
+            <Handle type="target" position={Position.Top} className="opacity-0" />
+
+            {/* Pulsing Active State Layer */}
+            {data.isActive && (
+                <div className="absolute inset-0 bg-primary-purple/5 animate-pulse pointer-events-none" />
+            )}
+
+            <div className="flex items-center gap-5 relative z-10 font-manrope">
+                <div className={`
+                    w-12 h-12 rounded-[14px] flex items-center justify-center transition-all duration-500
+                    ${data.isActive
+                        ? 'bg-primary-purple text-white shadow-[0_8px_20px_rgba(123,57,252,0.5)]'
+                        : 'bg-white/5 text-white/30 group-hover:bg-white/10'
+                    }
+                `}>
+                    <Icon size={22} strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                    <span className={`
+                        text-[9px] font-black uppercase tracking-[0.2em] transition-colors
+                        ${data.isActive ? 'text-primary-purple' : 'text-white/20'}
+                    `}>
+                        {data.layer} Nexus
+                    </span>
+                    <span className={`
+                        text-md font-bold font-inter tracking-tight whitespace-nowrap
+                        ${data.isActive ? 'text-white' : 'text-white/60'}
+                    `}>
+                        {data.label}
+                    </span>
+                </div>
             </div>
-            <div className="graph-node__label">{data.label}</div>
-            {data.isActive && <div className="graph-node__pulse" />}
-            <Handle type="source" position={Position.Bottom} className="graph-node__handle" />
+
+            {/* Glowing Active Indicator Strip */}
+            {data.isActive && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[2px] bg-gradient-to-r from-transparent via-primary-purple to-transparent shadow-[0_0_15px_#7b39fc]" />
+            )}
+
+            <Handle type="source" position={Position.Bottom} className="opacity-0" />
         </div>
     );
 }
 
 const nodeTypes: NodeTypes = { skillNode: SkillNode };
 
-/* ── Auto Layout Fitter ────────────────────────────────── */
+/* ── Safe Layout Logic (Internal Logic UNCHANGED) ───────────────── */
 
 function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId: string | null }) {
     const { fitView, setCenter } = useReactFlow();
@@ -92,13 +125,11 @@ function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId:
     return null;
 }
 
-/* ── Graph Layout Logic (Dagre) ─────────────────────────── */
-
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 260;
-const nodeHeight = 100;
+const nodeWidth = 320; // Slightly wider for premium padding
+const nodeHeight = 140;
 
 function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
     dagreGraph.setGraph({ rankdir: direction, nodesep: 160, ranksep: 200 });
@@ -125,8 +156,6 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = 'TB') {
     });
 }
 
-/* ── Helper Functions ──────────────────────────────────── */
-
 function createNodes(nodeIds: string[], activeId: string | null, visitedIds: Set<string>): Node[] {
     return nodeIds.map((id) => {
         const layer = id.includes('product') || id.includes('cpq') || id.includes('revenue')
@@ -145,7 +174,7 @@ function createNodes(nodeIds: string[], activeId: string | null, visitedIds: Set
                 isActive: id === activeId,
                 isVisited: visitedIds.has(id),
             },
-            style: { transition: 'all 0.5s ease-in-out' }
+            style: { transition: 'all 0.7s cubic-bezier(0.16, 1, 0.3, 1)' }
         } as Node;
     });
 }
@@ -167,7 +196,7 @@ function buildEdges(
                     source: node.node_id,
                     target: targetId,
                     animated: false,
-                    style: { stroke: 'rgba(100, 116, 139, 0.3)', strokeWidth: 1.5 },
+                    style: { stroke: 'rgba(255, 255, 255, 0.05)', strokeWidth: 1.5 },
                 });
             }
         });
@@ -185,7 +214,7 @@ function buildEdges(
                     source: sourceId,
                     target: targetId,
                     animated: true,
-                    style: { stroke: '#38bdf8', strokeWidth: 3 },
+                    style: { stroke: '#7b39fc', strokeWidth: 2.5, opacity: 0.8 },
                     zIndex: 10,
                 });
             }
@@ -195,7 +224,7 @@ function buildEdges(
     return edges;
 }
 
-/* ── Main Component ────────────────────────────────────── */
+/* ── Main Panel ─────────────────────────────────────────── */
 
 interface GraphPanelProps {
     clientId: string;
@@ -274,29 +303,31 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     }, [currentNode, fetchNodeContent]);
 
     return (
-        <div className="graph-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#090a0f', borderRadius: '16px', overflow: 'hidden' }}>
-            <div className="graph-panel__breadcrumb" style={{ height: '3.5rem', display: 'flex', alignItems: 'center', paddingLeft: '1.5rem', paddingRight: '1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="flex items-center gap-3">
-                    <Share2 size={14} className="text-slate-500" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">Path</span>
+        <div className="flex flex-col relative bg-black/40 rounded-[32px] overflow-hidden border border-white/10 ring-1 ring-white/5 h-full backdrop-blur-3xl animate-fade-in shadow-2xl">
+            {/* Nav Header */}
+            <div className="h-20 flex items-center px-10 bg-white/[0.03] border-b border-white/5 shrink-0">
+                <div className="flex items-center gap-5 shrink-0">
+                    <Zap size={20} className="text-primary-purple" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">KNOWLEDGE NEXUS</span>
                 </div>
-                <div className="mx-4 h-4 w-[1px] background-white/10" />
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <div className="mx-10 h-6 w-[1px] bg-white/10 shrink-0" />
+                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar scroll-smooth flex-1 py-4">
                     {breadcrumb.map((nodeId, i) => (
-                        <div key={nodeId} className="flex items-center gap-2">
-                            {i > 0 && <ChevronRight size={10} className="text-slate-700" />}
-                            <span className={`font-mono text-xs ${nodeId === currentNode ? 'text-white font-bold' : 'text-slate-500'}`}>
-                                {nodeId}
+                        <div key={nodeId} className="flex items-center gap-4 shrink-0 transition-opacity duration-300">
+                            {i > 0 && <ChevronRight size={14} className="text-white/10" />}
+                            <span className={`text-sm font-bold font-inter tracking-tight transition-all ${nodeId === currentNode ? 'text-primary-purple scale-110' : 'text-white/30 hover:text-white/50'}`}>
+                                {nodeId.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
                             </span>
                         </div>
                     ))}
                     {breadcrumb.length === 0 && (
-                        <span className="font-mono text-xs text-slate-600 italic">Awaiting traversal...</span>
+                        <span className="text-sm text-white/10 font-medium italic tracking-widest">Listening for grounding events...</span>
                     )}
                 </div>
             </div>
 
-            <div className="graph-panel__flow">
+            {/* React Flow Area */}
+            <div className="flex-1 relative">
                 <ReactFlowProvider>
                     <ReactFlow
                         nodes={nodes}
@@ -306,30 +337,46 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                         nodeTypes={nodeTypes}
                         fitView
                         proOptions={{ hideAttribution: true }}
-                        minZoom={0.2}
+                        minZoom={0.1}
                         maxZoom={2}
+                        className="font-inter"
                     >
-                        <Background variant={BackgroundVariant.Dots} color="#2a2f45" gap={24} size={1} />
-                        <Controls position="bottom-right" />
+                        <Background variant={BackgroundVariant.Dots} color="rgba(123,57,252,0.1)" gap={40} size={1} />
+                        <Controls className="!bg-[#0f1016]/90 !border-white/10 !fill-white/60 hover:!fill-white !rounded-xl !overflow-hidden !m-8 !shadow-2xl" showInteractive={false} />
                         <AutoGraphFitter nodes={nodes} activeNodeId={currentNode} />
                     </ReactFlow>
                 </ReactFlowProvider>
+
+                {/* Traversal Badge */}
+                <div className="absolute top-8 right-8 flex flex-col gap-2 p-4 bg-black/60 rounded-2xl border border-white/10 backdrop-blur-xl z-20 shadow-2xl">
+                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] font-black text-white/40">
+                        <Activity size={12} className="text-emerald-400 animate-pulse" /> Live Grounding
+                    </div>
+                </div>
             </div>
 
+            {/* Knowledge Reveal Overlay */}
             {currentNode && nodeContent && (
-                <div className="graph-panel__content-card glass-card-premium" style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem', right: '1.5rem', maxHeight: '200px', display: 'flex', flexDirection: 'column', background: 'rgba(15, 16, 22, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.25rem', zIndex: 10 }}>
-                    <div className="content-card__header flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-sky-500/10 p-1.5 rounded-lg text-sky-400">
-                                <FileText size={16} />
+                <div className="absolute bottom-10 left-10 right-10 max-h-[35%] flex flex-col glass-card bg-[#0f1016]/95 border-white/30 p-8 z-30 animate-fade-in shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[24px]">
+                    <div className="flex items-center justify-between mb-6 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 flex items-center justify-center bg-primary-purple/10 rounded-xl text-primary-purple border border-primary-purple/20">
+                                <FileText size={20} strokeWidth={1.5} />
                             </div>
-                            <span className="font-mono text-xs text-white/90 font-bold">{currentNode}</span>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-black">Node Context Resolved</span>
+                                <h4 className="text-lg font-bold text-white tracking-tight leading-none capitalize">{currentNode.replace(/-/g, ' ')}</h4>
+                            </div>
+                        </div>
+                        <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Grounded</span>
                         </div>
                     </div>
-                    <div className="content-card__body overflow-y-auto">
-                        <pre className="font-mono text-[11px] leading-relaxed text-slate-400 whitespace-pre-wrap">
-                            {nodeContent.slice(0, 1000)}
-                        </pre>
+                    <div className="overflow-y-auto pr-4 custom-scrollbar">
+                        <p className="text-md leading-relaxed text-white/70 font-medium">
+                            {nodeContent}
+                        </p>
                     </div>
                 </div>
             )}

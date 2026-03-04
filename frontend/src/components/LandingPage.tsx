@@ -1,232 +1,83 @@
 import { useNavigate } from 'react-router-dom';
-import { Github, Zap, Shield, Cpu, Layout, ArrowRight, ExternalLink } from 'lucide-react';
+import { Play, Star } from 'lucide-react';
+import BackgroundVideo from './BackgroundVideo';
+import Navbar from './Navbar';
 
 export default function LandingPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="web3-landing">
-            {/* Background Video */}
-            <video
-                className="web3-bg-video"
-                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260217_030345_246c0224-10a4-422c-b324-070b7c0eceda.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
+        <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
+            {/* Background Video Spec: 120% scale handled in component */}
+            <BackgroundVideo
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
             />
 
-            {/* 50% Black Overlay */}
-            <div className="web3-overlay" />
+            {/* Navbar Spec: 102px height, 1440px max-width */}
+            <Navbar />
 
-            <div className="web3-content">
-                {/* Navbar */}
-                <nav className="web3-nav">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.03em', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                            Synapse
-                        </div>
-                        <div className="web3-nav-links">
-                            <a href="#features" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
-                                Features
-                            </a>
-                            <a href="#hub" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
-                                The Hub
-                            </a>
-                            <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
-                                How it Works
-                            </a>
-                        </div>
+            {/* Hero Section Spec: max-width 871px, top-margin 162px */}
+            <main className="relative pt-[162px] pb-20 px-6 max-w-[871px] mx-auto flex flex-col items-center text-center z-[2]">
+
+                {/* Trusted Badge Spec: Similar to image reference */}
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-sm animate-fade-in">
+                    <div className="flex -space-x-2">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-6 h-6 rounded-full border-2 border-black bg-white/10 flex items-center justify-center overflow-hidden">
+                                <span className="text-[10px]"><Star size={10} className="fill-white" /></span>
+                            </div>
+                        ))}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        {import.meta.env.VITE_HUB_URL && (
-                            <a
-                                href={import.meta.env.VITE_HUB_URL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="web3-nav-link-secondary"
-                                style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}
-                            >
-                                Tenant Hub
-                            </a>
-                        )}
-                        <button className="web3-pill-btn" onClick={() => navigate('/roles')}>
-                            Launch App
-                        </button>
-                    </div>
-                </nav>
+                    <span className="text-sm font-medium text-white/80">Trusted by over <span className="text-white font-bold">12,000+</span> CS teams globally</span>
+                </div>
 
-                {/* Hero Content */}
-                <main style={{
-                    paddingTop: 'clamp(100px, 20vh, 280px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '40px',
-                    textAlign: 'center',
-                    paddingLeft: '24px',
-                    paddingRight: '24px'
-                }}>
-
-                    {/* Badge */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px 14px',
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '20px',
-                        fontSize: '13px',
-                        fontWeight: 500
-                    }}>
-                        <div style={{ width: '4px', height: '4px', background: '#fff', borderRadius: '50%' }} />
-                        <span style={{ opacity: 0.6 }}>Early access available from</span>
-                        <span>May 1, 2026</span>
-                    </div>
-
-                    {/* Heading */}
-                    <h1 className="web3-hero-heading" style={{
-                        margin: 0,
-                        maxWidth: '800px',
-                        fontSize: 'clamp(36px, 5vw, 64px)',
-                        fontWeight: 700,
-                        lineHeight: 1.1,
-                        letterSpacing: '-0.02em',
-                        paddingBottom: '8px'
-                    }}>
-                        AI Intelligence at the Speed of Experience
+                {/* Heading Block Spec: 10px gap, 76px size, 1.15 line-height */}
+                <div className="flex flex-col gap-2.5 mb-10 transition-all duration-700">
+                    <h1 className="text-5xl md:text-[76px] font-medium font-inter leading-[1.15] tracking-[-2px] text-white">
+                        Restore memory.
                     </h1>
+                    <h1 className="text-5xl md:text-[76px] font-normal font-serif italic leading-[1.15] tracking-[-2px] text-white opacity-90">
+                        Focus on the briefing.
+                    </h1>
+                </div>
 
-                    {/* Subtitle */}
-                    <p style={{
-                        margin: 0,
-                        maxWidth: '680px',
-                        fontSize: '16px',
-                        fontWeight: 400,
-                        color: 'rgba(255,255,255,0.7)',
-                        lineHeight: 1.6,
-                        marginTop: '-16px'
-                    }}>
-                        Powering seamless experiences and real-time connections, Synapse is the multimodal voice agent for teams who move with purpose, leveraging sub-second latency and dynamic skill graphs to shape the future of CRM.
-                    </p>
+                {/* Subtitle Spec: Manrope max-width 613px, 18px size, 26px line-height */}
+                <p className="text-[18px] leading-[26px] text-[#f6f7f9] opacity-90 max-w-[613px] mb-12 font-regular">
+                    Synapse handles deal context extraction and knowledge grounding, so your CSMs can walk into every kickoff fully informed.
+                </p>
 
-                    {/* CTA Row */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '16px',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        justifyContent: 'center'
-                    }}>
-                        <button className="web3-pill-btn web3-pill-btn--light" onClick={() => navigate('/roles')}>
-                            Start Briefing <ArrowRight size={16} />
-                        </button>
-                        {import.meta.env.VITE_HUB_URL && (
-                            <a href={import.meta.env.VITE_HUB_URL} target="_blank" rel="noopener noreferrer" className="web3-pill-btn web3-pill-btn--outline">
-                                <Layout size={16} /> Open Hub
-                            </a>
-                        )}
-                        <a href="https://github.com/aroucadi/synapse_agent" target="_blank" rel="noopener noreferrer" className="web3-pill-btn web3-pill-btn--outline">
-                            <Github size={16} /> View on GitHub
-                        </a>
-                    </div>
+                {/* CTA Buttons Spec: 22px gap, vertically centered */}
+                <div className="flex flex-col sm:flex-row items-center gap-[22px] mb-20 animate-fade-in-up">
+                    <button
+                        className="w-full sm:w-auto px-[24px] py-[14px] bg-primary-purple text-white rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-primary-purple-hover transition-all hover:scale-105 shadow-xl shadow-primary-purple/20 flex items-center justify-center gap-2"
+                        onClick={() => navigate('/roles')}
+                    >
+                        Get Started Free
+                    </button>
+                    <button
+                        className="w-full sm:w-auto px-[24px] py-[14px] bg-[#2b2344] text-[#f6f7f9] rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-[#352b54] transition-all hover:scale-105 border border-white/5 flex items-center justify-center gap-2 group"
+                        onClick={() => navigate('/roles')}
+                    >
+                        <Play size={16} className="fill-current group-hover:scale-110 transition-transform" />
+                        Watch 2min Demo
+                    </button>
+                </div>
 
-                    <div style={{ height: '20vh' }} />
+                {/* Dashboard Showcase Spec: 1163px wide, 24px radius, glassmorphic */}
+                <div className="w-full max-w-[1163px] md:w-[1163px] md:max-w-[90vw] mt-20 relative p-[22.5px] rounded-[24px] border-[1.5px] border-white/10 bg-white/5 backdrop-blur-[10px] animate-fade-in">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary-purple/10 to-transparent rounded-[24px] pointer-events-none" />
+                    <img
+                        src="/C:/Users/rouca/.gemini/antigravity/brain/7b55f7a3-cf9f-45d2-b752-c16339312e06/synapse_dashboard_mockup_1772586504310.png"
+                        alt="Synapse Dashbpard"
+                        className="w-full h-auto rounded-[8px] object-cover shadow-2xl relative z-10"
+                    />
+                </div>
 
-                    {/* Features Section */}
-                    <section id="features" className="landing-section">
-                        <div className="section-header">
-                            <span className="section-badge">Capabilities</span>
-                            <h2 className="section-title">Beyond the Text Box</h2>
-                        </div>
-                        <div className="features-grid">
-                            <div className="feature-card glass-card">
-                                <Zap className="feature-icon" color="#22d3ee" />
-                                <h3>Living Memory</h3>
-                                <p>Synapse replaces disjointed text-chat with real-time, grounded voice and vision collaboration that understands your topology.</p>
-                            </div>
-                            <div className="feature-card glass-card">
-                                <Shield className="feature-icon" color="#a855f7" />
-                                <h3>Zero Hallucination</h3>
-                                <p>Grounded graph traversal ensures the agent never guesses—it literally moves through historical and product data topography.</p>
-                            </div>
-                            <div className="feature-card glass-card">
-                                <Layout className="feature-icon" color="#fb7185" />
-                                <h3>Multi-tenant Hub</h3>
-                                <p>A central management layer where different companies configure branding, personas, and account data seamlessly.</p>
-                            </div>
-                            <div className="feature-card glass-card">
-                                <Cpu className="feature-icon" color="#34d399" />
-                                <h3>Delta Knowledge</h3>
-                                <p>Automatic deal-oriented extraction weaves new information into existing Account Knowledge Graphs with Gemini 3.1 Pro.</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* The Hub Section */}
-                    <section id="hub" className="landing-section hub-showcase">
-                        <div className="showcase-content">
-                            <span className="section-badge">The Hub</span>
-                            <h2 className="section-title">Command Central for Tenants</h2>
-                            <p>Configure personas (CSM, Sales, Support), manage multi-tenant metadata, and track deal life-cycle transitions through the Synapse Hub interface.</p>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                                <button className="web3-pill-btn web3-pill-btn--light" onClick={() => window.open(import.meta.env.VITE_HUB_URL || '#', '_blank')}>
-                                    Go to Hub <ExternalLink size={16} />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="showcase-visual glass-card">
-                            {/* Placeholder for Hub UI preview */}
-                            <div className="visual-mockup">
-                                <div className="mock-header" />
-                                <div className="mock-body">
-                                    <div className="mock-sidebar" />
-                                    <div className="mock-main">
-                                        <div className="mock-stat" />
-                                        <div className="mock-list" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* How it Works */}
-                    <section id="how-it-works" className="landing-section">
-                        <div className="section-header">
-                            <span className="section-badge">Pipeline</span>
-                            <h2 className="section-title">The Synapse Loop</h2>
-                        </div>
-                        <div className="pipeline-steps">
-                            {[
-                                { title: 'CRM Trigger', desc: 'Deal moves to "Closed Won" in Salesforce or our mock CRM.' },
-                                { title: 'Graph Gen', desc: 'Cloud Run Job reads transcripts and contracts to build a 20-node graph.' },
-                                { title: 'Live Briefing', desc: 'CSM talks to Gemini Live, which traverses the graph in real-time.' }
-                            ].map((step, i) => (
-                                <div key={i} className="pipeline-step">
-                                    <div className="step-num">{i + 1}</div>
-                                    <div className="step-content">
-                                        <h4>{step.title}</h4>
-                                        <p>{step.desc}</p>
-                                    </div>
-                                    {i < 2 && <div className="step-line" />}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-
-                    <footer style={{ padding: '80px 0 40px', opacity: 0.5, fontSize: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: '1200px', alignSelf: 'center' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>© 2026 Synapse Multimodal. Built for the Gemini Live Challenge.</span>
-                            <div style={{ display: 'flex', gap: '24px' }}>
-                                <span>Privacy</span>
-                                <span>Terms</span>
-                                <span>Security</span>
-                            </div>
-                        </div>
-                    </footer>
-                </main>
-            </div>
+                {/* Simple Footer */}
+                <footer className="w-full mt-32 py-12 border-t border-white/5 text-sm text-white/30">
+                    <p>© 2026 Synapse. Real-time Customer Intelligence grounded in your data.</p>
+                </footer>
+            </main>
         </div>
     );
 }

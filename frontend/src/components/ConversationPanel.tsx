@@ -8,7 +8,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { TranscriptEntry, AgentStatus } from '../useVoiceSession';
 import SynapseOrb, { OrbState } from './SynapseOrb';
-import { Bot, User, Mic, MicOff, MonitorSmartphone, MonitorOff, Send, XCircle } from 'lucide-react';
+import { Bot, User, Mic, MicOff, MonitorSmartphone, MonitorOff, Send, XCircle, Sparkles, Activity } from 'lucide-react';
 
 interface ConversationPanelProps {
     transcript: TranscriptEntry[];
@@ -62,65 +62,67 @@ export default function ConversationPanel({
     }, [agentStatus, isMicActive]);
 
     return (
-        <div className="conv-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', background: '#09090b', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="flex flex-col h-full bg-black/40 rounded-2xl overflow-hidden ring-1 ring-white/10">
             {/* BIG Centered Orb Area */}
-            <div style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'radial-gradient(circle at center, rgba(168, 85, 247, 0.08) 0%, transparent 60%)', position: 'relative' }}>
-                <div style={{ transform: 'scale(2.5)', marginBottom: '3rem' }}>
+            <div className="flex-[0_0_320px] flex flex-col items-center justify-center border-b border-white/5 bg-radial-at-c from-primary-purple/10 to-transparent relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+                <div className="scale-[2.2] mb-12 relative z-10 transition-transform duration-700">
                     <SynapseOrb state={orbState} />
                 </div>
-                <div style={{
-                    fontSize: '0.875rem',
-                    letterSpacing: '0.25em',
-                    color: agentStatus === 'speaking' ? '#10b981' : agentStatus === 'thinking' ? '#a855f7' : isMicActive ? '#38bdf8' : 'var(--text-muted)',
-                    fontStyle: 'italic',
-                    fontWeight: '600',
-                    opacity: 0.9,
-                    textTransform: 'uppercase'
-                }}>
-                    {agentStatus === 'speaking' ? 'Synapse Speaking' : agentStatus === 'thinking' ? 'Synapse Thinking' : isMicActive ? 'Synapse Voice Active' : 'Agent Standby'}
+                <div className="flex flex-col items-center gap-1.5 relative z-10">
+                    <div className="flex items-center gap-2">
+                        <Sparkles size={12} className={agentStatus === 'speaking' || agentStatus === 'thinking' ? 'text-primary-purple animate-pulse' : 'text-white/20'} />
+                        <span className={`text-[10px] uppercase tracking-[0.3em] font-black transition-colors ${agentStatus === 'speaking' ? 'text-emerald-400' :
+                            agentStatus === 'thinking' ? 'text-primary-purple' :
+                                isMicActive ? 'text-sky-400' : 'text-white/30'
+                            }`}>
+                            {agentStatus === 'speaking' ? 'Synapse Active' :
+                                agentStatus === 'thinking' ? 'Neural Processing' :
+                                    isMicActive ? 'Voice Intercept' : 'System Standby'}
+                        </span>
+                    </div>
+                    <div className="h-[2px] w-8 bg-white/10 rounded-full" />
                 </div>
             </div>
 
-            <div className="conv-panel__transcript" style={{ flex: 1, overflowY: 'auto', padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-                        Multimodal Context
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted-sm)', fontFamily: 'monospace' }}>Session: {sessionId.slice(-6)}</span>
+            {/* Transcript Area */}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Intelligence Transcript</span>
+                    <span className="text-[10px] font-mono text-white/15">SESS: {sessionId.slice(-8).toUpperCase()}</span>
                 </div>
 
                 {transcript.length === 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 1rem', color: 'var(--text-muted-sm)', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '16px' }}>
-                        <p style={{ margin: 0, fontSize: '0.875rem' }}>Awaiting context...</p>
+                    <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-white/5 rounded-2xl px-6">
+                        <Activity size={32} className="text-white/10 mb-4 animate-pulse" />
+                        <p className="text-xs font-bold text-white/30 tracking-widest uppercase">Initializing Context Matrix...</p>
                     </div>
                 )}
 
                 {transcript.map((entry, i) => (
                     <div
                         key={i}
-                        className={`msg msg--${entry.role}`}
-                        style={{
-                            animationDelay: `${Math.min(i * 30, 300)}ms`,
-                            alignSelf: entry.role === 'agent' ? 'flex-start' : 'flex-end',
-                            width: '100%',
-                            background: entry.role === 'agent' ? 'rgba(255,255,255,0.02)' : 'rgba(56, 189, 248, 0.05)',
-                            padding: '1.25rem',
-                            borderRadius: '16px',
-                            border: entry.role === 'agent' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(56, 189, 248, 0.15)'
-                        }}
+                        className={`group relative flex flex-col gap-3 p-5 rounded-2xl transition-all duration-300 ${entry.role === 'agent'
+                            ? 'bg-white/[0.03] border border-white/5 self-start mr-8'
+                            : 'bg-primary-purple/5 border border-primary-purple/10 self-end ml-8'
+                            }`}
+                        style={{ animation: 'fade-in-up 0.4s ease-out forwards', animationDelay: `${Math.min(i * 50, 400)}ms` }}
                     >
-                        <div className="msg__header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                            <span className="msg__avatar" style={{ padding: '0.25rem', background: entry.role === 'agent' ? 'rgba(255,255,255,0.1)' : 'rgba(56, 189, 248, 0.2)', borderRadius: '50%', color: entry.role === 'agent' ? '#fff' : '#38bdf8' }}>
-                                {entry.role === 'agent' ? <Bot size={14} /> : <User size={14} />}
+                        <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-full ${entry.role === 'agent' ? 'bg-white/10 text-white' : 'bg-primary-purple/20 text-primary-purple'
+                                }`}>
+                                {entry.role === 'agent' ? <Bot size={12} /> : <User size={12} />}
+                            </div>
+                            <span className={`text-[11px] font-black uppercase tracking-widest ${entry.role === 'agent' ? 'text-white/60' : 'text-primary-purple'
+                                }`}>
+                                {entry.role === 'agent' ? 'Synapse AI' : 'Operator'}
                             </span>
-                            <span className="msg__name" style={{ fontWeight: '600', fontSize: '0.875rem', color: entry.role === 'agent' ? '#fff' : '#38bdf8' }}>
-                                {entry.role === 'agent' ? 'Synapse' : 'You'}
-                            </span>
-                            <span className="msg__time font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted-sm)', marginLeft: 'auto' }}>
-                                {new Date(entry.timestamp).toLocaleTimeString()}
+                            <span className="text-[9px] font-mono text-white/20 ml-auto">
+                                {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </span>
                         </div>
-                        <p className="msg__text" style={{ margin: 0, lineHeight: '1.6', color: entry.role === 'agent' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.9)', fontSize: '0.9375rem', fontStyle: entry.role === 'agent' ? 'italic' : 'normal' }}>
+                        <p className={`text-sm leading-relaxed ${entry.role === 'agent' ? 'text-white/80 font-medium font-inter italic' : 'text-white font-bold'
+                            }`}>
                             {entry.role === 'agent' ? `"${entry.text}"` : entry.text}
                         </p>
                     </div>
@@ -128,50 +130,57 @@ export default function ConversationPanel({
                 <div ref={transcriptEndRef} />
             </div>
 
-            <div className="conv-panel__input" style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.4)', display: 'flex', gap: '1rem' }}>
-                <input
-                    type="text"
-                    placeholder="Type a message..."
-                    value={textInput}
-                    onChange={e => setTextInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '0.75rem 1rem', color: '#fff', outline: 'none', transition: 'all 0.2s', fontSize: '0.875rem' }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.3)'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                />
-                <button className="btn btn--send-sm glass-btn glow-cyan" onClick={handleSend} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem', borderRadius: '12px' }} disabled={!textInput.trim()}>
-                    <Send size={16} />
-                </button>
-            </div>
+            {/* Input & Controls */}
+            <div className="shrink-0 p-6 bg-black/60 border-t border-white/5 space-y-6">
+                <div className="flex gap-3">
+                    <input
+                        type="text"
+                        placeholder="Transmit intelligence protocol..."
+                        value={textInput}
+                        onChange={e => setTextInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-sm font-medium text-white placeholder:text-white/20 focus:outline-none focus:border-primary-purple/50 transition-colors"
+                    />
+                    <button
+                        className="bg-primary-purple hover:bg-primary-purple/80 text-white p-3 rounded-xl transition-all disabled:opacity-20 disabled:grayscale"
+                        onClick={handleSend}
+                        disabled={!textInput.trim()}
+                    >
+                        <Send size={18} />
+                    </button>
+                </div>
 
-            {/* Premium Controls Row */}
-            <div className="conv-panel__controls" style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', padding: '1.5rem', background: '#000', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <button
-                    className={`btn ${isScreenShared ? 'btn--mic-lg-active glow-magenta' : 'glass-btn-outline'}`}
-                    onClick={onToggleScreenShare}
-                    title="Share Screen with Gemini Vision"
-                    style={{ width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: isScreenShared ? '1px solid var(--neon-magenta)' : '1px solid rgba(255,255,255,0.1)', background: isScreenShared ? 'rgba(217, 70, 239, 0.1)' : 'rgba(255,255,255,0.03)', color: isScreenShared ? 'var(--neon-magenta)' : '#fff', transition: 'all 0.2s' }}
-                >
-                    {isScreenShared ? <MonitorSmartphone size={24} /> : <MonitorOff size={24} />}
-                </button>
+                <div className="flex items-center justify-center gap-8 pt-2">
+                    <button
+                        className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border ${isScreenShared
+                            ? 'bg-rose-500/20 border-rose-500/50 text-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
+                            : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white'
+                            }`}
+                        onClick={onToggleScreenShare}
+                        title="Vision Sync"
+                    >
+                        {isScreenShared ? <MonitorSmartphone size={24} /> : <MonitorOff size={24} />}
+                    </button>
 
-                <button
-                    className={`btn ${isMicActive ? 'btn--mic-lg-active glow-cyan' : 'glass-btn-outline'}`}
-                    onClick={onToggleMic}
-                    title="Toggle Microphone (Spacebar)"
-                    style={{ width: '72px', height: '72px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: isMicActive ? '1px solid var(--neon-cyan)' : '1px solid rgba(255,255,255,0.2)', background: isMicActive ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.05)', color: isMicActive ? 'var(--neon-cyan)' : '#fff', transition: 'all 0.2s', transform: isMicActive ? 'scale(1.05)' : 'scale(1)' }}
-                >
-                    {isMicActive ? <Mic size={32} /> : <MicOff size={32} />}
-                </button>
+                    <button
+                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${isMicActive
+                            ? 'bg-primary-purple border-primary-purple text-white shadow-[0_0_30px_rgba(123,57,252,0.5)] scale-110'
+                            : 'bg-white/5 border-white/10 text-white/20 hover:border-white/30 hover:text-white'
+                            }`}
+                        onClick={onToggleMic}
+                        title="Voice Uplink (Space)"
+                    >
+                        {isMicActive ? <Mic size={32} /> : <MicOff size={32} />}
+                    </button>
 
-                <button
-                    className="btn"
-                    onClick={onEndBriefing}
-                    title="End Session"
-                    style={{ width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)', color: '#f43f5e', transition: 'all 0.2s' }}
-                >
-                    <XCircle size={24} />
-                </button>
+                    <button
+                        className="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/40 hover:bg-rose-500/10 hover:border-rose-500/50 hover:text-rose-500 transition-all group"
+                        onClick={onEndBriefing}
+                        title="Terminate Session"
+                    >
+                        <XCircle size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
+                </div>
             </div>
         </div>
     );

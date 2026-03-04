@@ -1,234 +1,207 @@
-/**
- * Synapse — Dashboard Component (Role-Filtered)
- *
- * Shows deals filtered by the user's selected role.
- * Premium glassmorphism cards with animated status indicators.
- */
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import {
+    LayoutDashboard,
+    Search,
+    Filter,
+    Clock,
+    ArrowRight,
+    Loader2,
+    Database,
+    Zap,
+    Briefcase,
+    Circle,
+    Activity
+} from 'lucide-react';
+import Navbar from './Navbar';
+import BackgroundVideo from './BackgroundVideo';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { audioStreamer } from '../infrastructure/audio/AudioStreamer';
-import { CheckCircle2, Clock, ClipboardList, Mic, ArrowLeft, Network } from 'lucide-react';
-
-interface CrmDeal {
-    deal_id: string;
-    company_name: string;
-    deal_value: number;
+interface Deal {
+    id: string;
+    account_name: string;
     stage: string;
-    products: { name: string; annual_value?: number }[];
-    industry: string;
-    client_id: string;
-    graph_ready: boolean;
-    node_count: number;
+    amount: number;
+    close_date: string;
+    graph_status?: 'ready' | 'generating' | 'not_found' | 'error';
+    account_details?: any;
 }
 
-const ROLE_CONFIG: Record<string, { title: string; subtitle: string; stages: string[]; color: string }> = {
-    csm: {
-        title: 'CSM Briefing Center',
-        subtitle: 'Won deals ready for implementation kickoff',
-        stages: ['closed_won'],
-        color: '#10b981',
-    },
-    sales: {
-        title: 'Sales Intelligence Hub',
-        subtitle: 'Active pipeline opportunities with AI insights',
-        stages: ['prospecting', 'qualification', 'negotiation'],
-        color: '#38bdf8',
-    },
-    support: {
-        title: 'Support Knowledge Base',
-        subtitle: 'Deployed products and implementation context',
-        stages: ['implemented'],
-        color: '#f59e0b',
-    },
-    strategy: {
-        title: 'Win-Back Analysis',
-        subtitle: 'Lost deals — learn from competitive failures',
-        stages: ['closed_lost'],
-        color: '#f43f5e',
-    },
+const STAGE_LABELS: Record<string, string> = {
+    'closed_won': 'Won',
+    'prospecting': 'Prospecting',
+    'qualification': 'Qualifying',
+    'negotiation': 'Negotiating',
+    'implemented': 'Deployed',
+    'closed_lost': 'Lost'
 };
 
-const STAGE_LABELS: Record<string, string> = {
-    prospecting: 'Prospecting',
-    qualification: 'Qualification',
-    negotiation: 'Negotiation',
-    closed_won: 'Won',
-    closed_lost: 'Lost',
-    implemented: 'Implemented',
+const ROLE_CONFIG: Record<string, { title: string; subtitle: string; stages: string[]; icon: any }> = {
+    'csm': { title: 'Success Dashboard', subtitle: 'Onboarding & ImplementationBriefings', stages: ['closed_won'], icon: LayoutDashboard },
+    'sales': { title: 'Pipeline Intelligence', subtitle: 'Grounded Deal Strategy', stages: ['prospecting', 'qualification', 'negotiation'], icon: Zap },
+    'support': { title: 'Deployment Hub', subtitle: 'Technical Knowledge Base', stages: ['implemented'], icon: Database },
+    'strategy': { title: 'Win-Back Suite', subtitle: 'Competitive Loss Analysis', stages: ['closed_lost'], icon: Briefcase },
 };
 
 export default function Dashboard() {
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const role = searchParams.get('role') || 'csm';
-    const roleConfig = ROLE_CONFIG[role] || ROLE_CONFIG.csm;
+    const navigate = useNavigate();
+    const roleId = searchParams.get('role') || 'csm';
+    const config = ROLE_CONFIG[roleId] || ROLE_CONFIG['csm'];
 
-    const [deals, setDeals] = useState<CrmDeal[]>([]);
+    const [deals, setDeals] = useState<Deal[]>([]);
     const [loading, setLoading] = useState(true);
-
-    const loadDeals = useCallback(async () => {
-        try {
-            const baseUrl = import.meta.env.VITE_API_URL || '';
-            const res = await fetch(`${baseUrl}/api/crm/deals`);
-            const data = await res.json();
-            const allDeals: CrmDeal[] = data.deals || [];
-            // Filter by the stages for the current role
-            setDeals(allDeals.filter(d => roleConfig.stages.includes(d.stage)));
-        } catch {
-            console.error('Failed to load deals');
-        } finally {
-            setLoading(false);
-        }
-    }, [roleConfig.stages]);
-
-    const handleStartBriefing = async (deal: CrmDeal) => {
-        try {
-            audioStreamer.unlock();
-
-            const baseUrl = import.meta.env.VITE_API_URL || '';
-            const res = await fetch(`${baseUrl}/api/sessions/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    client_id: deal.client_id,
-                    csm_name: 'CSM',
-                    deal_id: deal.deal_id,
-                    role: role,
-                }),
-            });
-            const data = await res.json();
-            navigate(`/session/${deal.client_id}`, { state: { sessionId: data.session_id, dealId: deal.deal_id } });
-        } catch (err) {
-            console.error('Failed to start session:', err);
-        }
-    };
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        setLoading(true);
-        loadDeals();
-        const interval = setInterval(loadDeals, 8000);
-        return () => clearInterval(interval);
-    }, [loadDeals]);
+        const fetchDeals = async () => {
+            try {
+                const baseUrl = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${baseUrl}/api/crm/deals`);
+                const data = await res.json();
+
+                const filtered = (data.deals || []).filter((d: any) =>
+                    config.stages.includes(d.stage)
+                );
+
+                const mapped = filtered.map((d: any) => ({
+                    id: d.deal_id || d.id,
+                    account_name: d.account_name || d.company_name,
+                    stage: d.stage,
+                    amount: d.amount || d.deal_value,
+                    close_date: d.close_date || new Date().toISOString(),
+                    graph_status: d.graph_ready ? 'ready' : 'generating'
+                }));
+
+                setDeals(mapped);
+            } catch (err) {
+                console.error('Fetch error:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDeals();
+    }, [roleId, config.stages]);
+
+    const filteredDeals = deals.filter(d =>
+        d.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
-        <div className="dashboard" style={{ minHeight: '100vh', background: '#000000', padding: '4rem 2rem', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-                <div className="dashboard__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '2rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div className="dashboard__role-badge" style={{ color: roleConfig.color, borderColor: roleConfig.color, display: 'inline-flex', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '0.05em', background: `color-mix(in srgb, ${roleConfig.color} 10%, transparent)` }}>
-                            {role.toUpperCase()}
+        <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
+            <BackgroundVideo
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
+            />
+
+            <Navbar />
+
+            <main className="relative pt-[160px] pb-20 px-6 max-w-[1440px] mx-auto">
+
+                {/* Dashboard Header Bar */}
+                <div className="flex flex-col md:flex-row justify-between items-end gap-10 mb-20 animate-fade-in">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-purple/10 border border-primary-purple/20">
+                            <Activity size={12} className="text-primary-purple animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary-purple">Synapse Engine Live</span>
                         </div>
-                        <h2 className="dashboard__title" style={{ fontSize: '2.5rem', fontWeight: '800', letterSpacing: '-0.02em', margin: 0, background: 'linear-gradient(144.5deg, rgba(255, 255, 255, 1) 28%, rgba(255, 255, 255, 0.2) 115%)', color: '#fff', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                            {roleConfig.title}
-                        </h2>
-                        <p className="dashboard__subtitle text-premium-muted" style={{ fontSize: '1.2rem', margin: 0, color: 'rgba(255,255,255,0.6)' }}>{roleConfig.subtitle}</p>
+                        <div>
+                            <h1 className="text-4xl md:text-5xl font-medium font-inter tracking-tight mb-2 text-white">{config.title}</h1>
+                            <p className="text-[#f6f7f9] opacity-50 font-medium">{config.subtitle}</p>
+                        </div>
                     </div>
-                    <div className="dashboard__stats" style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                        <div className="stat" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span className="stat__value" style={{ fontSize: '2.5rem', fontWeight: '800', lineHeight: 1 }}>{deals.length}</span>
-                            <span className="stat__label" style={{ color: 'var(--text-muted-sm)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500', marginTop: '0.25rem' }}>Deals</span>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-[320px]">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by account or ID..."
+                                className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-6 text-sm focus:outline-none focus:border-primary-purple/50 focus:ring-4 focus:ring-primary-purple/5 transition-all placeholder:text-white/20"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        <div className="stat" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', paddingRight: '2rem', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-                            <span className="stat__value" style={{ fontSize: '2.5rem', fontWeight: '800', lineHeight: 1, color: 'var(--neon-cyan)' }}>{deals.filter(d => d.graph_ready).length}</span>
-                            <span className="stat__label" style={{ color: 'var(--text-muted-sm)', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '500', marginTop: '0.25rem' }}>Graph Ready</span>
-                        </div>
-                        <button
-                            className="btn btn--nav hover-glow"
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', borderRadius: '99px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: '0.875rem', fontWeight: '600', transition: 'all 0.2s' }}
-                            onClick={() => navigate('/roles')}
-                        >
-                            <ArrowLeft size={16} /> Persona Select
+                        <button className="h-[52px] w-[52px] flex items-center justify-center glass-card hover:border-white/30 hover:bg-white/5 transition-all group">
+                            <Filter size={20} className="text-white/40 group-hover:text-white" />
                         </button>
                     </div>
                 </div>
 
-                <div className="dashboard__grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '2rem' }}>
-                    {loading && (
-                        <div className="dashboard__loading">
-                            <div className="spinner" />
-                            <span>Loading...</span>
+                {/* Content Area */}
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-40 gap-8">
+                        <div className="relative">
+                            <Loader2 className="text-primary-purple animate-spin" size={64} strokeWidth={1} />
+                            <div className="absolute inset-0 bg-primary-purple/20 blur-3xl -z-10" />
                         </div>
-                    )}
-
-                    {!loading && deals.length === 0 && (
-                        <div className="dashboard__empty" style={{ gridColumn: '1 / -1', padding: '6rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', borderRadius: '24px', border: '1px dashed rgba(255,255,255,0.1)', background: 'transparent' }}>
-                            <div className="dashboard__empty-icon" style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', padding: '1.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '50%' }}>
-                                <ClipboardList size={48} strokeWidth={1.5} />
-                            </div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.5rem' }}>No Intelligence Available</h3>
-                            <p style={{ color: 'rgba(255,255,255,0.5)' }}>Try selecting a different persona to populate the graph context.</p>
+                        <p className="text-white/30 font-bold font-inter tracking-[0.3em] uppercase text-[10px] animate-pulse">Scanning Synapse nodes</p>
+                    </div>
+                ) : filteredDeals.length === 0 ? (
+                    <div className="glass-card py-40 text-center border-dashed border-white/10">
+                        <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/5">
+                            <Search className="text-white/10" size={32} />
                         </div>
-                    )}
-
-                    {deals.map((deal, i) => (
-                        <div
-                            key={deal.deal_id}
-                            className={`account-card hover-glow ${deal.graph_ready ? 'account-card--ready' : ''}`}
-                            style={{
-                                animationDelay: `${i * 80}ms`,
-                                padding: '2rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                borderRadius: '20px',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                transition: 'all 0.3s ease'
-                            }}
+                        <h3 className="text-white/30 font-inter text-xl mb-6 font-bold">No accounts found in this nexus.</h3>
+                        <button
+                            className="px-8 py-3 bg-white text-black text-sm font-bold rounded-xl transition-all hover:scale-105 active:scale-95"
+                            onClick={() => setSearchTerm('')}
                         >
-                            {deal.graph_ready && <div className="account-card__glow" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', background: 'radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.05), transparent 60%)', pointerEvents: 'none' }} />}
-
-                            <div className="account-card__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', zIndex: 1 }}>
-                                <div className={`account-card__status ${deal.graph_ready ? 'status--ready' : 'status--not_found'}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0.375rem 0.875rem', borderRadius: '99px', background: deal.graph_ready ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: deal.graph_ready ? '#10b981' : '#f59e0b', border: `1px solid ${deal.graph_ready ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}` }}>
-                                    {deal.graph_ready ? <CheckCircle2 size={14} /> : <Clock size={14} />}
-                                    <span>{deal.graph_ready ? 'Graph Ready' : 'Pending'}</span>
-                                </div>
-                                <span className="account-card__nodes" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '99px' }}>
-                                    <Network size={14} /> {deal.node_count} nodes
-                                </span>
-                            </div>
-
-                            <h3 className="account-card__id" style={{ fontSize: '1.25rem', fontWeight: '700', color: '#fff', marginBottom: '0.25rem', letterSpacing: '-0.01em', zIndex: 1 }}>{deal.company_name}</h3>
-                            <p className="account-card__subtitle" style={{ fontSize: '0.875rem', fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)', zIndex: 1, margin: 0 }}>
-                                {deal.deal_id}
-                            </p>
-
-                            <div className="account-card__deal-info" style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.25rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', zIndex: 1 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stage</span>
-                                    <span style={{ color: roleConfig.color, fontWeight: '600', fontSize: '0.875rem' }}>
-                                        {STAGE_LABELS[deal.stage] || deal.stage}
-                                    </span>
-                                </div>
-                                {deal.deal_value > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Value</span>
-                                        <span style={{ color: '#fff', fontWeight: '600', fontSize: '0.875rem' }}>${deal.deal_value.toLocaleString()}</span>
-                                    </div>
-                                )}
-                                {deal.products?.length > 0 && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
-                                        {deal.products.map((p, j) => (
-                                            <span key={j} style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.8)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>{p.name}</span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <button
-                                className={`btn ${deal.graph_ready ? 'glow-cyan' : ''}`}
-                                disabled={!deal.graph_ready}
-                                onClick={() => handleStartBriefing(deal)}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: '1rem', marginTop: 'auto', borderRadius: '12px', fontSize: '1rem', fontWeight: '600', background: deal.graph_ready ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255,255,255,0.03)', color: deal.graph_ready ? '#38bdf8' : 'rgba(255,255,255,0.3)', border: deal.graph_ready ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(255,255,255,0.05)', zIndex: 1, cursor: deal.graph_ready ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}
+                            Reset Search
+                        </button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredDeals.map((deal) => (
+                            <div
+                                key={deal.id}
+                                className="group relative glass-card p-8 hover:border-white/30 transition-all duration-500 flex flex-col gap-8 hover:-translate-y-2"
                             >
-                                {deal.graph_ready ? <><Mic size={18} /> Synapse Voice</> : <><Clock size={18} /> Processing Context</>}
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            </div>
+                                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary-purple/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                                <div className="relative z-10 flex justify-between items-start">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[10px] font-black font-cabin uppercase tracking-[0.2em] text-white/30">{deal.id}</span>
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${deal.graph_status === 'ready' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                }`}>
+                                                <div className={`w-1 h-1 rounded-full ${deal.graph_status === 'ready' ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+                                                {deal.graph_status || 'Pending'}
+                                            </div>
+                                        </div>
+                                        <h3 className="text-2xl font-bold font-inter group-hover:text-primary-purple transition-colors tracking-tight">{deal.account_name}</h3>
+                                    </div>
+                                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-2xl text-white/20 border border-white/10 group-hover:border-primary-purple/30 group-hover:text-primary-purple transition-all duration-500">
+                                        {deal.account_name[0]}
+                                    </div>
+                                </div>
+
+                                <div className="relative z-10 grid grid-cols-2 gap-6 py-8 border-y border-white/5">
+                                    <div className="space-y-2">
+                                        <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">
+                                            <Circle size={8} className="fill-primary-purple text-primary-purple" /> Nexus Stage
+                                        </p>
+                                        <p className="text-md font-bold text-white/80">{STAGE_LABELS[deal.stage] || deal.stage}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">
+                                            <Clock size={10} className="text-white/40" /> Last Won
+                                        </p>
+                                        <p className="text-md font-bold text-white/80">{new Date(deal.close_date).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="relative z-10 w-full py-4 bg-primary-purple text-white font-bold font-cabin text-sm uppercase tracking-widest rounded-xl hover:bg-primary-purple-hover shadow-lg shadow-primary-purple/20 transition-all flex items-center justify-center gap-3 group/btn hover:scale-[1.02] active:scale-95"
+                                    onClick={() => navigate(`/briefing/${deal.id}`, { state: { sessionId: deal.id } })}
+                                >
+                                    Ground Context <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </main>
         </div>
     );
 }

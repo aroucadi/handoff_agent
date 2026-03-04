@@ -10,12 +10,19 @@
         "lint": "eslint ."
     },
     "dependencies": {
+        "@tailwindcss/vite": "^4.2.1",
         "@xyflow/react": "^12.10.1",
+        "autoprefixer": "^10.4.27",
+        "clsx": "^2.1.1",
         "dagre": "^0.8.5",
+        "hls.js": "^1.6.15",
         "lucide-react": "^0.576.0",
+        "postcss": "^8.5.8",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-router-dom": "^7.13.0"
+        "react-router-dom": "^7.13.0",
+        "tailwind-merge": "^3.5.0",
+        "tailwindcss": "^4.2.1"
     },
     "devDependencies": {
         "@types/dagre": "^0.7.54",

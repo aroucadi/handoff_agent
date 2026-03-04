@@ -1,16 +1,11 @@
-/**
- * Synapse — Briefing Session Component
- *
- * Split-screen layout: ConversationPanel (left) + GraphPanel (right).
- * Manages the active voice session and passes state to child panels.
- */
-
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
-import { Activity, Hash, MessageSquare } from 'lucide-react';
+import { Hash, MessageSquare, ShieldCheck, Activity, Users } from 'lucide-react';
+import Navbar from './Navbar';
+import BackgroundVideo from './BackgroundVideo';
 
 interface ClientDetails {
     client_id: string;
@@ -23,7 +18,7 @@ export default function BriefingSession() {
     const { clientId } = useParams<{ clientId: string }>();
     const location = useLocation();
     const navigate = useNavigate();
-    const sessionId = location.state?.sessionId;
+    const sessionId = location.state?.sessionId || clientId;
 
     const {
         isConnected,
@@ -42,7 +37,6 @@ export default function BriefingSession() {
 
     const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
 
-    // Connect to WebSocket when session starts
     useEffect(() => {
         if (!clientId || !sessionId) {
             navigate('/dashboard');
@@ -51,16 +45,13 @@ export default function BriefingSession() {
 
         connect(sessionId);
 
-        // Fetch client details for header
         const fetchClientDetails = async () => {
             try {
-                const url = import.meta.env.VITE_API_URL || "http://localhost:8000";
+                const url = import.meta.env.VITE_API_URL || "";
                 const res = await fetch(`${url}/api/clients`);
                 const data = await res.json();
                 const client = data.clients?.find((c: ClientDetails) => c.client_id === clientId);
-                if (client) {
-                    setClientDetails(client);
-                }
+                if (client) setClientDetails(client);
             } catch (err) {
                 console.error("Failed to fetch client details:", err);
             }
@@ -68,14 +59,13 @@ export default function BriefingSession() {
         fetchClientDetails();
 
         return () => disconnect();
-    }, [sessionId, connect, disconnect, clientId]);
+    }, [sessionId, connect, disconnect, clientId, navigate]);
 
     const handleEnd = () => {
         disconnect();
         navigate('/dashboard');
     };
 
-    // Keyboard: Space to toggle mic
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
             if (e.code === 'Space' && isConnected && e.target === document.body) {
@@ -87,84 +77,92 @@ export default function BriefingSession() {
         return () => window.removeEventListener('keydown', handler);
     }, [isConnected, toggleMic]);
 
-    // Keyboard: Escape to end briefing
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            if (e.code === 'Escape' && isConnected) {
-                handleEnd();
-            }
-        };
-        window.addEventListener('keydown', handler);
-        return () => window.removeEventListener('keydown', handler);
-    }, [isConnected, handleEnd]);
-
     return (
-        <div className="briefing-wrapper" style={{ minHeight: '100vh', background: '#000000', padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column' }}>
-            <div className="briefing glass-card-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 3rem)', borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)', background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}>
-                <div className="briefing__top-bar flex items-center justify-between" style={{ padding: '0 2rem', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', height: '4.5rem', flexShrink: 0 }}>
-                    <div className="flex items-center gap-6">
-                        {/* Logo Area */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ width: '28px', height: '28px', background: 'radial-gradient(circle at 30% 30%, #a855f7, #3b82f6)', borderRadius: '50%', position: 'relative', boxShadow: '0 0 15px rgba(168, 85, 247, 0.4)' }}>
-                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '10px', height: '10px', background: '#fff', borderRadius: '50%', boxShadow: '0 0 10px #fff' }} />
+        <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30 overflow-hidden">
+            <BackgroundVideo
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
+            />
+
+            <Navbar />
+
+            <div className="relative pt-[120px] h-screen p-6 flex flex-col gap-6 animate-fade-in">
+
+                {/* Session Top Bar: High-Fidelity Specs */}
+                <header className="glass-card px-10 h-24 flex items-center justify-between shrink-0 border-white/10 ring-1 ring-white/5 backdrop-blur-2xl">
+                    <div className="flex items-center gap-12">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                                <Activity size={12} className="text-primary-purple animate-pulse" />
+                                <span className="text-[10px] uppercase tracking-[0.3em] text-primary-purple font-black">SYNAPSE NEXUS ACTIVE</span>
                             </div>
-                            <span className="font-bold text-lg tracking-tight" style={{ letterSpacing: '-0.02em' }}>Synapse Briefing</span>
+                            <div className="flex items-center gap-4">
+                                <ShieldCheck size={24} className="text-white/80" />
+                                <h1 className="text-2xl font-bold font-inter tracking-tight">
+                                    {clientDetails?.company_name || clientId}
+                                </h1>
+                            </div>
                         </div>
 
-                        <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
+                        <div className="w-[1px] h-12 bg-white/10" />
 
-                        {/* Meta Info */}
-                        <div className="flex items-center gap-6" style={{ fontSize: '0.875rem' }}>
-                            <div className="flex items-center gap-2">
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Activity size={12} style={{ display: 'inline', marginRight: '4px' }} /> Client:</span>
-                                <span className="font-mono text-sm">{clientDetails?.company_name || clientId}</span>
+                        <div className="flex items-center gap-10">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase tracking-widest text-white/30 font-black flex items-center gap-2">
+                                    <MessageSquare size={10} /> Context Signals
+                                </span>
+                                <span className="text-lg font-bold font-inter tracking-tight">{transcript.length} <span className="text-[10px] text-white/40 uppercase">Tokens</span></span>
                             </div>
-                            {clientDetails?.deal_value !== undefined && clientDetails.deal_value > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deal Value:</span>
-                                    <span className="font-mono text-sm text-emerald-400">${((clientDetails?.deal_value || 0) / 1000).toFixed(0)}k</span>
-                                </div>
-                            )}
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] uppercase tracking-widest text-white/30 font-black flex items-center gap-2">
+                                    <Hash size={10} /> Traversed Nodes
+                                </span>
+                                <span className="text-lg font-bold font-inter tracking-tight">
+                                    {new Set([currentNode, ...toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)].filter(Boolean)).size} <span className="text-[10px] text-white/40 uppercase">Layers</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-8">
-                        {/* Inline Metrics */}
-                        <div className="flex items-center gap-6" style={{ color: 'var(--text-muted-sm)', fontSize: '0.875rem' }}>
-                            <div className="flex items-center gap-2">
-                                <MessageSquare size={14} /> Messages: <span className="text-white font-mono">{transcript.length}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Hash size={14} /> Nodes Visited: <span className="text-white font-mono">
-                                    {new Set([currentNode, ...toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)].filter(Boolean)).size}
+                        {/* Live Status Indicator */}
+                        <div className="flex items-center gap-6 bg-black/40 px-6 py-3 rounded-2xl border border-white/5 shadow-inner">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500 shadow-[0_0_15px_#f43f5e]'} shadow-current`} />
+                                <span className={`text-[11px] font-black tracking-[0.2em] uppercase ${isConnected ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                    {isConnected ? 'Nexus Connected' : 'Nexus Severed'}
                                 </span>
                             </div>
-                        </div>
-
-                        {/* Connection Pill */}
-                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                            {isConnected ? <><div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" /> CONNECTED</> : <><div className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_#fb7185]" /> OFFLINE</>}
+                            <div className="w-[1px] h-4 bg-white/10" />
+                            <div className="flex items-center gap-3">
+                                <Users size={14} className="text-white/40" />
+                                <span className="text-[11px] font-black tracking-[0.2em] uppercase text-white/40">Grounded Briefing</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </header>
 
-                <div className="briefing__split" style={{ height: 'calc(100vh - 7.5rem)' }}>
-                    <ConversationPanel
-                        transcript={transcript}
-                        isMicActive={isMicActive}
-                        isScreenShared={isScreenShared}
-                        agentStatus={agentStatus}
-                        sessionId={sessionId}
-                        onToggleMic={toggleMic}
-                        onToggleScreenShare={toggleScreenShare}
-                        onSendText={sendText}
-                        onEndBriefing={handleEnd}
-                    />
-                    <GraphPanel
-                        clientId={clientId || ''}
-                        toolCalls={toolCalls}
-                        currentNode={currentNode}
-                    />
+                {/* Main Split Layout */}
+                <div className="flex-1 flex gap-6 min-h-0">
+                    <div className="w-[480px] shrink-0">
+                        <ConversationPanel
+                            transcript={transcript}
+                            isMicActive={isMicActive}
+                            isScreenShared={isScreenShared}
+                            agentStatus={agentStatus}
+                            sessionId={sessionId}
+                            onToggleMic={toggleMic}
+                            onToggleScreenShare={toggleScreenShare}
+                            onSendText={sendText}
+                            onEndBriefing={handleEnd}
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <GraphPanel
+                            clientId={clientId || ''}
+                            toolCalls={toolCalls}
+                            currentNode={currentNode}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
