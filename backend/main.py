@@ -124,12 +124,38 @@ def get_firestore_client() -> _firestore.Client:
     return _fs_client
 
 @app.get("/api/crm/deals")
-async def proxy_crm_deals():
-    """Proxy CRM deals and enrich with graph readiness from Firestore.
+async def proxy_crm_deals(tenant_id: str = None):
+    """Serve deals from Firestore (tenant-aware) or CRM simulator (fallback).
 
-    The frontend calls this single endpoint instead of talking to both
-    the CRM simulator and the Synapse backend separately.
+    In real-life mode, deals are populated by the Graph Generator's ingest
+    endpoint when CRM webhooks fire. The Voice UI dashboard reads from here.
     """
+    db = get_firestore_client()
+
+    # ── Tenant-aware mode: read from Firestore ──
+    if tenant_id:
+        try:
+            deals_ref = db.collection("deals").document(tenant_id).collection("items")
+            docs = deals_ref.stream()
+            deals = []
+            for doc in docs:
+                deal = doc.to_dict()
+                # Enrich with graph readiness from skill_graphs collection
+                client_id = deal.get("client_id", "")
+                if client_id:
+                    graph_doc = db.collection("skill_graphs").document(client_id).get()
+                    deal["graph_ready"] = (
+                        graph_doc.exists
+                        and graph_doc.to_dict().get("status") == "ready"
+                    ) if graph_doc.exists else False
+                    deal["node_count"] = graph_doc.to_dict().get("node_count", 0) if graph_doc.exists else 0
+                deals.append(deal)
+            return {"deals": deals, "count": len(deals), "source": "firestore"}
+        except Exception as e:
+            print(f"[CRM_PROXY] Firestore deals query failed: {e}")
+            return {"deals": [], "count": 0, "error": str(e)}
+
+    # ── Fallback: read from CRM simulator (backward compatible) ──
     crm_url = config.crm_simulator_url.rstrip("/") + "/api/deals"
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -139,9 +165,7 @@ async def proxy_crm_deals():
         print(f"[CRM_PROXY] Failed to fetch deals: {e}")
         return {"deals": [], "count": 0, "error": str(e)}
 
-
     # Enrich each deal with graph readiness
-    db = get_firestore_client()
     deals = crm_data.get("deals", [])
     for deal in deals:
         company_name = deal.get("company_name", "")
@@ -151,7 +175,7 @@ async def proxy_crm_deals():
         deal["graph_ready"] = doc.exists and doc.to_dict().get("status") == "ready" if doc.exists else False
         deal["node_count"] = doc.to_dict().get("node_count", 0) if doc.exists else 0
 
-    return {"deals": deals, "count": len(deals)}
+    return {"deals": deals, "count": len(deals), "source": "simulator"}
 
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ Session Management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬

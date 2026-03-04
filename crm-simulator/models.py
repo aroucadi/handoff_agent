@@ -79,6 +79,8 @@ class Deal(BaseModel):
     sales_transcript: Optional[str] = None
     contract_pdf_url: Optional[str] = None
     webhook_url: Optional[str] = None
+    crm_platform: str = "custom"  # salesforce | hubspot | dynamics | custom
+    tenant_id: Optional[str] = None  # Hub tenant ID for ingest routing
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

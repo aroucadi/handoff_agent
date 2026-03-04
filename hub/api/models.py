@@ -7,6 +7,8 @@ and agent settings. Stored in Firestore collection: tenants/{tenant_id}
 
 from __future__ import annotations
 
+import secrets
+
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -28,6 +30,13 @@ class TenantStatus(str, Enum):
     CONFIGURING = "configuring"
     READY = "ready"
     ACTIVE = "active"
+
+
+class IntegrationStatus(str, Enum):
+    NOT_CONFIGURED = "not_configured"
+    PENDING = "pending"
+    VERIFIED = "verified"
+    ERROR = "error"
 
 
 class AuthMethod(str, Enum):
@@ -84,7 +93,11 @@ class TenantConfig(BaseModel):
     crm: CrmConnection = Field(default_factory=CrmConnection)
     products: list[Product] = Field(default_factory=list)
     agent: AgentConfig = Field(default_factory=AgentConfig)
-    webhook_url: str = ""  # graph-generator endpoint for this tenant
+    webhook_url: str = ""  # auto-provisioned: graph-generator ingest endpoint
+    webhook_secret: str = Field(
+        default_factory=lambda: secrets.token_hex(32)  # HMAC-SHA256 key
+    )
+    integration_status: IntegrationStatus = IntegrationStatus.NOT_CONFIGURED
     status: TenantStatus = TenantStatus.CONFIGURING
     created_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()

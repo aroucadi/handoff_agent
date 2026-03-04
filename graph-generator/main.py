@@ -45,6 +45,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount the tenant-aware ingest endpoint
+from ingest import router as ingest_router
+app.include_router(ingest_router)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Catch-all for unhandled exceptions to return standard JSON instead of crashing."""

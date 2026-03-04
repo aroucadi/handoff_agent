@@ -156,9 +156,34 @@ async def change_deal_stage(deal_id: str, stage: str):
 
 
 async def _fire_webhook(deal: Deal) -> dict:
-    # Check environment variable first, then deal property
-    webhook_target = os.environ.get("SYNAPSE_WEBHOOK_URL") or deal.webhook_url
-    
+    """Fire a webhook using CRM platform emulation.
+
+    Resolves the webhook target from:
+    1. Tenant config in Firestore (if tenant_id is set)
+    2. SYNAPSE_WEBHOOK_URL environment variable
+    3. Deal's webhook_url property
+    """
+    from webhook_emitters import emit_webhook_payload
+
+    # Resolve webhook target
+    webhook_target = None
+
+    # Priority 1: Tenant-aware routing via Firestore
+    if deal.tenant_id:
+        try:
+            from google.cloud import firestore as _fs
+            _db = _fs.Client()
+            tenant_doc = _db.collection("tenants").document(deal.tenant_id).get()
+            if tenant_doc.exists:
+                webhook_target = tenant_doc.to_dict().get("webhook_url")
+                print(f"🔗 Resolved webhook URL from tenant config: {webhook_target}")
+        except Exception as e:
+            print(f"⚠️ Failed to resolve tenant webhook URL: {e}")
+
+    # Priority 2 & 3: Environment or deal property
+    if not webhook_target:
+        webhook_target = os.environ.get("SYNAPSE_WEBHOOK_URL") or deal.webhook_url
+
     if not webhook_target:
         print(f"⚠️ Webhook skipped for {deal.deal_id} - no URL configured")
         return {"status": "skipped", "reason": "No webhook_url configured"}
@@ -176,40 +201,50 @@ async def _fire_webhook(deal: Deal) -> dict:
                 "risks": [r.model_dump() for r in other_deal.risks]
             })
 
-    payload = WebhookPayload(
-        deal_id=deal.deal_id,
-        company_name=deal.company_name,
-        deal_value=deal.deal_value,
-        products=[p.model_dump() for p in deal.products],
-        close_date=str(deal.close_date or date.today()),
-        sla_days=deal.sla_days,
-        csm_id=deal.csm_id,
-        industry=deal.industry,
-        employee_count=deal.employee_count,
-        contacts=[c.model_dump() for c in deal.contacts],
-        risks=[r.model_dump() for r in deal.risks],
-        success_metrics=[m.model_dump() for m in deal.success_metrics],
-        sales_transcript=deal.sales_transcript,
-        contract_pdf_url=deal.contract_pdf_url,
-        historical_deals=historical_deals,
-    )
+    # Build the internal payload
+    internal_payload = {
+        "deal_id": deal.deal_id,
+        "company_name": deal.company_name,
+        "deal_value": deal.deal_value,
+        "products": [p.model_dump() for p in deal.products],
+        "close_date": str(deal.close_date or date.today()),
+        "sla_days": deal.sla_days,
+        "csm_id": deal.csm_id,
+        "industry": deal.industry,
+        "employee_count": deal.employee_count,
+        "contacts": [c.model_dump() for c in deal.contacts],
+        "risks": [r.model_dump() for r in deal.risks],
+        "success_metrics": [m.model_dump() for m in deal.success_metrics],
+        "sales_transcript": deal.sales_transcript,
+        "contract_pdf_url": deal.contract_pdf_url,
+        "historical_deals": historical_deals,
+    }
+
+    # Apply platform emulation — transform to CRM-specific format
+    crm_platform = deal.crm_platform or "custom"
+    emitted_payload = emit_webhook_payload(internal_payload, crm_platform)
 
     log_entry = {
         "id": str(uuid.uuid4()),
         "deal_id": deal.deal_id,
         "company_name": deal.company_name,
-        "webhook_url": deal.webhook_url,
+        "webhook_url": webhook_target,
+        "crm_platform": crm_platform,
         "timestamp": datetime.utcnow().isoformat(),
         "status": "pending",
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            print(f"🚀 Firing webhook to: {webhook_target} for {deal.deal_id}")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            print(f"🚀 Firing {crm_platform.upper()} webhook to: {webhook_target} for {deal.deal_id}")
             response = await client.post(
                 webhook_target,
-                json=payload.model_dump(),
-                headers={"Content-Type": "application/json", "X-CRM-Event": f"deal.stage_changed.{deal.stage.value}"},
+                json=emitted_payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-CRM-Event": f"deal.stage_changed.{deal.stage.value}",
+                    "X-CRM-Platform": crm_platform,
+                },
             )
 
         deal.webhook_fired = True
@@ -217,7 +252,7 @@ async def _fire_webhook(deal: Deal) -> dict:
         log_entry["status"] = "success"
         log_entry["response_status"] = response.status_code
 
-        return {"status": "sent", "response_code": response.status_code}
+        return {"status": "sent", "response_code": response.status_code, "platform": crm_platform}
 
     except Exception as e:
         deal.webhook_fired = True
@@ -229,6 +264,7 @@ async def _fire_webhook(deal: Deal) -> dict:
 
     finally:
         webhook_log.append(log_entry)
+
 
 
 # ---------------------------------------------------------------------------
