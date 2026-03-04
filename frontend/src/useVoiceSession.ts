@@ -148,7 +148,7 @@ export function useVoiceSession(): UseVoiceSessionReturn {
                         if (parsedResult.node_id) {
                             setCurrentNode(parsedResult.node_id);
                         }
-                    } catch (e) {
+                    } catch {
                         // ignore parse errors if result is not json
                     }
                     break;
@@ -209,7 +209,8 @@ export function useVoiceSession(): UseVoiceSessionReturn {
 
             mediaStreamRef.current = stream;
 
-            const micCtx = new (window.AudioContext || (window as any).webkitAudioContext)({
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const micCtx = new AudioContextClass({
                 sampleRate: INPUT_SAMPLE_RATE
             });
             micCtxRef.current = micCtx;

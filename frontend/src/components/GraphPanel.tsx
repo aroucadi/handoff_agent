@@ -24,6 +24,7 @@ import {
     Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { User, Package, Factory, Share2, FileText, ChevronRight } from 'lucide-react';
 import type { ToolCallEntry } from '../useVoiceSession';
 
 interface ServerNodeMetadata {
@@ -45,11 +46,13 @@ interface SkillNodeData {
 }
 
 function SkillNode({ data }: { data: SkillNodeData }) {
+    const Icon = data.layer === 'client' ? User : data.layer === 'product' ? Package : Factory;
+
     return (
         <div className={`graph-node graph-node--${data.layer} ${data.isActive ? 'graph-node--active' : ''} ${data.isVisited ? 'graph-node--visited' : ''}`}>
             <Handle type="target" position={Position.Top} className="graph-node__handle" />
-            <div className="graph-node__icon">
-                {data.layer === 'client' ? '👤' : data.layer === 'product' ? '📦' : '🏭'}
+            <div className="graph-node__icon-wrapper">
+                <Icon size={18} strokeWidth={2.5} />
             </div>
             <div className="graph-node__label">{data.label}</div>
             {data.isActive && <div className="graph-node__pulse" />}
@@ -66,23 +69,20 @@ function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId:
     const { fitView, setCenter } = useReactFlow();
 
     useEffect(() => {
-        if (nodes.length === 0) return; // Nothing to fit
+        if (nodes.length === 0) return;
 
         const timeout = setTimeout(() => {
             if (activeNodeId) {
                 const activeNode = nodes.find(n => n.id === activeNodeId);
                 if (activeNode && activeNode.position.x !== 0 && activeNode.position.y !== 0) {
-                    // Node has been fully layouted by dagre
                     setCenter(
-                        activeNode.position.x + 130, // nodeWidth / 2
-                        activeNode.position.y + 50,  // nodeHeight / 2
+                        activeNode.position.x + 130,
+                        activeNode.position.y + 50,
                         { zoom: 1, duration: 800 }
                     );
                     return;
                 }
             }
-
-            // Fallback or first load before traversal
             fitView({ padding: 0.2, duration: 800 });
         }, 50);
 
@@ -158,7 +158,6 @@ function buildEdges(
     const edges: Edge[] = [];
     const seenEdges = new Set<string>();
 
-    // 1. Build inherent links from metadata (static structure)
     metadata.forEach(node => {
         node.links.forEach(targetId => {
             if (nodeIds.includes(targetId)) {
@@ -174,7 +173,6 @@ function buildEdges(
         });
     });
 
-    // 2. Build edges from traversal path
     for (let i = 1; i < toolCalls.length; i++) {
         const prev = toolCalls[i - 1];
         const curr = toolCalls[i];
@@ -213,7 +211,6 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-    // Fetch all nodes for this client on mount
     useEffect(() => {
         const fetchAllNodes = async () => {
             try {
@@ -230,7 +227,6 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         fetchAllNodes();
     }, [clientId]);
 
-    // Update graph based on discovery and metadata
     useEffect(() => {
         const nodeIdsSet = new Set<string>(allClientNodes.map(n => n.node_id));
         toolCalls.forEach(tc => {
@@ -254,14 +250,12 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         setEdges(rawEdges);
     }, [allClientNodes, toolCalls, currentNode, clientId, setNodes, setEdges]);
 
-    // Breadcrumb trail
     useEffect(() => {
         if (currentNode && !breadcrumb.includes(currentNode)) {
             setBreadcrumb(prev => [...prev, currentNode]);
         }
     }, [currentNode, breadcrumb]);
 
-    // Fetch node content
     const fetchNodeContent = useCallback(async (nodeId: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '';
@@ -280,22 +274,26 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     }, [currentNode, fetchNodeContent]);
 
     return (
-        <div className="graph-panel">
-            <div className="graph-panel__breadcrumb">
-                <span className="breadcrumb__label">Path:</span>
-                {breadcrumb.map((nodeId, i) => (
-                    <span key={nodeId} className="breadcrumb__item">
-                        {i > 0 && <span className="breadcrumb__arrow">→</span>}
-                        <span className={nodeId === currentNode ? 'breadcrumb__active' : ''}>
-                            {nodeId}
-                        </span>
-                    </span>
-                ))}
-                {breadcrumb.length === 0 && (
-                    allClientNodes.length > 0
-                        ? <span className="breadcrumb__empty">Waiting for ADK Agent traversal...</span>
-                        : <span className="breadcrumb__empty animate-pulse">Loading Client Skill Graph...</span>
-                )}
+        <div className="graph-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#090a0f', borderRadius: '16px', overflow: 'hidden' }}>
+            <div className="graph-panel__breadcrumb" style={{ height: '3.5rem', display: 'flex', alignItems: 'center', paddingLeft: '1.5rem', paddingRight: '1.5rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center gap-3">
+                    <Share2 size={14} className="text-slate-500" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">Path</span>
+                </div>
+                <div className="mx-4 h-4 w-[1px] background-white/10" />
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    {breadcrumb.map((nodeId, i) => (
+                        <div key={nodeId} className="flex items-center gap-2">
+                            {i > 0 && <ChevronRight size={10} className="text-slate-700" />}
+                            <span className={`font-mono text-xs ${nodeId === currentNode ? 'text-white font-bold' : 'text-slate-500'}`}>
+                                {nodeId}
+                            </span>
+                        </div>
+                    ))}
+                    {breadcrumb.length === 0 && (
+                        <span className="font-mono text-xs text-slate-600 italic">Awaiting traversal...</span>
+                    )}
+                </div>
             </div>
 
             <div className="graph-panel__flow">
@@ -319,13 +317,19 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
             </div>
 
             {currentNode && nodeContent && (
-                <div className="graph-panel__content-card">
-                    <div className="content-card__header">
-                        <span className="content-card__icon">📄</span>
-                        <span className="content-card__title">{currentNode}</span>
+                <div className="graph-panel__content-card glass-card-premium" style={{ position: 'absolute', bottom: '1.5rem', left: '1.5rem', right: '1.5rem', maxHeight: '200px', display: 'flex', flexDirection: 'column', background: 'rgba(15, 16, 22, 0.95)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.25rem', zIndex: 10 }}>
+                    <div className="content-card__header flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-sky-500/10 p-1.5 rounded-lg text-sky-400">
+                                <FileText size={16} />
+                            </div>
+                            <span className="font-mono text-xs text-white/90 font-bold">{currentNode}</span>
+                        </div>
                     </div>
-                    <div className="content-card__body">
-                        <pre>{nodeContent.slice(0, 500)}...</pre>
+                    <div className="content-card__body overflow-y-auto">
+                        <pre className="font-mono text-[11px] leading-relaxed text-slate-400 whitespace-pre-wrap">
+                            {nodeContent.slice(0, 1000)}
+                        </pre>
                     </div>
                 </div>
             )}

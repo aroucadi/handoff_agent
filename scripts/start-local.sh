@@ -38,6 +38,12 @@ cd "$ROOT_DIR/backend"
 uvicorn main:app --host 0.0.0.0 --port 8000 &
 API_PID=$!
 
+# Start Hub API
+echo "🚀 Starting Hub API on :8003..."
+cd "$ROOT_DIR/hub/api"
+uvicorn main:app --host 0.0.0.0 --port 8003 &
+HUB_API_PID=$!
+
 # Start Synapse Voice UI
 echo "🚀 Starting Voice UI on :5174..."
 cd "$ROOT_DIR/frontend"
@@ -50,14 +56,22 @@ cd "$ROOT_DIR/crm-simulator/frontend"
 npm run dev &
 CRM_UI_PID=$!
 
+# Start Hub Frontend
+echo "🚀 Starting Hub Frontend on :5176..."
+cd "$ROOT_DIR/hub"
+npm run dev -- --port 5176 &
+HUB_UI_PID=$!
+
 echo ""
 echo "═══════════════════════════════════════════════"
 echo "  All services started!"
 echo ""
-echo "  🏢 CRM Simulator:  http://localhost:5173"
-echo "  🎙️ Synapse Voice:   http://localhost:5174"
-echo "  📡 Backend API:     http://localhost:8000/health"
-echo "  ⚙️  Graph Generator: http://localhost:8002/health"
+echo "  🏢 CRM Simulator:   http://localhost:5173"
+echo "  🎙️ Synapse Voice:    http://localhost:5174"
+echo "  🌉 Synapse Hub:      http://localhost:5176"
+echo "  📡 Backend API:      http://localhost:8000/health"
+echo "  ⚙️  Graph Generator:  http://localhost:8002/health"
+echo "  🛠️  Hub API:         http://localhost:8003/docs"
 echo ""
 echo "  Press Ctrl+C to stop all services"
 echo "═══════════════════════════════════════════════"
@@ -66,7 +80,7 @@ echo "════════════════════════�
 cleanup() {
     echo ""
     echo "Stopping all services..."
-    kill $CRM_PID $GEN_PID $API_PID $UI_PID $CRM_UI_PID 2>/dev/null
+    kill $CRM_PID $GEN_PID $API_PID $HUB_API_PID $UI_PID $CRM_UI_PID $HUB_UI_PID 2>/dev/null
     echo "All services stopped."
 }
 trap cleanup EXIT

@@ -25,7 +25,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.config import config
-from core.db import get_firestore_client
+# Hub API URL
+HUB_API_URL = os.getenv("HUB_API_URL", "http://localhost:8003")
 from agent.synapse_agent import run_text_conversation
 from live.session import LiveSession
 
@@ -110,11 +111,57 @@ async def webhook_deal_closed(request: Request):
         )
 
 
+# —— CRM Deal Proxy (for role-based dashboard) ————————————————————
+
+from google.cloud import firestore as _firestore
+
+_fs_client: _firestore.Client | None = None
+
+def get_firestore_client() -> _firestore.Client:
+    global _fs_client
+    if _fs_client is None:
+        _fs_client = _firestore.Client(project=config.project_id)
+    return _fs_client
+
+@app.get("/api/crm/deals")
+async def proxy_crm_deals():
+    """Proxy CRM deals and enrich with graph readiness from Firestore.
+
+    The frontend calls this single endpoint instead of talking to both
+    the CRM simulator and the Synapse backend separately.
+    """
+    crm_url = config.crm_simulator_url.rstrip("/") + "/api/deals"
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(crm_url)
+            crm_data = response.json()
+    except Exception as e:
+        print(f"[CRM_PROXY] Failed to fetch deals: {e}")
+        return {"deals": [], "count": 0, "error": str(e)}
+
+
+    # Enrich each deal with graph readiness
+    db = get_firestore_client()
+    deals = crm_data.get("deals", [])
+    for deal in deals:
+        company_name = deal.get("company_name", "")
+        client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+        doc = db.collection("skill_graphs").document(client_id).get()
+        deal["client_id"] = client_id
+        deal["graph_ready"] = doc.exists and doc.to_dict().get("status") == "ready" if doc.exists else False
+        deal["node_count"] = doc.to_dict().get("node_count", 0) if doc.exists else 0
+
+    return {"deals": deals, "count": len(deals)}
+
+
 # Ã¢â€â‚¬Ã¢â€â‚¬ Session Management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 class SessionStartRequest(BaseModel):
     client_id: str
+    tenant_id: str | None = None # Required for dynamic branding
     csm_name: str = "CSM"
+    deal_id: str | None = None
+    role: str = "csm"
 
 
 @app.post("/api/sessions/start")
@@ -122,10 +169,22 @@ async def start_session(req: SessionStartRequest):
     """Create a new voice session, persist to Firestore, and return connection details."""
     session_id = str(uuid.uuid4())[:8]
 
+    # Load brand name from tenant config if provided
+    brand_name = "ClawdView"
+    if req.tenant_id:
+        db = get_firestore_client()
+        doc = db.collection("tenants").document(req.tenant_id).get()
+        if doc.exists:
+            brand_name = doc.to_dict().get("brand_name", "ClawdView")
+
     session = LiveSession(
         session_id=session_id,
         client_id=req.client_id,
+        tenant_id=req.tenant_id,
+        brand_name=brand_name,
         csm_name=req.csm_name,
+        deal_id=req.deal_id,
+        role=req.role,
     )
     active_sessions[session_id] = session
 
@@ -134,12 +193,16 @@ async def start_session(req: SessionStartRequest):
     db.collection("sessions").document(session_id).set({
         "session_id": session_id,
         "client_id": req.client_id,
+        "tenant_id": req.tenant_id,
+        "brand_name": brand_name,
         "csm_name": req.csm_name,
+        "deal_id": req.deal_id,
+        "role": req.role,
         "started_at": session.started_at,
         "status": "active",
     })
 
-    print(f"[SESSION] Created session {session_id} for client {req.client_id} (persisted to Firestore)")
+    print(f"[SESSION] Created session {session_id} for tenant {req.tenant_id} and client {req.client_id}")
 
     return {
         "session_id": session_id,
@@ -219,7 +282,9 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
             session = LiveSession(
                 session_id=session_id,
                 client_id=data.get("client_id", "unknown"),
-                csm_name=data.get("csm_name", "CSM")
+                csm_name=data.get("csm_name", "CSM"),
+                deal_id=data.get("deal_id"),
+                role=data.get("role", "csm"),
             )
             active_sessions[session_id] = session
         else:
@@ -301,14 +366,19 @@ class TextMessage(BaseModel):
 
 
 @app.post("/api/sessions/text")
-async def text_conversation(msg: TextMessage):
+async def text_conversation(req: TextMessage):
     """Have a text conversation with the Synapse agent (R1 endpoint, still available)."""
-    print(f"[TEXT] Client: {msg.client_id} | Message: {msg.message}")
+    print(f"[TEXT] Client: {req.client_id} | Message: {req.message}")
 
+    # For text mode, we might need a tenant_id too if we want dynamic branding
+    # For now, we'll try to find an active session or just use default
+    brand_name = "ClawdView"
+    
     result = await run_text_conversation(
-        client_id=msg.client_id,
-        message=msg.message,
-        history=msg.history,
+        client_id=req.client_id,
+        message=req.message,
+        history=req.history,
+        brand_name=brand_name
     )
 
     print(f"[TEXT] Tools used: {len(result['tool_calls'])} | "
@@ -331,6 +401,7 @@ async def list_clients():
             clients.append({
                 "client_id": data.get("client_id", doc.id),
                 "company_name": data.get("company_name", "Unknown Company"),
+                "deal_id": data.get("deal_id"),
                 "deal_value": data.get("deal_value", 0),
                 "kickoff_date": data.get("kickoff_date", ""),
                 "status": data.get("status", "unknown"),

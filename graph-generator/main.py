@@ -74,9 +74,11 @@ async def _run_generation(job_id: str, payload: dict):
         print(f"[JOB {job_id}] Step 1: Extracting CRM data...")
         crm_data = extract_from_crm_payload(payload)
 
-        client_id = payload.get("deal_id", "unknown").lower().replace(" ", "-")
+        # Use company_name as the universal client identifier so deals merge into one graph
         company_name = payload.get("company_name", "Unknown Company")
+        client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
         industry = payload.get("industry", "general")
+        historical_deals = payload.get("historical_deals", [])
 
         # Step 2: Extract asynchronously (Transcript & Contract in parallel)
         print(f"[JOB {job_id}] Step 2: Running parallel AI extractions (Gemini 2.5 Pro)...")
@@ -114,6 +116,9 @@ async def _run_generation(job_id: str, payload: dict):
         print(f"[JOB {job_id}] Step 3: Generating nodes (Multi-Agent: Generator + Reviewer) with Gemini 2.5 Pro...")
         jobs[job_id]["status"] = "generating_nodes"
         
+        # Pull tenant_id from hub metadata if present
+        tenant_id = payload.get("_tenant_id")
+        
         # This function now orchestrates both the Generation and Review passes internally
         nodes = await generate_client_nodes(
             client_id=client_id,
@@ -122,6 +127,7 @@ async def _run_generation(job_id: str, payload: dict):
             crm_data=crm_data,
             transcript_data=transcript_data,
             contract_data=contract_data,
+            tenant_id=tenant_id,
         )
         
         jobs[job_id]["status"] = "reviewing_nodes" # Set briefly before writing to GCS

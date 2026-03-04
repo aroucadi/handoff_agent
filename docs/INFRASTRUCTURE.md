@@ -14,23 +14,26 @@ flowchart TD
 
     %% Components
     UI[React Frontend\nFirebase Hosting]:::frontend
-    Sim[CRM Simulator\nCloud Run]:::cloudrun
-    API[Live Voice API\nCloud Run]:::cloudrun
-    Gen[Graph Generator\nCloud Run]:::cloudrun
+    Sim[SalesClaw CRM\nCloud Run]:::cloudrun
+    API[Synapse Core API\nCloud Run]:::cloudrun
+    Hub[Synapse Hub\nCloud Run]:::cloudrun
+    Gen[Delta Generator\nCloud Run]:::cloudrun
     
-    FS[(Firestore\nVector DB)]:::storage
-    GCS[(Cloud Storage\nNode Blobs)]:::storage
+    FS[(Firestore\nMulti-tenant DB)]:::storage
+    GCS[(Cloud Storage\nAccount Graphs)]:::storage
     
-    Gem[Gemini Live API\nWebRTC]:::external
-    LLM[Gemini 3.1 Pro\nGenerative]:::external
+    Gem[Gemini Live API\nNative Audio]:::external
+    LLM[Gemini 3.1 Pro\nDelta Gen]:::external
     
     %% Flows
-    UI -- HTTPS / WebSockets --> API
+    UI -- Role/Tenant Auth --> Hub
+    UI -- WebSocket --> API
+    Hub -- Config/Prompts --> API
     API -- Function Calls --> Sim
     UI -- Fetches Graph --> API
     
-    Sim -- Webhook Payload --> Gen
-    Gen -- Stores Embeddings --> FS
+    Sim -- Delta Webhook --> Gen
+    Gen -- Account Context --> FS
     Gen -- Stores Markdown --> GCS
     Gen -- Prompts --> LLM
     

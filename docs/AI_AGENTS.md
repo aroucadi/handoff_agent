@@ -14,9 +14,9 @@ When a deal transitions to "Closed Won," the webhook triggers the Graph Generato
 - **Transcript Extractor**: Summarizes raw sales call transcripts, identifying technical requirements and objections.
 - **Contract Extractor**: Extracts line-items, SLAs, and technical deliverables from the signed PDF.
 
-### Phase B: Generator vs. Reviewer
-1. **The Generator Pass**: The primary agent takes the compiled extractions from Phase A and drafts an array of "Nodes". Each node represents a distinct piece of customer context (e.g., "Requirement: SSO Integration").
-2. **The Reviewer Pass**: A secondary agent acting as a "Critic" is prompted to evaluate the Generator's output against a strict set of heuristics: Does the graph have isolated nodes? Are descriptions too long? The Reviewer trims the fat and ensures topology correctness before saving to Google Cloud Storage.
+### Phase B: Generator vs. Reviewer (Account-Oriented Delta)
+1. **The Generator Pass**: The primary agent takes the compiled extractions from Phase A and drafts an array of "Nodes". In the latest evolution, this is **Account-Oriented**: it pulls historical deals and existing account context to generate "Delta" nodes that only reflect new changes or deep-dive specifics.
+2. **The Reviewer Pass**: A secondary agent acting as a "Critic" evaluates the delta. It ensures wikilinks correctly point to both new delta nodes and existing core account nodes (e.g., [[account-profile]]).
 
 ---
 
@@ -41,8 +41,15 @@ The crown jewel of Synapse is the interactive Voice Agent. When a CSM clicks "St
 
 ### Function Calling (Tools)
 To make the agent capable of taking action, its system prompt assigns it three server-side tools:
-1. `search_graph(query)`: Invokes the Semantic Indexer to find relevant nodes.
-2. `follow_link(source_id)`: Fetches the connected child nodes to explore a topic deeply.
+1. `search_graph(query)`: Invokes the Semantic Indexer to find relevant nodes across product, industry, and account layers.
+2. `follow_link(source_id)`: Fetches the connected child nodes to explore a topic deeply (e.g., from an account-level risk to a specific deal requirement).
 3. `escalate_risk(client_id, reason)`: Directly hits the CRM Simulator API to flag a customer account as "At Risk".
 
-The Live Agent autonomously decides when to invoke these tools mid-conversation without interrupting the audio flow, allowing it to manipulate data and interface with external systems seamlessly.
+### Multi-Role Support
+Synapse now supports dynamic personas based on the user's role:
+- **CSM**: Focused on customer health, success metrics, and long-term ROI.
+- **Sales (Account Executive)**: Focused on expansion opportunities, historical deal context, and stakeholder mapping.
+- **Customer Support**: Focused on technical requirements, SLAs, and resolved/open issues.
+- **Win Back**: Specialized persona for at-risk accounts, focusing on resolving pain points and historical objections.
+
+The Hub allows per-tenant configuration of these roles, ensuring the agent adopts the correct tone and knowledge-retrieval strategy for each session.

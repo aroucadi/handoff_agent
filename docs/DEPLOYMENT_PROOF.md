@@ -17,8 +17,10 @@
 ### Cloud Run Services
 | Service | Port | Resources | Purpose |
 |---|---|---|---|
-| `synapse-api` | 8000 | 2 CPU, 1Gi RAM, 600s timeout | Backend API + WebSocket |
-| `synapse-graph-generator` | 8002 | 2 CPU, 2Gi RAM, 900s timeout | Graph generation pipeline |
+| `synapse-api` | 8000 | 2 CPU, 1Gi RAM | Core Voice Backend |
+| `synapse-hub` | 8001 | 1 CPU, 512Mi RAM | Tenant Configuration |
+| `synapse-crm` | 8002 | 1 CPU, 512Mi RAM | SalesClaw Simulator |
+| `synapse-graph-gen` | 8003 | 2 CPU, 2Gi RAM | Delta Knowledge Pipe |
 
 ### Other GCP Resources
 | Resource | Purpose |
@@ -70,10 +72,12 @@ export PROJECT_ID="your-project"
 ./scripts/start-local.sh  # Starts all 4 services
 
 # 4. Open
-# CRM Simulator:  http://localhost:5173
-# Synapse Voice:   http://localhost:5174
-# Backend API:     http://localhost:8000/health
-# Graph Generator: http://localhost:8002/health
+# SalesClaw CRM:    http://localhost:5173
+# Synapse Voice UI: http://localhost:5174
+# Synapse Hub UI:   http://localhost:5176
+# Hub API:          http://localhost:8003/docs
+# Core Voice API:   http://localhost:8000/docs
+# Graph Generator:  http://localhost:8002/docs
 ```
 
 ## Release Tags

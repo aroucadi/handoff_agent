@@ -1,34 +1,25 @@
 # 🛰️ Synapse API Reference
 
-Synapse uses a microservice architecture built with Python FastAPI. This document outlines the primary REST capabilities and internal communication endpoints.
+Synapse uses a multi-tenant microservice architecture. All requests to Voice API, Hub, and Graph Generator require a `X-Tenant-ID` header (default `T001` for demo).
 
 ---
 
-## 1. Graph Generator Webhook API
+## 1. Hub API (Tenant Configuration)
+**Base URL:** `https://synapse-hub-api-[...].a.run.app`
+
+### `GET /tenants/{tenant_id}`
+Returns branding, agent personas, and GCS bucket configuration for a specific tenant.
+
+### `POST /tenants/{tenant_id}/accounts`
+Registers a new B2B account for a tenant and initializes their Account Skill Graph.
+
+---
+
+## 2. Graph Generator (Delta Pipe)
 **Base URL:** `https://synapse-graph-generator-[...].a.run.app`
 
 ### `POST /generate`
-Accepts a webhook payload from the CRM simulator when a deal is "Closed Won". Triggers the asynchronous, multi-agent graph generation pipeline. Returns a Tracking ID instantly while generation continues in the background.
-
-**Request Body:**
-```json
-{
-  "deal_id": "opp-99321",
-  "company_name": "Acme Corp",
-  "industry": "FinTech",
-  "sales_transcript": "Customer requires strict RBAC...",
-  "contract_pdf_url": "https://storage.googleapis.com/..."
-}
-```
-
-**Response (202 Accepted):**
-```json
-{
-  "job_id": "a8f3b211",
-  "status": "queued",
-  "message": "Graph generation started for Acme Corp"
-}
-```
+Accepts a webhook payload. It performs an "Account Context Weaver" operation: checking for existing nodes and generating deal-specific **Deltas**.
 
 ---
 
@@ -54,8 +45,10 @@ Fetches the fully materialized Markdown skill graph for a given client to be ren
 }
 ```
 
-### `GET /live/setup`
-Initializes a new `gemini-2.0-flash-exp` Voice session. Returns the ephemeral session URI and WebSocket protocol configuration over HTTP before the client upgrades the connection.
+### `GET /sessions/start`
+Initializes a new `gemini-2.5-flash-native-audio-preview` Voice session.
+**Query Params**: `tenant_id`, `account_id`, `role` (CSM/Sales/Support/WinBack).
+Returns the WebSocket URI for real-time WebRTC audio/vision.
 
 ---
 

@@ -81,21 +81,13 @@ async def run_text_conversation(
     client_id: str,
     message: str,
     history: list[dict] | None = None,
+    brand_name: str = "ClawdView",
 ) -> dict:
     """Run a single turn of text conversation with the Synapse agent.
-
-    This is the R1 text-mode agent. It uses Gemini with function calling
-    to navigate the skill graph and provide grounded answers.
-
-    Args:
-        client_id: Client identifier for graph traversal.
-        message: User's message.
-        history: Previous conversation turns (optional).
-
-    Returns:
-        Dict with agent response, tool calls made, and nodes visited.
+    
+    brand_name: Custom platform name from tenant config.
     """
-    client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
+    client = genai.Client(vertexai=True, project=config.project_id, location=config.gen_region)
     tools = _build_tools()
 
     # Build conversation history
@@ -109,8 +101,11 @@ async def run_text_conversation(
     # Add current user message
     contents.append(Content(role="user", parts=[Part.from_text(text=message)]))
 
+    # Format system instruction with brand name
+    system_instruction = SYNAPSE_SYSTEM_PROMPT.replace("{brand_name}", brand_name).replace("ClawdView", brand_name)
+
     gen_config = GenerateContentConfig(
-        system_instruction=SYNAPSE_SYSTEM_PROMPT,
+        system_instruction=system_instruction,
         temperature=0.3,
         max_output_tokens=4096,
         tools=tools,
@@ -139,7 +134,7 @@ async def run_text_conversation(
     from google.genai.types import AutomaticFunctionCallingConfig
     
     gen_config = GenerateContentConfig(
-        system_instruction=SYNAPSE_SYSTEM_PROMPT,
+        system_instruction=system_instruction,
         temperature=0.3,
         tools=[get_index, follow_link, search_graph],
         automatic_function_calling=AutomaticFunctionCallingConfig(disable=False),

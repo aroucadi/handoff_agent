@@ -21,6 +21,7 @@ class DealStage(str, Enum):
     NEGOTIATION = "negotiation"
     CLOSED_WON = "closed_won"
     CLOSED_LOST = "closed_lost"
+    IMPLEMENTED = "implemented"
 
 
 class Contact(BaseModel):
@@ -117,3 +118,4 @@ class WebhookPayload(BaseModel):
     success_metrics: list[dict]
     sales_transcript: Optional[str]
     contract_pdf_url: Optional[str]
+    historical_deals: list[dict] = Field(default_factory=list, description="Other deals mapping to this account")

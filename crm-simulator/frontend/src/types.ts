@@ -7,7 +7,8 @@ export type DealStage =
     | 'qualification'
     | 'negotiation'
     | 'closed_won'
-    | 'closed_lost';
+    | 'closed_lost'
+    | 'implemented';
 
 export interface Contact {
     name: string;
@@ -64,6 +65,7 @@ export const STAGE_LABELS: Record<DealStage, string> = {
     negotiation: 'Negotiation',
     closed_won: 'Closed Won',
     closed_lost: 'Closed Lost',
+    implemented: 'Implemented',
 };
 
 export const PIPELINE_STAGES: DealStage[] = [
@@ -72,4 +74,5 @@ export const PIPELINE_STAGES: DealStage[] = [
     'negotiation',
     'closed_won',
     'closed_lost',
+    'implemented',
 ];

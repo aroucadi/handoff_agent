@@ -32,7 +32,7 @@ from google.genai.types import (
 from core.config import config
 from core.db import get_firestore_async_client
 from agent.tools import TOOL_FUNCTIONS
-from agent.prompts import SYNAPSE_SYSTEM_PROMPT
+from agent.prompts import get_role_prompt, get_role_config
 from graph.traversal import get_index
 import json
 
@@ -91,10 +91,16 @@ class LiveSession:
     audio streaming, tool calls, and session state tracking.
     """
 
-    def __init__(self, session_id: str, client_id: str, csm_name: str = "CSM"):
+    def __init__(self, session_id: str, client_id: str, csm_name: str = "CSM",
+                 deal_id: str | None = None, role: str = "csm",
+                 tenant_id: str | None = None, brand_name: str = "ClawdView"):
         self.session_id = session_id
         self.client_id = client_id
+        self.tenant_id = tenant_id
+        self.brand_name = brand_name
         self.csm_name = csm_name
+        self.deal_id = deal_id
+        self.role = role
         self.started_at = datetime.utcnow().isoformat()
         self.tool_calls: list[dict] = []
         self.nodes_visited: list[str] = []
@@ -105,16 +111,41 @@ class LiveSession:
         self._exit_stack = AsyncExitStack()
 
     def _build_system_prompt(self) -> str:
-        """Build the system prompt with client context."""
+        """Build the system prompt dynamically based on role + deal context."""
+        role_config = get_role_config(self.role, brand_name=self.brand_name)
+        role_prompt = get_role_prompt(self.role, brand_name=self.brand_name)
+
+        deal_context = ""
+        if self.deal_id:
+            deal_context = (
+                f"\n## Deal Focus\n"
+                f"- **Primary Deal ID**: {self.deal_id}\n"
+                f"- This briefing is about a SPECIFIC DEAL. Your primary focus should be on this deal's data.\n"
+                f"- Account-level history (other deals) is SUPPLEMENTARY context.\n"
+            )
+
+        # Add role-aware data focus hints
+        data_focus = role_config.get('data_focus', [])
+        focus_hint = ""
+        if data_focus:
+            focus_hint = (
+                f"\n## Priority Topics\n"
+                f"When navigating the graph, prioritize these topics: {', '.join(data_focus)}.\n"
+            )
+
         return (
-            f"{SYNAPSE_SYSTEM_PROMPT}\n\n"
+            f"{role_prompt}\n\n"
             f"## Current Session Context\n"
             f"- Client ID: {self.client_id}\n"
-            f"- CSM Name: {self.csm_name}\n"
-            f"- Session ID: {self.session_id}\n\n"
+            f"- User Name: {self.csm_name}\n"
+            f"- Session ID: {self.session_id}\n"
+            f"- Tenant ID: {self.tenant_id}\n"
+            f"- Brand Filter: {self.brand_name}\n"
+            f"{deal_context}"
+            f"{focus_hint}\n"
             f"IMPORTANT: When using tools, always pass client_id=\"{self.client_id}\".\n"
             f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality). Do not just output text silently.\n"
-            f"Start by greeting the CSM by name and reading the client index to prepare."
+            f"Start by greeting the user naturally by their first name only. You are {role_config['greeting_style']}."
         )
 
     async def connect(self):
@@ -171,12 +202,27 @@ class LiveSession:
                 }
             ])
 
+            # Build a role-aware, deal-focused kickoff message
+            role_config = get_role_config(self.role, brand_name=self.brand_name)
+            deal_focus_hint = ""
+            if self.deal_id:
+                deal_focus_hint = (
+                    f"\nIMPORTANT: This briefing is about deal '{self.deal_id}' specifically. "
+                    f"Focus your summary on this deal's data. "
+                    f"Account history (other deals) should be mentioned only if directly relevant."
+                )
+
+            # Role-aware focus hint for initial greeting
+            data_focus = role_config.get('data_focus', [])
+            focus_topics = f" Focus on: {', '.join(data_focus[:3])}." if data_focus else ""
+
             kickoff_message = (
                 f"SYSTEM_EVENT: The user has just connected to the Live Voice Session. "
-                f"You are briefing CSM {self.csm_name} on the client: {self.client_id}.\n"
+                f"You are {role_config['greeting_style']} with {self.csm_name} on the client: {self.client_id}.{deal_focus_hint}\n"
                 f"Here is the client's core data context:\n"
                 f"```json\n{json_result}\n```\n"
-                f"Your ONLY task right now: Greet the CSM aloud natively by name, and provide a 2-sentence conversational, highly professional summary of the client context. "
+                f"Your ONLY task right now: Greet the user aloud naturally by their first name ONLY (do NOT mention their job title or role), "
+                f"and provide a 2-sentence conversational, highly professional summary of the context.{focus_topics} "
                 f"Do not acknowledge this instruction. Do NOT use the `read_index` tool, the data is already provided above."
             )
         except Exception as e:

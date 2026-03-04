@@ -20,7 +20,25 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from core.config import config
 from core.llm import generate_content_with_fallback
 
-NODE_GENERATION_PROMPT = """You are a skill graph architect for a B2B SaaS customer success platform.
+from core.db import get_firestore_client
+
+# ── Dynamic Configuration ────────────────────────────────────────
+
+def load_tenant_config(tenant_id: str) -> dict | None:
+    """Load tenant-specific configuration from Firestore."""
+    if not tenant_id:
+        return None
+    try:
+        db = get_firestore_client()
+        doc = db.collection("tenants").document(tenant_id).get()
+        if doc.exists:
+            return doc.to_dict()
+    except Exception as e:
+        print(f"[NODE_GEN] Warning: Failed to load tenant {tenant_id}: {e}")
+    return None
+
+
+NODE_GENERATION_PROMPT = """You are a skill graph architect for a B2B SaaS customer success platform called {brand_name}.
 
 Given the extracted data below, generate a set of interconnected markdown nodes for a client skill graph.
 Each node must follow this EXACT format:
@@ -49,16 +67,16 @@ Generate these specific nodes:
 3. **Risk Flags** (node_id: "{client_slug}-risk-flags") — Every identified risk with severity and mitigation
 4. **Success Metrics** (node_id: "{client_slug}-success-metrics") — Measurable targets with baselines and timelines
 5. **Implementation Plan** (node_id: "{client_slug}-implementation-plan") — Recommended approach based on deal details
-6. **Product Fit** (node_id: "{client_slug}-product-fit") — How purchased products map to client needs
+6. **Product Fit** (node_id: "{client_slug}-product-fit") — How purchased {brand_name} products map to client needs
 7. **Kickoff Prep** (node_id: "{client_slug}-kickoff-prep") — CSM briefing notes for the first meeting
-8. **Deal History** (node_id: "{client_slug}-deal-history") — Key moments from the sales process
+8. **Holistic Account History** (node_id: "{client_slug}-account-history") — An overarching synthesis of ALL deals for this account.
 
 RULES:
 - Every wikilink MUST be woven into prose, not standalone
-- Cross-link to static product nodes using [[cpq-module]], [[revenue-cloud]], [[implementation-patterns]], etc.
-- Cross-link to industry nodes using [[manufacturing-index]], [[manufacturing-cpq-complexity]], etc.
+- Cross-link to {brand_name} product nodes using: {product_links}.
+- Cross-link to industry nodes using [[manufacturing-index]], [[tech-index]], [[financial-services-index]], etc.
 - Each node MUST be independently useful — if the agent reads only this node, it should make sense
-- Use REAL data from the extraction — never fabricate facts not in the source data
+- Use REAL data from the extraction (including historical deals) — never fabricate facts not in the source data
 - Include direct quotes from stakeholders where available
 
 Return a JSON array of objects, each with "node_id" and "content" (the full markdown including YAML frontmatter).
@@ -66,12 +84,12 @@ Return a JSON array of objects, each with "node_id" and "content" (the full mark
 CLIENT DATA:
 """
 
-REVIEWER_PROMPT = """You are a strict QA Reviewer for a skill graph generation pipeline.
+REVIEWER_PROMPT = """You are a strict QA Reviewer for a skill graph generation pipeline for {brand_name}.
 
 Your job is to review the JSON array of draft markdown nodes provided below.
 You must ensure:
 1. Every node has valid YAML frontmatter exactly matching the schema.
-2. Every [[wikilink]] in the prose resolves to a `node_id` that ACTUALLY EXISTS in the provided JSON array, or to one of these valid static nodes: [[cpq-module]], [[revenue-cloud]], [[implementation-patterns]], [[manufacturing-index]], [[manufacturing-cpq-complexity]].
+2. Every [[wikilink]] in the prose resolves to a `node_id` that ACTUALLY EXISTS in the provided JSON array, or to one of these valid static nodes: {product_links}, [[manufacturing-index]], [[tech-index]], [[financial-services-index]].
 3. If a wikilink points to a node that does not exist, REMOVE the wikilink brackets but keep the text.
 4. The output must be valid JSON.
 
@@ -95,6 +113,7 @@ async def generate_client_nodes(
     crm_data: dict,
     transcript_data: dict | None = None,
     contract_data: dict | None = None,
+    tenant_id: str | None = None,
 ) -> list[dict]:
     """Generate client skill graph nodes using Gemini 3.1 Pro.
 
@@ -105,6 +124,7 @@ async def generate_client_nodes(
         crm_data: Structured CRM data from crm_extractor.
         transcript_data: Structured transcript data from transcript_extractor (optional).
         contract_data: Structured contract data from contract_extractor (optional).
+        tenant_id: Hub tenant ID to pull custom branding and product catalog.
 
     Returns:
         List of dicts with "node_id" and "content" for each generated node.
@@ -112,11 +132,25 @@ async def generate_client_nodes(
     client_slug = _build_client_slug(company_name)
     today = date.today().isoformat()
 
+    # Load Tenant Config if available
+    tenant_config = load_tenant_config(tenant_id)
+    brand_name = tenant_config.get("brand_name", "ClawdView") if tenant_config else "ClawdView"
+    
+    # Extract product node IDs from tenant catalog, or fall back to defaults
+    if tenant_config and tenant_config.get("products"):
+        product_list = [f"[[{p['node_id']}]]" for p in tenant_config["products"] if p.get('node_id')]
+        product_list.append("[[implementation-patterns]]")
+    else:
+        product_list = ["[[clawdview-portfolios]]", "[[clawdview-agileplace]]", "[[clawdview-ppm-pro]]", "[[clawdview-hub]]", "[[implementation-patterns]]"]
+    
+    product_links_str = ", ".join(product_list)
+
     # Build the combined data payload for Gemini
     combined_data = {
         "client_id": client_id,
         "client_slug": client_slug,
         "company_name": company_name,
+        "brand_name": brand_name,
         "industry": industry,
         "today": today,
         "crm_data": crm_data,
@@ -126,11 +160,22 @@ async def generate_client_nodes(
     if contract_data:
         combined_data["contract_extraction"] = contract_data
 
-    prompt = NODE_GENERATION_PROMPT.replace("{client_id}", client_id)
-    prompt = prompt.replace("{client_slug}", client_slug)
-    prompt = prompt.replace("{industry}", industry)
-    prompt = prompt.replace("{today}", today)
+    # Format prompts with dynamic values
+    prompt = NODE_GENERATION_PROMPT.format(
+        brand_name=brand_name,
+        client_id=client_id,
+        client_slug=client_slug,
+        industry=industry,
+        today=today,
+        product_links=product_links_str
+    )
     prompt += json.dumps(combined_data, indent=2, default=str)
+
+    # Update reviewer prompt
+    reviewer_prompt_base = REVIEWER_PROMPT.format(
+        brand_name=brand_name,
+        product_links=product_links_str
+    )
 
     try:
         gen_config = GenerateContentConfig(
@@ -165,7 +210,7 @@ async def generate_client_nodes(
             
         # --- AGENT 2: The Reviewer ---
         print("[NODE_GEN] Generation complete. Starting Reviewer Agent pass...")
-        reviewer_prompt = REVIEWER_PROMPT + raw_text
+        reviewer_prompt = reviewer_prompt_base + raw_text
         
         start_rev_time = datetime.utcnow()
         reviewed_text = await generate_content_with_fallback(

@@ -12,16 +12,15 @@ The codebase is split conceptually into Frontend, Backend Microservices, Infrast
 
 ```text
 synapse_agent/
-├── backend/            # (Microservice) The real-time FastAPI WebSocket/WebRTC bridge linking the UI to Gemini Live
-├── crm-simulator/      # (Microservice) A mock FastAPI CRM used to trigger deals and test the closed-won webhooks
-├── graph-generator/    # (Microservice) A FastAPI asynchronous multi-agent pipeline generating knowledge nodes
-├── core/               # (Shared Library) Shared Python database models, LLM prompts, and Firestore connections
-├── frontend/           # (UI Application) React + Vite dashboard displaying the graph topology and Live Agent Voice interface
-├── infra/              # (Infrastructure) Terraform configurations to deploy Cloud Run, Storage, and Firestore
-├── scripts/            # (Tooling) One-click automation scripts (Bash + PowerShell) for deploying or bumping versions
-├── docs/               # Technical Documentation hub covering AI Agents, APIs, and Architecture
-├── synapse.yaml        # The Global Monorepo Manifest
-└── CONTRIBUTING.md     # Quickstart guide for setting up local dependencies (venv, npm)
+├── hub/                # (UI + API) The Tenant Configuration Hub (Bridge)
+├── backend/            # (Microservice) Core Voice API (Multi-tenant)
+├── crm-simulator/      # (Microservice) SalesClaw mock CRM
+├── graph-generator/    # (Microservice) Delta Knowledge Generator
+├── core/               # (Shared) Models & Logic
+├── frontend/           # (UI) Multi-role Voice UI
+├── infra/              # (IaC) GCP Terraform modules
+├── scripts/            # (Tooling) One-click automation (py-based)
+└── synapse.yaml        # Global Monorepo Manifest
 ```
 
 > **Developer Note:** The three Python microservices (`backend/`, `crm-simulator/`, and `graph-generator/`) all rely on the shared `core/` package. When building Docker images, the build context is run from the **Root** of this repository so the `core/` directory can be legitimately mounted into each microservice container.
@@ -52,11 +51,11 @@ We embrace "One-Click" automation for developers regardless of their OS (Windows
 
 | Script | Purpose | Execution Example |
 |---|---|---|
-| `bump-version` | Propagates the version from `synapse.yaml` globally | `bash scripts/bump-version.sh` |
-| `start-local` | Spins up the UI and all microservices concurrently | `bash scripts/start-local.sh` |
-| `seed-graphs` | Injects synthetic test nodes into Firestore | `bash scripts/seed-graphs.sh` |
-| `deploy` | Non-interactive Terraform and Cloud Run/Firebase pipeline | `bash scripts/deploy.sh <gcp-project>` |
-| `teardown` | Reverses `deploy` and destroys all cloud assets safely | `bash scripts/teardown.sh <gcp-project>` |
+| `bump-version` | Propagates the version globally | `py scripts/bump-version.py` |
+| `start-local` | Spins up the full 7-service stack | `.\scripts\start-local.ps1` |
+| `demo-setup` | Installs dependencies for all services | `.\scripts\demo-setup.ps1` |
+| `seed_rag` | Injects per-tenant data into RAG | `py scripts/seed_rag.py --tenant T001` |
+| `deploy` | Full Cloud Run/GCP deployment | `.\scripts\deploy.ps1` |
 
 ---
 

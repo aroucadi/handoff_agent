@@ -11,10 +11,16 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest', '-f', 'crm-simulator/Dockerfile', '.']
 
+  # 4. Hub API
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
+
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest'
 
 substitutions:
   _REGION: us-central1

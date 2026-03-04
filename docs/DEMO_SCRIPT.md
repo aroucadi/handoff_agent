@@ -24,7 +24,7 @@
 ### Phase 3: The Vision Flex (2:00 - 3:00)
 * **Action:** Click the "Share Vision (💻)" button. A screen-share picker appears. Select a window showing a mock technical architecture diagram or an angry customer email.
 * **You (Voice):** *"Synapse, look at this architecture diagram I'm sharing. Does this match the requirements we discussed during the sales cycle?"*
-* **Visual:** The agent uses `read_index` tool to scan the graph for architecture requirements, comparing it in real-time to the video frames streamed to Gemini 2.0 Flash Exp.
+* **Synapse (Voice):** "Welcome back, Alex. I see you're logged in with your **CSM** persona for the **GlobalManufacturing** account. We have a new **Delta Graph** ready from their latest expansion deal. Ready to dive into the new stakeholder risks?"
 * **Synapse (Voice):** *"I see the diagram includes a Postgres database, but my graph shows the client specifically requested an Oracle integration in the initial scoping call. This might be a mismatch."*
 * **Narrator:** *"This is true multimodal capability. Screen sharing paired with deeply grounded, customer-specific knowledge."*
 

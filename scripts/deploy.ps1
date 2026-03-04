@@ -30,9 +30,15 @@ Write-Host "Generated Deploy Tag: $DeployTag" -ForegroundColor Cyan
 # 2. Build and push containers to GCP (Remote Build)
 Write-Host "`n[2/4] Building and Pushing Containers to GCP..." -ForegroundColor Yellow
 
-# Build CRM Frontend first locally (required for CRM Simulator image)
+# Build CRM & Hub Frontends first locally (required for images if hosting assets)
 Write-Host '--> Building SalesClaw CRM Frontend'
 Push-Location -Path crm-simulator/frontend
+npm install
+npm run build
+Pop-Location
+
+Write-Host '--> Building Synapse Hub Frontend'
+Push-Location -Path hub
 npm install
 npm run build
 Pop-Location
@@ -47,12 +53,17 @@ Set-Location -Path ./infra
 terraform init
 terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region"
 
-Write-Host "--> Exporting Terraform Outputs to Frontend..." -ForegroundColor Yellow
+Write-Host "--> Exporting Terraform Outputs..." -ForegroundColor Yellow
 $apiUrl = terraform output -raw api_url
+$hubUrl = terraform output -raw hub_url
 $wsUrl = $apiUrl -replace "^https://", "wss://"
 
-$envContent = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl"
+$envContent = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl`nVITE_HUB_URL=$hubUrl"
 Set-Content -Path ../frontend/.env.production -Value $envContent
+
+# Hub also needs its production API URL
+$hubEnv = "VITE_API_URL=$hubUrl"
+Set-Content -Path ../hub/.env.production -Value $hubEnv
 
 Set-Location -Path ..
 
@@ -60,6 +71,7 @@ Write-Host "--> Forcing Cloud Run to pull latest image digests..." -ForegroundCo
 gcloud run deploy synapse-api --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/api:${DeployTag} --region $Region --project $ProjectId --quiet
 gcloud run deploy synapse-graph-generator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/graph-generator:${DeployTag} --region $Region --project $ProjectId --quiet
 gcloud run deploy synapse-crm-simulator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:${DeployTag} --region $Region --project $ProjectId --quiet
+gcloud run deploy synapse-hub --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/hub:${DeployTag} --region $Region --project $ProjectId --quiet
 
 # 4. Deploy Frontend
 Write-Host "`n[4/4] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow

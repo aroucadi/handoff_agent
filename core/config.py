@@ -15,6 +15,8 @@ class CoreConfig:
     # GCP
     project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID", "synapse-488201"))
     region: str = field(default_factory=lambda: os.environ.get("REGION", "us-central1"))
+    # Gemini 3.x preview generation models require the global endpoint
+    gen_region: str = field(default_factory=lambda: os.environ.get("GEN_REGION", "global"))
     environment: str = field(default_factory=lambda: os.environ.get("ENVIRONMENT", "dev"))
 
     # Gemini API
@@ -22,10 +24,12 @@ class CoreConfig:
         default_factory=lambda: os.environ.get("GEMINI_API_KEY", "").replace("\ufeff", "").strip()
     )
 
-    # Gemini Model Strategy
-    gen_model: str = "models/gemini-3.1-pro-preview"
-    fallback_model: str = "models/gemini-3-flash-preview"
-    summary_model: str = "models/gemini-3-flash-preview"
+    # Gemini Model Strategy — Vertex AI resource names (no "models/" prefix)
+    # Queried from: genai.Client(vertexai=True).models.list()
+    gen_model: str = "gemini-3.1-pro-preview"
+    fallback_model: str = "gemini-3-flash-preview"
+    summary_model: str = "gemini-3-flash-preview"
+    graph_gen_model: str = "gemini-3-flash-preview"  # Used by the text agent in synapse_agent.py
     # Switch to 2.5-flash for Hackathon True Multimodal Vision and Text natively over Vertex AI
     live_agent_model: str = "gemini-live-2.5-flash-native-audio"
     embedding_model: str = "gemini-embedding-001"

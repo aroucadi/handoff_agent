@@ -10,6 +10,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
+import { Activity, Hash, MessageSquare } from 'lucide-react';
 
 interface ClientDetails {
     client_id: string;
@@ -98,77 +99,73 @@ export default function BriefingSession() {
     }, [isConnected, handleEnd]);
 
     return (
-        <div className="briefing">
-            <div className="briefing__status-bar flex justify-between items-center">
-                <div className="flex items-center gap-6">
-                    <div className="briefing__client">
-                        <span className="briefing__client-label text-xs text-slate-500 uppercase tracking-wider block mb-1">Client</span>
-                        <span className="briefing__client-id font-mono text-lg">{clientDetails?.company_name || clientId}</span>
-                    </div>
-
-                    {clientDetails?.deal_value !== undefined && clientDetails.deal_value > 0 && (
-                        <div>
-                            <span className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Deal Value</span>
-                            <span className="font-mono text-lg text-emerald-400">${clientDetails.deal_value.toLocaleString()}</span>
+        <div className="briefing-wrapper" style={{ minHeight: '100vh', background: '#000000', padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column' }}>
+            <div className="briefing glass-card-premium" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 3rem)', borderRadius: '24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)', background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }}>
+                <div className="briefing__top-bar flex items-center justify-between" style={{ padding: '0 2rem', background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)', height: '4.5rem', flexShrink: 0 }}>
+                    <div className="flex items-center gap-6">
+                        {/* Logo Area */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '28px', height: '28px', background: 'radial-gradient(circle at 30% 30%, #a855f7, #3b82f6)', borderRadius: '50%', position: 'relative', boxShadow: '0 0 15px rgba(168, 85, 247, 0.4)' }}>
+                                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '10px', height: '10px', background: '#fff', borderRadius: '50%', boxShadow: '0 0 10px #fff' }} />
+                            </div>
+                            <span className="font-bold text-lg tracking-tight" style={{ letterSpacing: '-0.02em' }}>Synapse Briefing</span>
                         </div>
-                    )}
 
-                    {clientDetails?.kickoff_date && (
-                        <div>
-                            <span className="text-xs text-slate-500 uppercase tracking-wider block mb-1">Kickoff</span>
-                            <span className="font-mono text-lg text-amber-400">
-                                {Math.max(0, Math.floor((new Date(clientDetails.kickoff_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)))} Days
-                            </span>
+                        <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)' }} />
+
+                        {/* Meta Info */}
+                        <div className="flex items-center gap-6" style={{ fontSize: '0.875rem' }}>
+                            <div className="flex items-center gap-2">
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}><Activity size={12} style={{ display: 'inline', marginRight: '4px' }} /> Client:</span>
+                                <span className="font-mono text-sm">{clientDetails?.company_name || clientId}</span>
+                            </div>
+                            {clientDetails?.deal_value !== undefined && clientDetails.deal_value > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted-sm)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deal Value:</span>
+                                    <span className="font-mono text-sm text-emerald-400">${((clientDetails?.deal_value || 0) / 1000).toFixed(0)}k</span>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-                <div className="briefing__metrics">
-                    <div className="metric">
-                        <span className="metric__value">{toolCalls.length}</span>
-                        <span className="metric__label">Agent Actions</span>
                     </div>
-                    <div className="metric">
-                        <span className="metric__value">
-                            {new Set([
-                                currentNode,
-                                ...toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)
-                            ].filter(Boolean)).size}
-                        </span>
-                        <span className="metric__label">Nodes Visited</span>
-                    </div>
-                    <div className="metric">
-                        <span className="metric__value">{transcript.length}</span>
-                        <span className="metric__label">Messages</span>
-                    </div>
-                </div>
-                <div className={`briefing__connection ${isConnected ? 'briefing__connection--on' : ''}`}>
-                    {isConnected ? '● Connected' : '○ Disconnected'}
-                </div>
-            </div>
 
-            <div className="briefing__agent-status flex justify-center gap-2 m-2">
-                {agentStatus === 'listening' ? <span className="status-badge text-xs font-mono bg-cyan-900/40 text-cyan-400 px-3 py-1 rounded-full border border-cyan-500/30">⬤ Listening</span> : null}
-                {agentStatus === 'thinking' ? <span className="status-badge text-xs font-mono bg-purple-900/40 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30 animate-pulse">⬤ Thinking...</span> : null}
-                {agentStatus === 'speaking' ? <span className="status-badge text-xs font-mono bg-emerald-900/40 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/30">🔊 Speaking</span> : null}
-            </div>
+                    <div className="flex items-center gap-8">
+                        {/* Inline Metrics */}
+                        <div className="flex items-center gap-6" style={{ color: 'var(--text-muted-sm)', fontSize: '0.875rem' }}>
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={14} /> Messages: <span className="text-white font-mono">{transcript.length}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Hash size={14} /> Nodes Visited: <span className="text-white font-mono">
+                                    {new Set([currentNode, ...toolCalls.filter(t => t.name === 'follow_link').map(t => t.args?.node_id)].filter(Boolean)).size}
+                                </span>
+                            </div>
+                        </div>
 
-            <div className="briefing__split">
-                <ConversationPanel
-                    transcript={transcript}
-                    isMicActive={isMicActive}
-                    isScreenShared={isScreenShared}
-                    agentStatus={agentStatus}
-                    sessionId={sessionId}
-                    onToggleMic={toggleMic}
-                    onToggleScreenShare={toggleScreenShare}
-                    onSendText={sendText}
-                    onEndBriefing={handleEnd}
-                />
-                <GraphPanel
-                    clientId={clientId || ''}
-                    toolCalls={toolCalls}
-                    currentNode={currentNode}
-                />
+                        {/* Connection Pill */}
+                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-wider ${isConnected ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                            {isConnected ? <><div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" /> CONNECTED</> : <><div className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_#fb7185]" /> OFFLINE</>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="briefing__split" style={{ height: 'calc(100vh - 7.5rem)' }}>
+                    <ConversationPanel
+                        transcript={transcript}
+                        isMicActive={isMicActive}
+                        isScreenShared={isScreenShared}
+                        agentStatus={agentStatus}
+                        sessionId={sessionId}
+                        onToggleMic={toggleMic}
+                        onToggleScreenShare={toggleScreenShare}
+                        onSendText={sendText}
+                        onEndBriefing={handleEnd}
+                    />
+                    <GraphPanel
+                        clientId={clientId || ''}
+                        toolCalls={toolCalls}
+                        currentNode={currentNode}
+                    />
+                </div>
             </div>
         </div>
     );

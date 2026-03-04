@@ -172,16 +172,15 @@ Layer 2 — Industry Knowledge Graph (static, pre-built)
   └── financial-services/
       └── ...
 
-Layer 3 — Client Skill Graph (dynamic, auto-generated at deal close)
-  clients/{client-id}/
-  ├── index.md                    ← MOC: client entry point + stage tags
-  ├── client-profile.md
-  ├── stakeholder-map.md
-  ├── deal-context.md
-  ├── negotiated-scope.md
-  ├── success-metrics.md
-  ├── risk-flags.md
-  └── sales-call-highlights.md
+Layer 3 — Account Knowledge Graph (Delta-based, evolving per deal)
+  accounts/{account-id}/
+  ├── account-profile.md          ← Core account identity
+  ├── stakeholder-map.md          ← Dynamic hierarchy across deals
+  ├── historical-deals/           # Folder for deal-specific deltas
+  │   ├── opp-2025-win.md
+  │   └── current-delta-node.md    ← The latest deal extraction
+  ├── risk-history.md             ← Cumulative risk flags
+  └── success-metrics-delta.md    ← Historical vs current targets
 ```
 
 **YAML frontmatter schema for every node:**
@@ -265,24 +264,19 @@ Manufacturing conglomerate, 500 employees, midwest US. Closed $2M VeloSaaS CPQ +
 
 ## 6. Feature Specifications
 
-### Feature 1: CRM Webhook Trigger & Graph Generator
+**Feature 1: Delta Graph Generator & Account Weaver**
 
-**Description**: When a deal is marked Closed Won in the CRM (mock Salesforce API), a Cloud Run job fires, reads all available deal data, and generates the client skill graph.
+**Description**: When a deal closes, the generator doesn't just create a new graph—it weaves a **Delta** into the existing **Account Knowledge Graph**. It reads historical deal nodes to ensure continuity and avoids redundant "Account Profile" generation.
 
 **Inputs**:
-- CRM deal record (JSON): company name, deal value, products purchased, close date, SLA, assigned CSM
-- Contract PDF (uploaded to Cloud Storage)
-- Sales call transcript (text, from CRM notes field)
+- CRM deal record & historical context
+- Contract PDF & Sales Transcripts
 
 **Process**:
-1. Parse CRM JSON → extract structured deal metadata
-2. Use Gemini 3.1 Pro (`gemini-3.1-pro-preview`) to extract entities from transcript (stakeholders, pain points, promises, risks, objections) — 1M token context handles even the longest sales cycles
-3. Use Gemini 3.1 Pro to extract contract terms from PDF (multimodal PDF understanding)
-4. Generate 10–20 markdown nodes following the YAML schema
-5. Write nodes to `gs://synapse-graphs/{client-id}/` in Cloud Storage
-6. Index node metadata in Firestore collection `skill_graphs/{client-id}/nodes`
-7. Generate embeddings via `gemini-embedding-001` for semantic search indexing
-8. Trigger notification to assigned CSM
+1. **Account Context Retrieval**: Fetch existing `account-profile.md` and `risk-history.md`.
+2. **Delta Extraction**: Gemini 3.1 Pro identifies *new* stakeholders, *new* technical requirements, and *changes* in project scope.
+3. **Graph Weaving**: Generate "Delta Nodes" (e.g., `deal-xyz-brief.md`) and update wikilinks in the core `account-profile.md` to point to the new historical deal record.
+4. **Vector Sync**: Embed only the new delta content and update the Firestore index with `_tenant_id` and `_account_id` sharding.
 
 **Fallback**: If Gemini 3.1 Pro is rate-limited or unavailable, fall back to Gemini 3 Flash (`gemini-3.0-flash`) for extraction — faster but slightly less accurate on complex contracts
 
@@ -326,23 +320,21 @@ def search_graph(client_id: str, query: str, layers: list = ["client", "industry
     """
 ```
 
-**ADK Agent System Prompt** (injected at session start):
+**ADK Agent System Prompt** (Multi-tenant & Multi-role):
 ```
-You are Synapse, a briefing agent for Customer Success Managers at VeloSaaS.
-You have access to a three-layer knowledge graph: product knowledge, industry context, and client-specific deal data.
+You are Synapse, an expert briefing agent (Role: {role}) for Tenant: {tenant_name}.
+You are assisting {user_name} with Account: {account_name}.
 
-Your traversal protocol:
-1. ALWAYS start by calling read_index() to understand the knowledge landscape
-2. Use follow_link() to read specific nodes when you have a clear navigation path
-3. Use search_graph() when the query is ambiguous or cross-cutting
-4. NEVER answer from your parametric memory alone — always ground answers in graph nodes
-5. When you cite information, tell the CSM which graph node it came from
-6. Be conversational and concise — this is a voice interface, not a document reader
-7. Proactively surface risks and gaps, don't wait to be asked
+Your Persona Protocol:
+1. If Role=CSM: Prioritize success metrics, account health, and ROI.
+2. If Role=Sales: Prioritize expansion signals, historical deal blockers, and economic buyers.
+3. If Role=WinBack: Prioritize risk mitigation, historical objections, and emotional sentiment.
+4. If Role=Support: Prioritize technical specifications, SLAs, and legacy integration hurdles.
 
-Current client: {client_id}
-CSM name: {csm_name}
-Kickoff time: {kickoff_datetime}
+Your Traversal Protocol:
+1. Start with read_index(). Look for [[delta-nodes]] from the latest deal.
+2. Traverse from [[account-profile]] to specific deal history for deep context.
+3. Proactively surface "Account Drift" (differences between sales promises and implementation reality).
 ```
 
 ---
@@ -927,95 +919,20 @@ The diagram for the submission should be clean and professional. Use this layout
 
 ```
 synapse/
-├── README.md                        ← Setup instructions (judges need this)
-├── ARCHITECTURE.md                  ← Architecture diagram (text + image)
-├── DEPLOYMENT_PROOF.md             ← Links to GCP console screenshots
-│
-├── infra/                           ← Terraform IaC (bonus points)
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── terraform.tfvars.example
-│   └── modules/
-│       ├── cloud-run/
-│       ├── storage/
-│       ├── firestore/
-│       └── firebase/
-│
-├── backend/                         ← FastAPI + ADK agent
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── main.py                      ← FastAPI app entry point
-│   ├── config.py                    ← Environment config
-│   ├── agent/
-│   │   ├── synapse_agent.py         ← ADK agent definition
-│   │   ├── tools/
-│   │   │   ├── read_index.py
-│   │   │   ├── follow_link.py
-│   │   │   └── search_graph.py
-│   │   └── prompts.py               ← System prompts
-│   ├── graph/
-│   │   ├── traversal.py             ← Graph navigation logic
-│   │   ├── storage.py               ← GCS read/write
-│   │   └── search.py                ← Firestore + vector search
-│   ├── live/
-│   │   └── session.py               ← Gemini Live WebSocket handler
-│   └── api/
-│       ├── webhooks.py
-│       ├── sessions.py
-│       └── clients.py
-│
-├── graph-generator/                 ← Standalone Cloud Run job
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   ├── generator.py                 ← Main generation logic
-│   ├── extractors/
-│   │   ├── crm_extractor.py
-│   │   ├── pdf_extractor.py
-│   │   └── transcript_extractor.py
-│   └── templates/                   ← Node markdown templates
-│       ├── client-index.md
-│       ├── stakeholder-map.md
-│       ├── risk-flags.md
-│       └── ...
-│
-├── skill-graphs/                    ← Pre-built static graphs
-│   ├── product/
-│   │   ├── index.md
-│   │   ├── cpq-module.md
-│   │   └── ...
-│   └── industries/
-│       ├── manufacturing/
-│       │   ├── index.md
-│       │   └── ...
-│       └── financial-services/
-│
-├── mock-crm/                        ← Demo CRM mock server
-│   ├── server.py
-│   └── data.py
-│
-├── frontend/                        ← React app
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── BriefingSession.tsx
-│   │   │   ├── ConversationPanel.tsx
-│   │   │   ├── GraphPanel.tsx
-│   │   │   └── NodeVisualization.tsx
-│   │   ├── hooks/
-│   │   │   ├── useGeminiLive.ts
-│   │   │   └── useGraphTraversal.ts
-│   │   └── types/
-│   │       └── index.ts
-│   └── firebase.json
-│
-└── scripts/
-    ├── deploy.sh                    ← Full deployment script
-    ├── seed-graphs.sh               ← Upload pre-built graphs to GCS
-    └── demo-setup.sh                ← Set up demo data
+├── hub/                             # Synapse Hub (Microservice)
+│   ├── api/                         # Hub CRUD & Config API
+│   └── src/                         # Hub Frontend (Vite)
+├── backend/                         # Synapse Voice API
+│   ├── agent/                       # prompts.py (Multi-role)
+│   └── live/                        # session.py (Multi-tenant)
+├── graph-generator/                 # Delta Knowledge Generator
+│   ├── node_generator.py            # Account context weaving
+│   └── templates/                   # Delta markdown templates
+├── core/                            # Shared Domain Models (Tenant, Account, Deal)
+├── crm-simulator/                   # Mock CRM (SalesClaw)
+├── frontend/                        # Multi-role Voice UI
+├── infra/                           # Terraform IaC
+└── scripts/                         # start-local.ps1, deploy.ps1
 ```
 
 ---

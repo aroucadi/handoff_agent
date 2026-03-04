@@ -9,17 +9,20 @@ In enterprise software, **80% of critical customer context is lost** during the 
 
 ## What it does
 Synapse completely breaks the "text box" paradigm. It is an immersive, split-screen briefing environment for CSMs. 
-1. **Automated ETL:** When a deal is marked "Closed Won", Synapse uses **Gemini 3.1 Pro** to parse all sales documents and generate a semantic "Skill Graph" stored in Firestore Native.
-2. **Multimodal Live Briefings:** CSMs open the Synapse portal and talk to the agent using the **Gemini Live API** (Gemini 2.0 Flash Exp).
-3. **Screen-sharing (Vision):** CSMs can share their screen via WebRTC, and Synapse can "see" what they are working on, cross-referencing visual data with the grounded skill graph.
-4. **Zero-Hallucination Design:** You can watch the AI "think". The agent is strictly constrained to specific traversal tools (`follow_link`, `search_graph`). As the agent reasons, the UI visually highlights the nodes it is scanning in a dynamic React Flow graph. 
+1. **Synapse Hub (Multi-tenant Portal):** A central management layer where different companies (Tenants) configure their branding, agent personas (CSM, Sales, Support, WinBack), and account data.
+2. **Account-Oriented Delta ETL:** When a new deal closes, Synapse uses **Gemini 3.1 Pro** to weave a "Delta" into the existing Account Knowledge Graph, preserving historical deal continuity and risk evolution.
+3. **Multimodal Live Briefings:** CSMs open the multi-role portal and talk to the agent using the **Gemini Live API** (Gemini 2.5 Flash Native Audio).
+4. **Zero-Hallucination Design:** Grounded graph traversal ensures the agent never guesses—it literally moves through the account's historical and product data topography.
 
 ## How we built it
 We engineered Synapse as a production-grade, enterprise application:
-- **Models:** Gemini 3.1 Pro (Graph Generation), Gemini 2.0 Flash Exp (Live Vision & Voice), Gemini Embedding 001 (Semantic Search).
-- **Frontend:** React + Vite + Custom animated SVGs and React Flow for the visual topography. Remotion for cinematic brand video generation.
-- **Backend Infrastructure:** Fully declarative IaC using **Terraform**. We deploy Python microservices to **Google Cloud Run**, leverage **Firestore Native** with Vector extensions for memory, and use **GCS** for media processing.
-- **Protocol:** Real-time WebSockets over FastAPI to maintain the ultra-low latency Gemini live connection.
+- **Models:** Gemini 3.1 Pro (Delta Graph Gen), Gemini 2.5 Flash Native Audio (Live Vision & Voice), Gemini Embedding 001 (Multi-tenant Semantic Search).
+- **Frontend:** Multi-role React Portal + Synapse Hub + Custom animated SVGs and React Flow topography.
+- **Backend:** Multi-tenant Python microservices on **Google Cloud Run**, **Firestore Native** with
+* **`synapse-hub`**: The multi-tenant configuration portal and metadata API.
+* **`synapse-api`**: Core Voice service handling multi-role sessions and WebRTC bridging.
+* **`synapse-graph-generator`**: Account-oriented delta knowledge pipe (Timeout: `900s`).
+* **`synapse-crm-simulator`**: SalesClaw mock CRM for deal life-cycle simulation.
 
 ## Challenges we ran into
 Connecting a Live Agent to an evolving knowledge graph without inducing latency or hallucinations was incredibly difficult. We initially tried injecting the entire context into the system prompt, but that didn't scale. We solved this by forcing the LLM to use structured tool calls to traverse the graph one node at a time, ensuring strict, deterministic data retrieval.

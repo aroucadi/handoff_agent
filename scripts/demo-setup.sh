@@ -44,6 +44,7 @@ echo "🐍 Step 2: Installing Python dependencies..."
 pip install -q -r backend/requirements.txt
 pip install -q -r graph-generator/requirements.txt
 pip install -q -r crm-simulator/requirements.txt
+pip install -q -r hub/api/requirements.txt
 echo "   ✅ Python dependencies installed"
 
 # Step 3: Install frontend dependencies
@@ -51,16 +52,19 @@ echo ""
 echo "📦 Step 3: Installing frontend dependencies..."
 (cd frontend && npm install --silent)
 (cd crm-simulator/frontend && npm install --silent)
+(cd hub && npm install --silent)
 echo "   ✅ Frontend dependencies installed"
 
 # Step 4: Health check
 echo ""
 echo "✅ Demo environment ready!"
 echo ""
-echo "Run ./scripts/start-local.sh to start all services"
+echo "Run ./scripts/start-local.ps1 (Windows) or ./scripts/start-local.sh (Linux) to start all services"
 echo "Or start them individually:"
 echo "   1. cd crm-simulator && uvicorn main:app --port 8001"
 echo "   2. cd graph-generator && uvicorn main:app --port 8002"
 echo "   3. cd backend && uvicorn main:app --port 8000"
-echo "   4. cd frontend && npm run dev"
-echo "   5. cd crm-simulator/frontend && npm run dev"
+echo "   4. cd hub/api && uvicorn main:app --port 8003"
+echo "   5. cd frontend && npm run dev"
+echo "   6. cd crm-simulator/frontend && npm run dev"
+echo "   7. cd hub && npm run dev -- --port 5176"

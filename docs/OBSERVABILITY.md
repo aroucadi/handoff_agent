@@ -1,6 +1,6 @@
 # 🔬 Level 5 Agent Observability & Telemetry
 
-Creating a production-grade voice agent requires moving past simple API requests into deep telemetry. Synapse tracks precisely what the LLMs are seeing, thinking, and doing.
+Creating a production-grade voice agent through the **Synapse Hub** requires moving past simple API requests into deep telemetry.
 
 ## 1. Request Telemetry (`core/telemetry.py`)
 

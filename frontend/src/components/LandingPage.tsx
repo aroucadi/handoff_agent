@@ -1,112 +1,232 @@
-/**
- * Synapse — Landing Page Component
- *
- * Premium hero section with brand video, features, and CTA.
- * The entry point for the hackathon demo experience.
- */
-
 import { useNavigate } from 'react-router-dom';
+import { Github, Zap, Shield, Cpu, Layout, ArrowRight, ExternalLink } from 'lucide-react';
 
 export default function LandingPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="landing">
-            {/* ── Hero Section ────────────────────────── */}
-            <section className="landing__hero">
-                <div className="landing__glow" />
-                <div className="landing__particles">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                        <span key={i} className="particle" style={{
-                            left: `${(i * 7.3) % 100}%`,
-                            top: `${(i * 5.1 + 10) % 90}%`,
-                            animationDelay: `${(i * 0.3) % 4}s`,
-                            width: `${3 + (i % 3)}px`,
-                            height: `${3 + (i % 3)}px`,
-                        }} />
-                    ))}
-                </div>
-                <h1 className="landing__logo">Synapse</h1>
-                <p className="landing__tagline">The Living Memory of Your Customer Journey</p>
-                <p className="landing__desc">
-                    A Level 5 Multimodal AI Agent that transforms CRM deal closures into
-                    real-time, grounded customer success briefings — with voice and vision.
-                </p>
-                <div className="landing__cta-row">
-                    <button className="btn btn--hero" onClick={() => navigate('/dashboard')}>
-                        🚀 Launch Dashboard
-                    </button>
-                    <a className="btn btn--hero-outline" href="https://github.com/aroucadi/synapse_agent" target="_blank" rel="noopener noreferrer">
-                        ⭐ View on GitHub
-                    </a>
-                </div>
-            </section>
+        <div className="web3-landing">
+            {/* Background Video */}
+            <video
+                className="web3-bg-video"
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260217_030345_246c0224-10a4-422c-b324-070b7c0eceda.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+            />
 
-            {/* ── Video Section ────────────────────────── */}
-            <section className="landing__video-section">
-                <h2 className="landing__section-title">See Synapse in Action</h2>
-                <div className="landing__video-frame">
-                    <video
-                        className="landing__video"
-                        src="/synapse-brand.mp4"
-                        controls
-                        poster=""
-                        playsInline
-                    >
-                        Your browser does not support the video tag.
-                    </video>
-                    <p className="landing__video-hint">
-                        Video not loading? Render it with: <code>cd video && npm run render</code> then copy <code>out/synapse-brand.mp4</code> to <code>frontend/public/</code>
+            {/* 50% Black Overlay */}
+            <div className="web3-overlay" />
+
+            <div className="web3-content">
+                {/* Navbar */}
+                <nav className="web3-nav">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', letterSpacing: '-0.03em', cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                            Synapse
+                        </div>
+                        <div className="web3-nav-links">
+                            <a href="#features" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
+                                Features
+                            </a>
+                            <a href="#hub" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
+                                The Hub
+                            </a>
+                            <a href="#how-it-works" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
+                                How it Works
+                            </a>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {import.meta.env.VITE_HUB_URL && (
+                            <a
+                                href={import.meta.env.VITE_HUB_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="web3-nav-link-secondary"
+                                style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '14px', fontWeight: 500 }}
+                            >
+                                Tenant Hub
+                            </a>
+                        )}
+                        <button className="web3-pill-btn" onClick={() => navigate('/roles')}>
+                            Launch App
+                        </button>
+                    </div>
+                </nav>
+
+                {/* Hero Content */}
+                <main style={{
+                    paddingTop: 'clamp(100px, 20vh, 280px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '40px',
+                    textAlign: 'center',
+                    paddingLeft: '24px',
+                    paddingRight: '24px'
+                }}>
+
+                    {/* Badge */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 14px',
+                        background: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '20px',
+                        fontSize: '13px',
+                        fontWeight: 500
+                    }}>
+                        <div style={{ width: '4px', height: '4px', background: '#fff', borderRadius: '50%' }} />
+                        <span style={{ opacity: 0.6 }}>Early access available from</span>
+                        <span>May 1, 2026</span>
+                    </div>
+
+                    {/* Heading */}
+                    <h1 className="web3-hero-heading" style={{
+                        margin: 0,
+                        maxWidth: '800px',
+                        fontSize: 'clamp(36px, 5vw, 64px)',
+                        fontWeight: 700,
+                        lineHeight: 1.1,
+                        letterSpacing: '-0.02em',
+                        paddingBottom: '8px'
+                    }}>
+                        AI Intelligence at the Speed of Experience
+                    </h1>
+
+                    {/* Subtitle */}
+                    <p style={{
+                        margin: 0,
+                        maxWidth: '680px',
+                        fontSize: '16px',
+                        fontWeight: 400,
+                        color: 'rgba(255,255,255,0.7)',
+                        lineHeight: 1.6,
+                        marginTop: '-16px'
+                    }}>
+                        Powering seamless experiences and real-time connections, Synapse is the multimodal voice agent for teams who move with purpose, leveraging sub-second latency and dynamic skill graphs to shape the future of CRM.
                     </p>
-                </div>
-            </section>
 
-            {/* ── Features Grid ────────────────────────── */}
-            <section className="landing__features">
-                <h2 className="landing__section-title">Level 5 Capabilities</h2>
-                <div className="landing__features-grid">
-                    {[
-                        { icon: '👁️', title: 'Sees', desc: 'Screen-sharing via WebRTC — the agent sees your CRM in real time.', color: '#7c3aed' },
-                        { icon: '🎙️', title: 'Speaks', desc: 'Gemini Live voice streaming with sub-second latency.', color: '#38bdf8' },
-                        { icon: '🧠', title: 'Reasons', desc: 'Skill graph navigation — grounded, zero-hallucination answers.', color: '#10b981' },
-                        { icon: '🔍', title: 'Searches', desc: 'Firestore Native Vector Search for semantic retrieval.', color: '#f59e0b' },
-                        { icon: '📊', title: 'Observes', desc: 'Async telemetry traces for full agent observability.', color: '#f43f5e' },
-                        { icon: '☁️', title: 'Deploys', desc: 'One-click Terraform IaC — entire stack on GCP in minutes.', color: '#a78bfa' },
-                    ].map((f, i) => (
-                        <div key={i} className="feature-card" style={{ borderColor: f.color }}>
-                            <span className="feature-card__icon">{f.icon}</span>
-                            <h3 className="feature-card__title" style={{ color: f.color }}>{f.title}</h3>
-                            <p className="feature-card__desc">{f.desc}</p>
+                    {/* CTA Row */}
+                    <div style={{
+                        display: 'flex',
+                        gap: '16px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        <button className="web3-pill-btn web3-pill-btn--light" onClick={() => navigate('/roles')}>
+                            Start Briefing <ArrowRight size={16} />
+                        </button>
+                        {import.meta.env.VITE_HUB_URL && (
+                            <a href={import.meta.env.VITE_HUB_URL} target="_blank" rel="noopener noreferrer" className="web3-pill-btn web3-pill-btn--outline">
+                                <Layout size={16} /> Open Hub
+                            </a>
+                        )}
+                        <a href="https://github.com/aroucadi/synapse_agent" target="_blank" rel="noopener noreferrer" className="web3-pill-btn web3-pill-btn--outline">
+                            <Github size={16} /> View on GitHub
+                        </a>
+                    </div>
+
+                    <div style={{ height: '20vh' }} />
+
+                    {/* Features Section */}
+                    <section id="features" className="landing-section">
+                        <div className="section-header">
+                            <span className="section-badge">Capabilities</span>
+                            <h2 className="section-title">Beyond the Text Box</h2>
                         </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ── How It Works ────────────────────────── */}
-            <section className="landing__how">
-                <h2 className="landing__section-title">How It Works</h2>
-                <div className="landing__steps">
-                    {[
-                        { num: '1', title: 'Deal Closes', desc: 'A CRM webhook fires when a deal moves to "Closed Won".' },
-                        { num: '2', title: 'Graph Generates', desc: 'Gemini 3.1 Pro extracts entities into a navigable skill graph.' },
-                        { num: '3', title: 'CSM Briefs', desc: 'Talk to Synapse. Ask anything. Get grounded, instant answers.' },
-                    ].map((s, i) => (
-                        <div key={i} className="step-card">
-                            <div className="step-card__num">{s.num}</div>
-                            <h3 className="step-card__title">{s.title}</h3>
-                            <p className="step-card__desc">{s.desc}</p>
+                        <div className="features-grid">
+                            <div className="feature-card glass-card">
+                                <Zap className="feature-icon" color="#22d3ee" />
+                                <h3>Living Memory</h3>
+                                <p>Synapse replaces disjointed text-chat with real-time, grounded voice and vision collaboration that understands your topology.</p>
+                            </div>
+                            <div className="feature-card glass-card">
+                                <Shield className="feature-icon" color="#a855f7" />
+                                <h3>Zero Hallucination</h3>
+                                <p>Grounded graph traversal ensures the agent never guesses—it literally moves through historical and product data topography.</p>
+                            </div>
+                            <div className="feature-card glass-card">
+                                <Layout className="feature-icon" color="#fb7185" />
+                                <h3>Multi-tenant Hub</h3>
+                                <p>A central management layer where different companies configure branding, personas, and account data seamlessly.</p>
+                            </div>
+                            <div className="feature-card glass-card">
+                                <Cpu className="feature-icon" color="#34d399" />
+                                <h3>Delta Knowledge</h3>
+                                <p>Automatic deal-oriented extraction weaves new information into existing Account Knowledge Graphs with Gemini 3.1 Pro.</p>
+                            </div>
                         </div>
-                    ))}
-                </div>
-            </section>
+                    </section>
 
-            {/* ── Footer ────────────────────────── */}
-            <footer className="landing__footer">
-                <p>Built for the <span style={{ color: '#38bdf8' }}>Gemini Live Agent Challenge</span></p>
-                <p className="landing__footer-models">
-                    Powered by Gemini 3.1 Pro · Gemini 2.0 Flash Exp · Embedding 001 · Firestore Vector Search
-                </p>
-            </footer>
+                    {/* The Hub Section */}
+                    <section id="hub" className="landing-section hub-showcase">
+                        <div className="showcase-content">
+                            <span className="section-badge">The Hub</span>
+                            <h2 className="section-title">Command Central for Tenants</h2>
+                            <p>Configure personas (CSM, Sales, Support), manage multi-tenant metadata, and track deal life-cycle transitions through the Synapse Hub interface.</p>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                                <button className="web3-pill-btn web3-pill-btn--light" onClick={() => window.open(import.meta.env.VITE_HUB_URL || '#', '_blank')}>
+                                    Go to Hub <ExternalLink size={16} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="showcase-visual glass-card">
+                            {/* Placeholder for Hub UI preview */}
+                            <div className="visual-mockup">
+                                <div className="mock-header" />
+                                <div className="mock-body">
+                                    <div className="mock-sidebar" />
+                                    <div className="mock-main">
+                                        <div className="mock-stat" />
+                                        <div className="mock-list" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* How it Works */}
+                    <section id="how-it-works" className="landing-section">
+                        <div className="section-header">
+                            <span className="section-badge">Pipeline</span>
+                            <h2 className="section-title">The Synapse Loop</h2>
+                        </div>
+                        <div className="pipeline-steps">
+                            {[
+                                { title: 'CRM Trigger', desc: 'Deal moves to "Closed Won" in Salesforce or our mock CRM.' },
+                                { title: 'Graph Gen', desc: 'Cloud Run Job reads transcripts and contracts to build a 20-node graph.' },
+                                { title: 'Live Briefing', desc: 'CSM talks to Gemini Live, which traverses the graph in real-time.' }
+                            ].map((step, i) => (
+                                <div key={i} className="pipeline-step">
+                                    <div className="step-num">{i + 1}</div>
+                                    <div className="step-content">
+                                        <h4>{step.title}</h4>
+                                        <p>{step.desc}</p>
+                                    </div>
+                                    {i < 2 && <div className="step-line" />}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <footer style={{ padding: '80px 0 40px', opacity: 0.5, fontSize: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: '1200px', alignSelf: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>© 2026 Synapse Multimodal. Built for the Gemini Live Challenge.</span>
+                            <div style={{ display: 'flex', gap: '24px' }}>
+                                <span>Privacy</span>
+                                <span>Terms</span>
+                                <span>Security</span>
+                            </div>
+                        </div>
+                    </footer>
+                </main>
+            </div>
         </div>
     );
 }

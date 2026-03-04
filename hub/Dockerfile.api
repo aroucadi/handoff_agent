@@ -1,0 +1,21 @@
+# Synapse Hub — API + Frontend Container
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install deps
+COPY hub/api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy API source
+COPY hub/api/ .
+
+# Copy shared core module
+COPY core/ /app/core/
+
+# Copy pre-built Hub frontend dist (built by deploy.ps1 before Cloud Build)
+COPY hub/dist/ /app/frontend/dist/
+
+EXPOSE 8003
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003"]

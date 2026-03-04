@@ -14,6 +14,7 @@ from datetime import date, datetime
 
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse as FastFileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,9 +24,9 @@ from models import Deal, DealStage, DealUpdate, WebhookPayload
 from seed_data import DEMO_DEALS
 
 app = FastAPI(
-    title="SalesClaw CRM Simulator",
+    title="ClawdForce CRM Simulator",
     description="Lightweight CRM simulator for Synapse demos Ã¢â‚¬â€ manages deals, contacts, and fires webhooks on Closed Won",
-    version="3.5.0-FINAL",
+    version="4.0.0",
 )
 
 app.add_middleware(
@@ -46,9 +47,19 @@ webhook_log: list[dict] = []
 
 
 def _seed_deals():
-    """Load demo deals into the store."""
+    """Load demo deals into the store with environment-aware WEBHOOK_URL."""
+    env_webhook = os.environ.get("SYNAPSE_WEBHOOK_URL")
+    count = 0
     for deal in DEMO_DEALS:
-        deals_store[deal.deal_id] = deepcopy(deal)
+        d = deepcopy(deal)
+        # Override with environment variable if provided
+        if env_webhook:
+            d.webhook_url = env_webhook
+        deals_store[d.deal_id] = d
+        count += 1
+    print(f"✅ Seeded {count} deals into memory store.")
+    if env_webhook:
+        print(f"🔗 Webhook URL override active: {env_webhook}")
 
 
 _seed_deals()
@@ -59,7 +70,7 @@ _seed_deals()
 # ---------------------------------------------------------------------------
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "salesclaw-crm", "version": "3.5.0-FINAL"}
+    return {"status": "ok", "service": "clawdforce-crm", "version": "4.0.0"}
 
 
 # ---------------------------------------------------------------------------
@@ -132,20 +143,38 @@ async def change_deal_stage(deal_id: str, stage: str):
         "webhook_fired": False,
     }
 
-    # Fire webhook on Closed Won transition
+    # Set close_date if closed won
     if new_stage == DealStage.CLOSED_WON:
         deal.close_date = date.today()
-        webhook_result = await _fire_webhook(deal)
-        result["webhook_fired"] = True
-        result["webhook_result"] = webhook_result
+        
+    # Fire webhook on ALL transitions to keep the Graph holistic
+    webhook_result = await _fire_webhook(deal)
+    result["webhook_fired"] = True
+    result["webhook_result"] = webhook_result
 
     return result
 
 
 async def _fire_webhook(deal: Deal) -> dict:
-    """Fire the Closed Won webhook to the Synapse backend."""
-    if not deal.webhook_url:
+    # Check environment variable first, then deal property
+    webhook_target = os.environ.get("SYNAPSE_WEBHOOK_URL") or deal.webhook_url
+    
+    if not webhook_target:
+        print(f"⚠️ Webhook skipped for {deal.deal_id} - no URL configured")
         return {"status": "skipped", "reason": "No webhook_url configured"}
+
+    # Gather historical deals for text synthesis in Graph Generator
+    historical_deals = []
+    for other_deal in deals_store.values():
+        if other_deal.deal_id != deal.deal_id and other_deal.company_name.strip().lower() == deal.company_name.strip().lower():
+            historical_deals.append({
+                "deal_id": other_deal.deal_id,
+                "stage": other_deal.stage.value,
+                "deal_value": other_deal.deal_value,
+                "close_date": str(other_deal.close_date) if other_deal.close_date else None,
+                "products": [p.model_dump() for p in other_deal.products],
+                "risks": [r.model_dump() for r in other_deal.risks]
+            })
 
     payload = WebhookPayload(
         deal_id=deal.deal_id,
@@ -162,6 +191,7 @@ async def _fire_webhook(deal: Deal) -> dict:
         success_metrics=[m.model_dump() for m in deal.success_metrics],
         sales_transcript=deal.sales_transcript,
         contract_pdf_url=deal.contract_pdf_url,
+        historical_deals=historical_deals,
     )
 
     log_entry = {
@@ -175,10 +205,11 @@ async def _fire_webhook(deal: Deal) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
+            print(f"🚀 Firing webhook to: {webhook_target} for {deal.deal_id}")
             response = await client.post(
-                deal.webhook_url,
+                webhook_target,
                 json=payload.model_dump(),
-                headers={"Content-Type": "application/json", "X-CRM-Event": "deal.closed_won"},
+                headers={"Content-Type": "application/json", "X-CRM-Event": f"deal.stage_changed.{deal.stage.value}"},
             )
 
         deal.webhook_fired = True
@@ -273,6 +304,19 @@ async def get_webhook_log():
 
 
 # ---------------------------------------------------------------------------
+# Contract PDF Viewer
+# ---------------------------------------------------------------------------
+@app.get("/api/deals/{deal_id}/contract-pdf")
+async def get_contract_pdf(deal_id: str):
+    """Serve the local contract PDF for inline viewing."""
+    contracts_dir = os.path.join(os.path.dirname(__file__), "uploads", "contracts")
+    pdf_path = os.path.join(contracts_dir, f"{deal_id}_contract.pdf")
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail=f"Contract PDF not found for {deal_id}")
+    return FastFileResponse(pdf_path, media_type="application/pdf")
+
+
+# ---------------------------------------------------------------------------
 # Reset (for demos)
 # ---------------------------------------------------------------------------
 @app.post("/api/reset")
@@ -301,7 +345,7 @@ async def serve_index():
     if os.path.exists(index_path):
         from fastapi.responses import FileResponse
         return FileResponse(index_path)
-    return {"message": "SalesClaw CRM Simulator API. Frontend not found.", "frontend_path": _frontend_dir}
+    return {"message": "ClawdForce CRM Simulator API. Frontend not found.", "frontend_path": _frontend_dir}
 
 if os.path.exists(_frontend_dir):
     app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")

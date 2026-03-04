@@ -1,22 +1,89 @@
 /* ═══════════════════════════════════════════════════════════════
-   CRM Simulator — SalesClaw SLDS Edition
-   Pixel-perfect Salesforce Lightning Design System (SLDS) Overhaul
+   ClawdForce CRM — Salesforce Lightning Edition
+   Pixel-accurate SLDS-inspired Design System
    ═══════════════════════════════════════════════════════════════ */
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --slds-color-brand: #0176d3;
-  --slds-color-background: #f3f3f3;
-  --slds-color-white: #ffffff;
-  --slds-color-border: #dddbda;
-  --slds-color-text-default: #080707;
-  --slds-color-text-weak: #3e3e3c;
-  --slds-color-text-link: #0176d3;
-  --slds-color-success: #2e844a;
-  --slds-color-error: #ea001b;
-  --slds-color-warning: #ff9d00;
-  --slds-shadow-depth-1: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
-  --slds-radius: 0.25rem;
+  /* Premium Design System — High-Fidelity HSL */
+  --p-brand-h: 211;
+  --p-brand-s: 100%;
+  --p-brand-l: 42%;
+  --sf-brand: hsl(var(--p-brand-h), var(--p-brand-s), var(--p-brand-l));
+  /* #0176d3 */
+  --sf-brand-dark: hsl(var(--p-brand-h), var(--p-brand-s), 26%);
+  --sf-brand-light: hsl(var(--p-brand-h), var(--p-brand-s), 55%);
+
+  --sf-nav-bg: #032d60;
+  --sf-bg: #f4f6f9;
+  --sf-white: #ffffff;
+
+  /* Glassmorphism & Depth */
+  --p-glass-bg: rgba(255, 255, 255, 0.7);
+  --p-glass-border: rgba(255, 255, 255, 0.5);
+  --p-glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+
+  /* Precision Borders & Shadows */
+  --sf-border: #d8dde6;
+  --sf-border-light: #f2f5f8;
+  --sf-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --sf-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --sf-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Status Colors */
+  --sf-success: #2e844a;
+  --sf-success-glow: rgba(46, 132, 74, 0.2);
+  --sf-warning: #fe9339;
+  --sf-error: #ea001b;
+
+  --sf-radius: 8px;
+  --sf-radius-lg: 12px;
+
+  /* Transitions */
+  --p-trans: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(16, 22, 34, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(1, 118, 211, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 10px 10px rgba(1, 118, 211, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(1, 118, 211, 0);
+  }
+}
+
 
 * {
   box-sizing: border-box;
@@ -26,25 +93,30 @@
 
 body {
   font-family: 'Salesforce Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--slds-color-background);
-  color: var(--slds-color-text-default);
+  background: var(--sf-bg);
+  color: var(--sf-text);
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
-/* ── SLDS Universal Header ───────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL HEADER — Salesforce dark navy nav bar
+   ═══════════════════════════════════════════════════════════════ */
 
 .app-header {
-  background: var(--slds-color-white);
-  border-bottom: 1px solid var(--slds-color-border);
-  padding: 0.75rem 1.5rem;
+  background: var(--sf-nav-bg);
+  padding: 0 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 56px;
+  /* Slightly taller for premium feel */
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 200;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
+
 
 .app-header__brand {
   display: flex;
@@ -53,59 +125,366 @@ body {
 }
 
 .brand-icon {
-  width: 32px;
-  height: 32px;
-  background: #1589ee;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  background: var(--sf-brand);
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
+  font-size: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .app-header__title {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #032d60;
+  color: var(--sf-nav-text);
+  letter-spacing: -0.02em;
 }
 
 .app-header__subtitle {
-  font-size: 0.75rem;
-  color: var(--slds-color-text-weak);
+  font-size: 0.625rem;
+  color: rgba(255, 255, 255, 0.65);
   margin-top: -2px;
   display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.app-header__nav {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 480px;
+  margin: 0 2rem;
+}
+
+.header-search {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0 0.75rem;
+  height: 32px;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.header-search:hover,
+.header-search:focus-within {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.header-search__icon {
+  font-size: 0.75rem;
+  margin-right: 0.5rem;
+  opacity: 0.7;
+}
+
+.header-search__input {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8125rem;
+  width: 100%;
+  outline: none;
+}
+
+.header-search__input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .app-header__actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-/* ── Pipeline Navigation & Layout ────────────────────────────── */
+.avatar {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #1589ee, #0176d3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAB BAR — Salesforce Lightning app nav
+   ═══════════════════════════════════════════════════════════════ */
 
 .tabs-container {
-  background: #ffffff;
-  border-bottom: 1px solid #dddbda;
+  background: var(--sf-white);
+  border-bottom: 1px solid var(--sf-border);
   padding: 0 1.5rem;
   display: flex;
-  gap: 1.5rem;
+  gap: 0;
 }
 
 .tab-item {
-  padding: 0.75rem 0;
+  padding: 0.625rem 1rem;
   font-weight: 600;
-  color: #3e3e3c;
+  color: var(--sf-text-weak);
   border-bottom: 3px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  user-select: none;
+}
+
+.tab-item:hover {
+  color: var(--sf-text);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .tab-item.active {
-  border-bottom-color: var(--slds-color-brand);
-  color: var(--slds-color-text-default);
+  border-bottom-color: var(--sf-brand);
+  color: var(--sf-brand);
 }
+
+.tab-item--muted {
+  opacity: 0.55;
+}
+
+.tab-item__icon {
+  font-size: 0.75rem;
+}
+
+.tab-content {
+  min-height: calc(100vh - 96px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HOME DASHBOARD
+   ═══════════════════════════════════════════════════════════════ */
+
+.home-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.dashboard-header {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-header__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--sf-text);
+}
+
+.dashboard-header__subtitle {
+  font-size: 0.75rem;
+  color: var(--sf-text-muted);
+}
+
+/* KPI Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+  background: var(--sf-white);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--sf-shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: var(--p-trans);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.kpi-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--sf-shadow-lg);
+}
+
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.kpi-card--brand::before {
+  background: var(--sf-brand);
+}
+
+.kpi-card--success::before {
+  background: var(--sf-success-light);
+}
+
+.kpi-card--won::before {
+  background: var(--sf-success);
+}
+
+.kpi-card--info::before {
+  background: var(--sf-info);
+}
+
+.kpi-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sf-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.kpi-card__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--sf-text);
+  line-height: 1.1;
+}
+
+.kpi-card__detail {
+  font-size: 0.75rem;
+  color: var(--sf-text-weak);
+  margin-top: 0.375rem;
+}
+
+/* Dashboard Sections */
+.dashboard-section {
+  background: var(--sf-white);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.dashboard-section__title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--sf-text);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--sf-border-light);
+}
+
+/* Stage Bars */
+.stage-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stage-bar {
+  display: grid;
+  grid-template-columns: 120px 1fr 160px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stage-bar__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sf-text-weak);
+}
+
+.stage-bar__track {
+  height: 12px;
+  background: #e8e8e8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.stage-bar__fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 2px;
+}
+
+.stage-bar__fill--prospecting {
+  background: #9050e9;
+}
+
+.stage-bar__fill--qualification {
+  background: var(--sf-brand);
+}
+
+.stage-bar__fill--negotiation {
+  background: var(--sf-warning);
+}
+
+.stage-bar__fill--closed_won {
+  background: var(--sf-success);
+}
+
+.stage-bar__fill--closed_lost {
+  background: var(--sf-error);
+}
+
+.stage-bar__fill--implemented {
+  background: #706e6b;
+}
+
+.stage-bar__info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: var(--sf-text-muted);
+}
+
+/* Activity List */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--sf-border-light);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-item__icon {
+  font-size: 0.875rem;
+  margin-top: 2px;
+}
+
+.activity-item__title {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--sf-link);
+}
+
+.activity-item__meta {
+  font-size: 0.6875rem;
+  color: var(--sf-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PIPELINE / KANBAN — Opportunities Tab
+   ═══════════════════════════════════════════════════════════════ */
 
 .pipeline {
   display: flex;
@@ -125,30 +504,22 @@ body {
 
 .pipeline-column__header {
   padding: 0.75rem 1rem;
-  background: #f3f3f3;
-  border: 1px solid #dddbda;
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  border-radius: var(--sf-radius) var(--sf-radius) 0 0;
 }
 
 .pipeline-column__title {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #3e3e3c;
-}
-
-.pipeline-column__count {
-  font-size: 0.75rem;
-  color: #706e6b;
+  color: var(--sf-text-weak);
 }
 
 .pipeline-column__cards {
-  background: #f3f3f3;
-  border: 1px solid #dddbda;
-  border-radius: 0 0 4px 4px;
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
+  border-radius: 0 0 var(--sf-radius) var(--sf-radius);
   padding: 0.5rem;
   flex-grow: 1;
   display: flex;
@@ -156,28 +527,40 @@ body {
   gap: 0.75rem;
 }
 
-/* ── SLDS Record Cards ────────────────────────────────────────── */
+.pipeline-column__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--sf-text-muted);
+  font-style: italic;
+}
+
+/* ── Deal Cards ───────────────────────────────────────────────── */
 
 .deal-card {
-  background: var(--slds-color-white);
-  border: 1px solid var(--slds-color-border);
-  border-radius: 4px;
+  background: var(--sf-white);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius);
   padding: 0.75rem 1rem;
-  transition: transform 0.1s, box-shadow 0.1s;
+  transition: transform 0.1s, box-shadow 0.15s;
   cursor: pointer;
 }
 
 .deal-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--sf-shadow-md);
   transform: translateY(-2px);
 }
 
 .deal-card--won {
-  border-left: 4px solid var(--slds-color-success);
+  border-left: 4px solid var(--sf-success);
+}
+
+.deal-card--implemented {
+  border-left: 4px solid #6c757d;
+  opacity: 0.9;
 }
 
 .deal-card--lost {
-  border-left: 4px solid var(--slds-color-error);
+  border-left: 4px solid var(--sf-error);
 }
 
 .deal-card__header {
@@ -188,7 +571,7 @@ body {
 }
 
 .deal-card__company {
-  color: var(--slds-color-text-link);
+  color: var(--sf-link);
   font-weight: 700;
   font-size: 0.875rem;
 }
@@ -199,14 +582,12 @@ body {
 
 .deal-card__value {
   font-weight: 700;
-  color: var(--slds-color-text-default);
+  color: var(--sf-text);
 }
 
 .deal-card__meta {
-  display: flex;
-  gap: 0.75rem;
   font-size: 0.75rem;
-  color: var(--slds-color-text-weak);
+  color: var(--sf-text-weak);
   margin-bottom: 0.5rem;
 }
 
@@ -216,21 +597,33 @@ body {
   gap: 0.25rem;
 }
 
+.deal-card__webhook-badge {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--sf-success);
+  font-weight: 600;
+}
+
 .product-pill {
-  background: #f3f3f3;
-  border: 1px solid #dddbda;
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
   border-radius: 12px;
   padding: 1px 8px;
   font-size: 0.6875rem;
-  color: #3e3e3c;
+  color: var(--sf-text-weak);
 }
 
-/* ── SLDS Details Table ───────────────────────────────────────── */
+.product-pill--sm {
+  font-size: 0.625rem;
+  padding: 0 6px;
+}
+
+/* ── Record Details ───────────────────────────────────────────── */
 
 .record-details {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed var(--slds-color-border);
+  border-top: 1px dashed var(--sf-border);
 }
 
 .detail-row {
@@ -240,7 +633,7 @@ body {
 
 .detail-row__label {
   flex: 0 0 100px;
-  color: var(--slds-color-text-weak);
+  color: var(--sf-text-muted);
   font-size: 0.75rem;
 }
 
@@ -259,8 +652,15 @@ body {
   margin-left: 0.5rem;
 }
 
-.role-badge--champion { background: #e0e5ee; color: #00396b; }
-.role-badge--economic_buyer { background: #fff1d2; color: #8a6d10; }
+.role-badge--champion {
+  background: #e0e5ee;
+  color: #00396b;
+}
+
+.role-badge--economic_buyer {
+  background: #fff1d2;
+  color: #8a6d10;
+}
 
 .deal-card__actions {
   display: flex;
@@ -268,19 +668,359 @@ body {
   margin-top: 0.75rem;
 }
 
-/* ── SLDS Buttons ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   ACCOUNTS VIEW — SLDS Data Table
+   ═══════════════════════════════════════════════════════════════ */
+
+.accounts-view {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.accounts-view__header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.accounts-view__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.accounts-view__count {
+  font-size: 0.75rem;
+  color: var(--sf-text-muted);
+}
+
+.slds-table-wrapper {
+  background: var(--sf-white);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.slds-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.slds-table thead tr {
+  background: #fafaf9;
+  border-bottom: 2px solid var(--sf-border);
+}
+
+.slds-table th {
+  padding: 0.625rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sf-text-weak);
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.slds-table th:hover {
+  background: #f3f2f2;
+}
+
+.slds-table td {
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid var(--sf-border-light);
+  vertical-align: middle;
+}
+
+.slds-table__row {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.slds-table__row:hover {
+  background: #f4f6f9;
+}
+
+.slds-table__row--expanded {
+  background: #eef4ff;
+}
+
+.slds-table__row--detail td {
+  padding: 0;
+  background: #f8f9fa;
+}
+
+.slds-table__cell--link {
+  color: var(--sf-link);
+  font-weight: 600;
+}
+
+.slds-table__cell--currency {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.expand-indicator {
+  display: inline-block;
+  margin-right: 0.5rem;
+  width: 12px;
+  color: var(--sf-text-muted);
+}
+
+.industry-badge {
+  background: #eef4ff;
+  color: var(--sf-info);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.synapse-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--sf-success);
+}
+
+.synapse-badge--off {
+  color: var(--sf-text-muted);
+}
+
+/* ── Account Detail Panel ─────────────────────────────────────── */
+
+.account-detail-panel {
+  padding: 1rem 1.5rem 1.25rem;
+}
+
+.account-detail-panel__header h4 {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--sf-text-weak);
+}
+
+.account-deals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.account-deal-card {
+  background: var(--sf-white);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--sf-shadow-sm);
+}
+
+.account-deal-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.375rem;
+}
+
+.account-deal-card__value {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.account-deal-card__id {
+  font-size: 0.65rem;
+  color: var(--sf-text-muted);
+  font-family: monospace;
+  margin-bottom: 0.5rem;
+}
+
+.account-deal-card__products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.account-deal-card__actions {
+  margin-top: 0.375rem;
+}
+
+/* Stage Badges */
+.stage-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stage-badge--prospecting {
+  background: #f1e8ff;
+  color: #7b48b5;
+}
+
+.stage-badge--qualification {
+  background: #d8edff;
+  color: #014486;
+}
+
+.stage-badge--negotiation {
+  background: #fff0dc;
+  color: #a5600b;
+}
+
+.stage-badge--closed_won {
+  background: #d4edda;
+  color: #155724;
+}
+
+.stage-badge--closed_lost {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.stage-badge--implemented {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMING SOON STUB
+   ═══════════════════════════════════════════════════════════════ */
+
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+.coming-soon__icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.coming-soon__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--sf-text-weak);
+  margin-bottom: 0.5rem;
+}
+
+.coming-soon__text {
+  font-size: 0.875rem;
+  color: var(--sf-text-muted);
+  margin-bottom: 1rem;
+}
+
+.coming-soon__badge {
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--sf-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF MODAL
+   ═══════════════════════════════════════════════════════════════ */
+
+.pdf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  animation: fadeIn 0.2s ease;
+}
+
+.pdf-modal {
+  background: var(--sf-white);
+  border-radius: var(--sf-radius-lg);
+  width: 85vw;
+  max-width: 900px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--sf-shadow-lg);
+  animation: slideUp 0.25s ease;
+}
+
+.pdf-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--sf-border);
+  flex-shrink: 0;
+}
+
+.pdf-modal__title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.pdf-modal__subtitle {
+  font-size: 0.6875rem;
+  color: var(--sf-text-muted);
+  font-family: monospace;
+}
+
+.pdf-modal__close {
+  background: none;
+  border: 1px solid var(--sf-border);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sf-text-weak);
+  transition: all 0.15s;
+}
+
+.pdf-modal__close:hover {
+  background: var(--sf-bg);
+  color: var(--sf-error);
+}
+
+.pdf-modal__frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  border-radius: 0 0 var(--sf-radius-lg) var(--sf-radius-lg);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SLDS BUTTONS
+   ═══════════════════════════════════════════════════════════════ */
 
 .slds-button {
-  flex: 1;
-  border-radius: 0.25rem;
-  padding: 0.25rem 1rem;
+  border-radius: var(--sf-radius);
+  padding: 0.25rem 0.875rem;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid #dddbda;
-  background: #ffffff;
-  color: #0176d3;
+  transition: all 0.15s;
+  border: 1px solid var(--sf-border);
+  background: var(--sf-white);
+  color: var(--sf-brand);
+  white-space: nowrap;
 }
 
 .slds-button:hover {
@@ -288,13 +1028,13 @@ body {
 }
 
 .slds-button--brand {
-  background: #0176d3;
-  color: #ffffff;
-  border-color: #0176d3;
+  background: var(--sf-brand);
+  color: var(--sf-white);
+  border-color: var(--sf-brand);
 }
 
 .slds-button--brand:hover {
-  background: #014486;
+  background: var(--sf-brand-dark);
 }
 
 .slds-button--destructive {
@@ -305,31 +1045,147 @@ body {
   background: #fffafa;
 }
 
-/* ── Notifications ────────────────────────────────────────────── */
+.slds-button--outline {
+  background: transparent;
+  border: 1px solid var(--sf-brand);
+  color: var(--sf-brand);
+}
+
+.slds-button--outline:hover {
+  background: #eef4ff;
+}
+
+.slds-button--sm {
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+}
+
+.slds-button--icon {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.slds-button--icon:hover {
+  color: white;
+}
+
+/* In deal-card actions, make buttons flex */
+.deal-card__actions .slds-button {
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════ */
 
 .slds-notify {
-  background: #2e844a;
-  color: #ffffff;
+  background: var(--sf-success);
+  color: var(--sf-white);
   padding: 0.5rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  box-shadow: var(--sf-shadow-md);
+  animation: slideDown 0.3s ease;
 }
 
-@keyframes slideDown {
-  from { transform: translateY(-100%); }
-  to { transform: translateY(0); }
-}
-
-/* ── Fallback ────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   LOADING
+   ═══════════════════════════════════════════════════════════════ */
 
 .loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  font-size: 1.5rem;
-  color: #0176d3;
+  gap: 1rem;
+  font-size: 1rem;
+  color: var(--sf-brand);
+  font-weight: 600;
+}
+
+.loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e5e5;
+  border-top-color: var(--sf-brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stage-bar {
+    grid-template-columns: 100px 1fr 120px;
+  }
+
+  .app-header__nav {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs-container {
+    overflow-x: auto;
+  }
 }

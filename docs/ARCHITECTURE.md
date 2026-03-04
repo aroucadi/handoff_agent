@@ -6,19 +6,21 @@ This sequence demonstrates how our React frontend captures desktop screen shares
 
 ```mermaid
 sequenceDiagram
-    participant CSM as User (CSM)
-    participant React as Frontend (React)
-    participant FastAPI as Backend (FastAPI)
+    participant User as User (CSM/Sales/Support)
+    participant React as Frontend (Voice UI)
+    participant FastAPI as Backend (Synapse API)
+    participant Hub as Hub API
     participant Gemini as Gemini Live API
     participant Graph as Firestore Skill Graph
 
-    CSM->>React: Clicks "Share Screen" & "Mic On"
-    activate React
-    React->>React: Capture 16000Hz PCM Audio
-    React->>React: Capture <canvas> Desktop frames at 1 FPS
+    User->>React: Selects Role (CSM/Sales/Support/Winback)
+    React->>FastAPI: Connect (tenant_id, role)
+    FastAPI->>Hub: Get Tenant Config (branding, prompts)
+    Hub-->>FastAPI: Config Data
     
+    React->>React: Capture Audio/Vision
     React->>FastAPI: WebSocket: {"type": "audio", "data": "<base64>"}
-    React->>FastAPI: WebSocket: {"type": "image", "data": "<base64>"}
+    # ... forwarded to Gemini
     
     activate FastAPI
     FastAPI->>Gemini: Forward Audio (mime_type: audio/pcm) 
@@ -112,38 +114,22 @@ graph TD
 
 ```
 synapse/
-├── backend/                    # Synapse API (FastAPI)
-│   ├── main.py                 # Routes + WebSocket handler
-│   ├── config.py               # Environment config
-│   ├── agent/                  # ADK agent
-│   │   ├── synapse_agent.py    # Multi-round function calling
-│   │   ├── tools.py            # read_index, follow_link, search_graph
-│   │   └── prompts.py          # System prompt
-│   ├── graph/                  # Graph traversal engine
-│   │   ├── traversal.py        # Navigation logic
-│   │   ├── storage.py          # GCS reads
-│   │   └── search.py           # Vector search
-│   └── live/                   # Gemini Live integration
-│       └── session.py          # Live session handler
-├── graph-generator/            # Graph Generator service (FastAPI)
-│   ├── main.py                 # 5-step pipeline orchestrator
-│   ├── extractors/             # Entity extraction
-│   ├── node_generator.py       # Markdown node generation
-│   ├── storage.py              # GCS writes
-│   └── indexer.py              # Firestore + embeddings
-├── crm-simulator/              # CRM Simulator (FastAPI + React)
-│   ├── main.py                 # Deal CRUD + webhooks
-│   └── frontend/               # Kanban board UI
-├── frontend/                   # Synapse Voice UI (React)
-│   └── src/
-│       ├── App.tsx             # Dashboard ↔ Briefing routing
-│       ├── useVoiceSession.ts  # WebSocket audio hook
-│       └── components/         # Dashboard, BriefingSession, etc.
-├── skill-graphs/               # Static knowledge nodes
-│   ├── product/                # 7 VeloSaaS product nodes
-│   └── industries/             # 5 manufacturing industry nodes
-├── infra/                      # Terraform IaC
-│   ├── main.tf                 # Root config
-│   └── modules/                # storage, firestore, cloud-run, firebase
-└── scripts/                    # Deployment & demo scripts
+├── hub/                        # Synapse Hub (Tenant Config Portal)
+│   ├── api/                    # Hub CRUD API
+│   └── src/                    # Hub React Frontend
+├── backend/                    # Synapse API (Core Voice Service)
+│   ├── main.py                 # Multi-tenant session handler
+│   ├── agent/                  # Multi-role prompt engine
+│   └── core/                   # Shared logic (via symlink/mount)
+├── graph-generator/            # Delta Graph Generator (Account-oriented)
+│   ├── main.py                 # Asynchronous pipeline
+│   └── node_generator.py       # Entity -> Delta Node logic
+├── crm-simulator/              # Mock CRM (SalesClaw)
+│   ├── main.py                 # Entity webhooks
+│   └── frontend/               # Kanban Interface
+├── frontend/                   # Synapse Voice UI (Multi-role)
+│   └── src/                    # Briefing Session flow
+├── core/                       # Shared Domain Models & Config
+├── infra/                      # Terraform (Cloud Run, GCS, Firestore)
+└── scripts/                    # Automation (start-local.ps1, deploy.sh)
 ```

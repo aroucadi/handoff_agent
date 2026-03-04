@@ -27,3 +27,8 @@ output "crm_simulator_url" {
   description = "SalesClaw CRM Simulator URL"
   value       = module.cloud_run.crm_simulator_url
 }
+
+output "hub_url" {
+  description = "Hub Tenant Config Portal URL"
+  value       = module.cloud_run.hub_url
+}

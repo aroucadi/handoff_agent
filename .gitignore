@@ -51,3 +51,8 @@ desktop.ini
 *.pem
 credentials.json
 service-account.json
+
+# Temporary logs and scripts
+*.txt
+!requirements.txt
+

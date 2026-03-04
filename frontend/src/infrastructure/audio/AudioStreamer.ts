@@ -15,9 +15,8 @@ export class AudioStreamer {
      * MUST be called synchronously inside an onClick DOM event handler
      */
     unlock() {
-        if (!this.audioContext) {
-            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-        }
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        this.audioContext = new AudioContextClass({ sampleRate: 24000 });
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
@@ -29,7 +28,8 @@ export class AudioStreamer {
 
         this.initPromise = (async () => {
             // Gemini Live output is 24kHz
-            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            this.audioContext = new AudioContextClass({ sampleRate: 24000 });
 
             try {
                 await this.audioContext.audioWorklet.addModule('/pcm-processor.js');

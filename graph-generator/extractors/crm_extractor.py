@@ -33,4 +33,5 @@ def extract_from_crm_payload(payload: dict) -> dict:
         "risks": payload.get("risks", []),
         "success_metrics": payload.get("success_metrics", []),
         "csm_id": payload.get("csm_id"),
+        "historical_deals": payload.get("historical_deals", []),
     }
