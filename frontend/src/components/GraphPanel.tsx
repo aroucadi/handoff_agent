@@ -1,5 +1,5 @@
 import dagre from 'dagre';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
     ReactFlowProvider,
     useReactFlow,
@@ -58,7 +58,10 @@ function SkillNode({ data }: { data: SkillNodeData }) {
 
             {/* Pulsing Active State Layer */}
             {data.isActive && (
-                <div className="absolute inset-0 bg-primary-purple/5 animate-pulse pointer-events-none" />
+                <>
+                    <div className="absolute inset-0 bg-primary-purple/10 animate-pulse pointer-events-none" />
+                    <div className="absolute -inset-4 bg-primary-purple/20 blur-3xl animate-glow-pulse pointer-events-none -z-10" />
+                </>
             )}
 
             <div className="flex items-center gap-5 relative z-10 font-manrope">
@@ -170,6 +173,22 @@ const edgeTypes = {
     skillEdge: SkillEdge,
 };
 
+function formatNodeTitle(nodeId: string, clientId: string) {
+    const parts = nodeId.split('-');
+
+    // Improved stripping: if the first few parts match the clientId words
+    const clientWords = clientId.split('-').filter(Boolean);
+    let sliceIndex = 0;
+    while (sliceIndex < clientWords.length && parts[sliceIndex]?.toLowerCase() === clientWords[sliceIndex]?.toLowerCase()) {
+        sliceIndex++;
+    }
+
+    const relevantParts = parts.slice(sliceIndex);
+    return relevantParts
+        .map(w => w[0].toUpperCase() + w.slice(1))
+        .join(' ');
+}
+
 /* ── Safe Layout Logic (Internal Logic UNCHANGED) ───────────────── */
 
 function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId: string | null }) {
@@ -190,7 +209,10 @@ function AutoGraphFitter({ nodes, activeNodeId }: { nodes: Node[], activeNodeId:
                     return;
                 }
             }
-            fitView({ padding: 0.2, duration: 800 });
+            fitView({
+                padding: { bottom: 280, top: 40, left: 40, right: 40 },
+                duration: 800
+            });
         }, 50);
 
         return () => clearTimeout(timeout);
@@ -308,9 +330,10 @@ interface GraphPanelProps {
 }
 
 export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPanelProps) {
-    const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
+    const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [allClientNodes, setAllClientNodes] = useState<ServerNodeMetadata[]>([]);
+    const breadcrumbRef = useRef<HTMLDivElement>(null);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -363,6 +386,15 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         }
     }, [currentNode, breadcrumb]);
 
+    useEffect(() => {
+        if (breadcrumbRef.current) {
+            breadcrumbRef.current.scrollTo({
+                left: breadcrumbRef.current.scrollWidth,
+                behavior: 'smooth'
+            });
+        }
+    }, [breadcrumb]);
+
     const fetchNodeContent = useCallback(async (nodeId: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '';
@@ -384,18 +416,21 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     return (
         <div className="flex flex-col relative bg-black/40 rounded-[32px] overflow-hidden border border-white/10 ring-1 ring-white/5 h-full backdrop-blur-3xl animate-fade-in shadow-2xl">
             {/* Nav Header */}
-            <div className="h-20 flex items-center px-10 bg-white/[0.03] border-b border-white/5 shrink-0">
+            <div className="h-16 flex items-center px-10 bg-white/[0.03] border-b border-white/5 shrink-0">
                 <div className="flex items-center gap-5 shrink-0">
                     <Zap size={20} className="text-primary-purple" />
                     <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40">KNOWLEDGE NEXUS</span>
                 </div>
                 <div className="mx-10 h-6 w-[1px] bg-white/10 shrink-0" />
-                <div className="flex items-center gap-4 overflow-x-auto no-scrollbar scroll-smooth flex-1 py-4">
+                <div
+                    ref={breadcrumbRef}
+                    className="flex items-center gap-4 overflow-x-auto no-scrollbar scroll-smooth flex-1 py-4 min-w-0 [mask-image:linear-gradient(to_right,transparent,black_20px,black_calc(100%-40px),transparent)]"
+                >
                     {breadcrumb.map((nodeId, i) => (
                         <div key={nodeId} className="flex items-center gap-4 shrink-0 transition-opacity duration-300">
                             {i > 0 && <ChevronRight size={14} className="text-white/10" />}
                             <span className={`text-sm font-bold font-inter tracking-tight transition-all ${nodeId === currentNode ? 'text-primary-purple scale-110' : 'text-white/30 hover:text-white/50'}`}>
-                                {nodeId.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}
+                                {formatNodeTitle(nodeId, clientId)}
                             </span>
                         </div>
                     ))}
@@ -452,7 +487,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
 
             {/* Knowledge Reveal Overlay */}
             {currentNode && nodeContent && (
-                <div className="absolute bottom-10 left-10 right-10 max-h-[35%] flex flex-col glass-card bg-[#0f1016]/95 border-white/30 p-8 z-30 animate-fade-in shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[24px]">
+                <div className="absolute bottom-6 left-6 right-6 max-h-[30%] flex flex-col glass-card bg-[#0f1016]/95 border-white/30 p-6 z-30 animate-fade-in shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[20px]">
                     <div className="flex items-center justify-between mb-6 shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 flex items-center justify-center bg-primary-purple/10 rounded-xl text-primary-purple border border-primary-purple/20">

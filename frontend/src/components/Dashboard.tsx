@@ -96,7 +96,7 @@ export default function Dashboard() {
             />
 
 
-            <main className="relative pt-[160px] pb-20 px-6 max-w-[1440px] mx-auto">
+            <main className="relative pt-8 pb-20 px-6 max-w-[1440px] mx-auto">
 
                 {/* Dashboard Header Bar */}
                 <div className="flex flex-col md:flex-row justify-between items-end gap-10 mb-20 animate-fade-in">
@@ -106,7 +106,7 @@ export default function Dashboard() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary-purple">Synapse Engine Live</span>
                         </div>
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-medium font-inter tracking-tight mb-2 text-white">{config.title}</h1>
+                            <h1 className="text-4xl md:text-5xl font-medium font-inter tracking-tight mb-2 text-gradient">{config.title}</h1>
                             <p className="text-[#f6f7f9] opacity-50 font-medium">{config.subtitle}</p>
                         </div>
                     </div>

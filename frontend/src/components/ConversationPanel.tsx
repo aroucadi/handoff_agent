@@ -62,11 +62,12 @@ export default function ConversationPanel({
     }, [agentStatus, isMicActive]);
 
     return (
-        <div className="flex flex-col h-full bg-black/40 rounded-2xl overflow-hidden ring-1 ring-white/10">
+        <div className="flex flex-col h-full bg-black/40 rounded-2xl overflow-hidden ring-1 ring-white/10 min-h-0">
             {/* BIG Centered Orb Area */}
-            <div className="flex-[0_0_320px] flex flex-col items-center justify-center border-b border-white/5 bg-radial-at-c from-primary-purple/10 to-transparent relative overflow-hidden">
+            <div className="flex-[0_0_auto] min-h-[180px] max-h-[280px] flex flex-col items-center justify-center border-b border-white/5 bg-radial-at-c from-primary-purple/10 to-transparent relative overflow-hidden py-8">
                 <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
-                <div className="scale-[2.2] mb-12 relative z-10 transition-transform duration-700">
+                <div className="absolute inset-0 bg-primary-purple/5 animate-glow-pulse pointer-events-none" />
+                <div className="scale-[1.6] mb-8 relative z-10 transition-transform duration-700">
                     <SynapseOrb state={orbState} />
                 </div>
                 <div className="flex flex-col items-center gap-1.5 relative z-10">
@@ -86,7 +87,7 @@ export default function ConversationPanel({
             </div>
 
             {/* Transcript Area */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Intelligence Transcript</span>
                     <span className="text-[10px] font-mono text-white/15">SESS: {sessionId.slice(-8).toUpperCase()}</span>
@@ -102,11 +103,11 @@ export default function ConversationPanel({
                 {transcript.map((entry, i) => (
                     <div
                         key={i}
-                        className={`group relative flex flex-col gap-3 p-5 rounded-2xl transition-all duration-300 ${entry.role === 'agent'
+                        className={`group relative flex flex-col gap-2 p-4 rounded-xl transition-all duration-300 ${entry.role === 'agent'
                             ? 'bg-white/[0.03] border border-white/5 self-start mr-8'
                             : 'bg-primary-purple/5 border border-primary-purple/10 self-end ml-8'
                             }`}
-                        style={{ animation: 'fade-in-up 0.4s ease-out forwards', animationDelay: `${Math.min(i * 50, 400)}ms` }}
+                        style={{ animation: 'fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards', animationDelay: `${Math.min(i * 60, 600)}ms` }}
                     >
                         <div className="flex items-center gap-3">
                             <div className={`p-1.5 rounded-full ${entry.role === 'agent' ? 'bg-white/10 text-white' : 'bg-primary-purple/20 text-primary-purple'
@@ -131,7 +132,7 @@ export default function ConversationPanel({
             </div>
 
             {/* Input & Controls */}
-            <div className="shrink-0 p-6 bg-black/60 border-t border-white/5 space-y-6">
+            <div className="shrink-0 p-4 bg-black/60 border-t border-white/5 space-y-4">
                 <div className="flex gap-3">
                     <input
                         type="text"
@@ -150,35 +151,35 @@ export default function ConversationPanel({
                     </button>
                 </div>
 
-                <div className="flex items-center justify-center gap-8 pt-2">
+                <div className="flex items-center justify-center gap-6 pt-1">
                     <button
-                        className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border ${isScreenShared
+                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border ${isScreenShared
                             ? 'bg-rose-500/20 border-rose-500/50 text-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
                             : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white'
                             }`}
                         onClick={onToggleScreenShare}
                         title="Vision Sync"
                     >
-                        {isScreenShared ? <MonitorSmartphone size={24} /> : <MonitorOff size={24} />}
+                        {isScreenShared ? <MonitorSmartphone size={20} /> : <MonitorOff size={20} />}
                     </button>
 
                     <button
-                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${isMicActive
+                        className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${isMicActive
                             ? 'bg-primary-purple border-primary-purple text-white shadow-[0_0_30px_rgba(123,57,252,0.5)] scale-110'
                             : 'bg-white/5 border-white/10 text-white/20 hover:border-white/30 hover:text-white'
                             }`}
                         onClick={onToggleMic}
                         title="Voice Uplink (Space)"
                     >
-                        {isMicActive ? <Mic size={32} /> : <MicOff size={32} />}
+                        {isMicActive ? <Mic size={28} /> : <MicOff size={28} />}
                     </button>
 
                     <button
-                        className="w-14 h-14 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/40 hover:bg-rose-500/10 hover:border-rose-500/50 hover:text-rose-500 transition-all group"
+                        className="w-12 h-12 rounded-full flex items-center justify-center bg-white/5 border border-white/10 text-white/40 hover:bg-rose-500/10 hover:border-rose-500/50 hover:text-rose-500 transition-all group"
                         onClick={onEndBriefing}
                         title="Terminate Session"
                     >
-                        <XCircle size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                        <XCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
             </div>

@@ -19,7 +19,7 @@
 
 @layer base {
     body {
-        @apply font-manrope bg-black text-white antialiased overflow-x-hidden;
+        @apply font-manrope bg-black text-white antialiased overflow-hidden h-screen;
     }
 
     h1,
@@ -34,7 +34,16 @@
 
 @layer components {
     .glass-card {
-        @apply bg-glass-bg border border-glass-border backdrop-blur-md rounded-2xl;
+        @apply bg-glass-bg border border-glass-border backdrop-blur-md rounded-2xl transition-all duration-500 ease-out;
+    }
+
+    .glass-card:hover {
+        @apply bg-white/[0.08] border-white/30;
+        box-shadow: 0 8px 32px rgba(123, 57, 252, 0.15);
+    }
+
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-purple via-[#ff4081] to-[#00e5ff];
     }
 }
 
@@ -89,17 +98,35 @@
 @keyframes fade-in-up {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(20px) scale(0.98);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 .animate-fade-in-up {
-    animation: fade-in-up 0.8s ease-out forwards;
+    animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes glow-pulse {
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+.animate-glow-pulse {
+    animation: glow-pulse 4s ease-in-out infinite;
 }
 
 /* Premium Graph Edge Animations */

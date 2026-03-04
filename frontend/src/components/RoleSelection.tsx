@@ -87,7 +87,7 @@ export default function RoleSelection() {
             />
 
 
-            <main className="relative pt-[160px] pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">
+            <main className="relative pt-8 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">
 
                 {/* Header Section */}
                 <div className="text-center mb-20 animate-fade-in">
@@ -96,7 +96,7 @@ export default function RoleSelection() {
                         <span className="text-[11px] font-bold font-cabin uppercase tracking-[0.2em] text-white/60">SYNAPSE INTELLIGENCE HUB</span>
                     </div>
 
-                    <h2 className="text-4xl md:text-[64px] font-medium font-inter tracking-tight leading-tight mb-6 text-white">
+                    <h2 className="text-4xl md:text-[64px] font-medium font-inter tracking-tight leading-tight mb-6 text-gradient">
                         Select Your Mission
                     </h2>
                     <p className="text-lg text-[#f6f7f9] opacity-70 max-w-2xl mx-auto leading-relaxed font-regular">
@@ -116,8 +116,8 @@ export default function RoleSelection() {
                             >
                                 {/* Accent Glow Overlay */}
                                 <div
-                                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none"
-                                    style={{ background: `radial-gradient(circle at 50% 0%, ${role.color}, transparent 70%)` }}
+                                    className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-all duration-700 pointer-events-none"
+                                    style={{ background: `radial-gradient(circle at 50% 0%, ${role.color}, transparent 80%)` }}
                                 />
 
                                 <div

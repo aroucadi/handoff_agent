@@ -33,7 +33,7 @@ export default function LandingPage() {
 
                 {/* Heading Block Spec: 10px gap, 76px size, 1.15 line-height */}
                 <div className="flex flex-col gap-2.5 mb-10 transition-all duration-700">
-                    <h1 className="text-5xl md:text-[76px] font-medium font-inter leading-[1.15] tracking-[-2px] text-white">
+                    <h1 className="text-5xl md:text-[76px] font-medium font-inter leading-[1.15] tracking-[-2px] text-gradient">
                         Restore memory.
                     </h1>
                     <h1 className="text-5xl md:text-[76px] font-normal font-serif italic leading-[1.15] tracking-[-2px] text-white opacity-90">

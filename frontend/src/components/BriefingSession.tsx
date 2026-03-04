@@ -137,19 +137,19 @@ export default function BriefingSession() {
                     </div>
                 </div>
             ) : (
-                <div className="relative pt-[120px] h-screen p-6 flex flex-col gap-6 animate-fade-in">
+                <div className="relative h-screen p-6 flex flex-col gap-6 animate-fade-in overflow-hidden">
 
                     {/* Session Top Bar: High-Fidelity Specs */}
-                    <header className="glass-card px-10 h-24 flex items-center justify-between shrink-0 border-white/10 ring-1 ring-white/5 backdrop-blur-2xl">
+                    <header className="glass-card px-8 h-20 flex items-center justify-between shrink-0 border-white/10 ring-1 ring-white/5 backdrop-blur-2xl">
                         <div className="flex items-center gap-12">
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-2">
-                                    <Activity size={12} className="text-primary-purple animate-pulse" />
-                                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary-purple font-black">SYNAPSE NEXUS ACTIVE</span>
+                                <div className="flex items-center gap-2 animate-pulse">
+                                    <Activity size={12} className="text-primary-purple" />
+                                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary-purple font-black drop-shadow-[0_0_8px_rgba(123,57,252,0.4)]">SYNAPSE NEXUS ACTIVE</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <ShieldCheck size={24} className="text-white/80" />
-                                    <h1 className="text-2xl font-bold font-inter tracking-tight">
+                                    <h1 className="text-2xl font-bold font-inter tracking-tight text-gradient">
                                         {clientDetails?.company_name || clientId}
                                     </h1>
                                 </div>
@@ -208,7 +208,7 @@ export default function BriefingSession() {
                                 onEndBriefing={handleEnd}
                             />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                             <GraphPanel
                                 clientId={clientId || ''}
                                 toolCalls={toolCalls}
