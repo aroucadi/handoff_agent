@@ -63,11 +63,11 @@ export default function ConversationPanel({
 
     return (
         <div className="flex flex-col h-full bg-black/40 rounded-2xl overflow-hidden ring-1 ring-white/10 min-h-0">
-            {/* BIG Centered Orb Area */}
-            <div className="flex-[0_0_auto] min-h-[180px] max-h-[280px] flex flex-col items-center justify-center border-b border-white/5 bg-radial-at-c from-primary-purple/10 to-transparent relative overflow-hidden py-8">
+            {/* flex-none to flexible auto-vertical area */}
+            <div className="flex-[0_1_auto] min-h-[160px] max-h-[240px] flex flex-col items-center justify-center border-b border-white/5 bg-radial-at-c from-primary-purple/10 to-transparent relative overflow-hidden py-4 shrink-0">
                 <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
                 <div className="absolute inset-0 bg-primary-purple/5 animate-glow-pulse pointer-events-none" />
-                <div className="scale-[1.6] mb-8 relative z-10 transition-transform duration-700">
+                <div className="scale-[1.3] mb-4 relative z-10 transition-transform duration-700">
                     <SynapseOrb state={orbState} />
                 </div>
                 <div className="flex flex-col items-center gap-1.5 relative z-10">

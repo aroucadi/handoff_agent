@@ -18,8 +18,12 @@
 }
 
 @layer base {
+    html {
+        @apply h-full overflow-hidden;
+    }
+
     body {
-        @apply font-manrope bg-black text-white antialiased overflow-hidden h-screen;
+        @apply font-manrope bg-black text-white antialiased overflow-hidden h-full;
     }
 
     h1,
