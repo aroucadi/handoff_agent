@@ -14,6 +14,9 @@ import {
     type NodeTypes,
     Handle,
     Position,
+    BaseEdge,
+    getBezierPath,
+    type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { User, Package, Factory, ChevronRight, Activity, Zap, FileText } from 'lucide-react';
@@ -95,6 +98,76 @@ function SkillNode({ data }: { data: SkillNodeData }) {
 }
 
 const nodeTypes: NodeTypes = { skillNode: SkillNode };
+
+/* ── Premium Custom Edge ───────────────────────────────────── */
+
+function SkillEdge({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    style = {},
+    markerEnd,
+    data,
+}: EdgeProps) {
+    const [edgePath] = getBezierPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+    });
+
+    const isActive = data?.isActive;
+
+    return (
+        <>
+            {/* Ambient Outer Glow Layer */}
+            <BaseEdge
+                path={edgePath}
+                markerEnd={markerEnd}
+                style={{
+                    ...style,
+                    strokeWidth: isActive ? 6 : 2,
+                    stroke: isActive ? '#7b39fc' : 'rgba(255, 255, 255, 0.03)',
+                    filter: isActive ? 'blur(8px)' : 'none',
+                    opacity: isActive ? 0.3 : 1,
+                    transition: 'all 0.5s ease',
+                }}
+            />
+            {/* Main Gradient Stroke */}
+            <BaseEdge
+                path={edgePath}
+                markerEnd={markerEnd}
+                style={{
+                    ...style,
+                    strokeWidth: isActive ? 2.5 : 1.5,
+                    stroke: isActive ? 'url(#edge-gradient-active)' : 'rgba(255, 255, 255, 0.08)',
+                    transition: 'all 0.5s ease',
+                }}
+            />
+            {/* Pulsing Core Layer for Traversal */}
+            {isActive && (
+                <path
+                    d={edgePath}
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth={1}
+                    strokeDasharray="4 12"
+                    className="animate-flow-dash opacity-60"
+                />
+            )}
+        </>
+    );
+}
+
+const edgeTypes = {
+    skillEdge: SkillEdge,
+};
 
 /* ── Safe Layout Logic (Internal Logic UNCHANGED) ───────────────── */
 
@@ -195,8 +268,9 @@ function buildEdges(
                     id: `inherent-${node.node_id}-${targetId}`,
                     source: node.node_id,
                     target: targetId,
-                    animated: false,
-                    style: { stroke: 'rgba(255, 255, 255, 0.05)', strokeWidth: 1.5 },
+                    type: 'skillEdge',
+                    data: { isActive: false },
+                    style: { strokeWidth: 1.5 },
                 });
             }
         });
@@ -213,8 +287,8 @@ function buildEdges(
                     id: `traversal-${sourceId}-${targetId}-${i}`,
                     source: sourceId,
                     target: targetId,
-                    animated: true,
-                    style: { stroke: '#7b39fc', strokeWidth: 2.5, opacity: 0.8 },
+                    type: 'skillEdge',
+                    data: { isActive: true },
                     zIndex: 10,
                 });
             }
@@ -244,7 +318,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         const fetchAllNodes = async () => {
             try {
                 const apiUrl = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${apiUrl}/api/clients/${clientId}/graph/nodes`);
+                const lowerId = clientId.toLowerCase();
+                const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.nodes) setAllClientNodes(data.nodes);
@@ -263,7 +338,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                 nodeIdsSet.add(tc.args.node_id as string);
             }
         });
-        if (nodeIdsSet.size === 0) nodeIdsSet.add(`${clientId}-index`);
+        const lowerClientId = clientId.toLowerCase();
+        if (nodeIdsSet.size === 0) nodeIdsSet.add(`${lowerClientId}-index`);
 
         const nodeIds = Array.from(nodeIdsSet);
         const visitedNodes = new Set(toolCalls
@@ -275,6 +351,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         const rawEdges = buildEdges(nodeIds, toolCalls, allClientNodes);
 
         const layouted = getLayoutedElements(rawNodes, rawEdges);
+        console.log(`[GRAPH] Rendered ${layouted.length} nodes and ${rawEdges.length} edges`);
         setNodes(layouted);
         setEdges(rawEdges);
     }, [allClientNodes, toolCalls, currentNode, clientId, setNodes, setEdges]);
@@ -288,7 +365,8 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     const fetchNodeContent = useCallback(async (nodeId: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '';
-            const res = await fetch(`${apiUrl}/api/clients/${clientId}/graph/nodes/${nodeId}`);
+            const lowerId = clientId.toLowerCase();
+            const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes/${nodeId}`);
             if (res.ok) {
                 const data = await res.json();
                 setNodeContent(data.content);
@@ -335,12 +413,28 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
                         fitView
                         proOptions={{ hideAttribution: true }}
                         minZoom={0.1}
                         maxZoom={2}
                         className="font-inter"
                     >
+                        {/* Custom SVG Definitions for Gradients & Filters */}
+                        <svg className="absolute w-0 h-0">
+                            <defs>
+                                <linearGradient id="edge-gradient-active" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#7b39fc" />
+                                    <stop offset="50%" stopColor="#ff4081" />
+                                    <stop offset="100%" stopColor="#00e5ff" />
+                                </linearGradient>
+                                <filter id="edge-glow">
+                                    <feGaussianBlur stdDeviation="3" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                            </defs>
+                        </svg>
+
                         <Background variant={BackgroundVariant.Dots} color="rgba(123,57,252,0.1)" gap={40} size={1} />
                         <Controls className="!bg-[#0f1016]/90 !border-white/10 !fill-white/60 hover:!fill-white !rounded-xl !overflow-hidden !m-8 !shadow-2xl" showInteractive={false} />
                         <AutoGraphFitter nodes={nodes} activeNodeId={currentNode} />

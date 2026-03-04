@@ -88,3 +88,68 @@
 .animate-fade-in-up {
     animation: fade-in-up 0.8s ease-out forwards;
 }
+
+/* Premium Graph Edge Animations */
+@keyframes flow-dash {
+    from {
+        stroke-dashoffset: 16;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.animate-flow-dash {
+    animation: flow-dash 1.5s linear infinite;
+}
+
+/* React Flow Controls Rebrand - GLASS MORPHISM DARK THEME */
+.react-flow__controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 6px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(24px) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+.react-flow__controls-button {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    width: 34px !important;
+    height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    border-radius: 10px !important;
+    margin-bottom: 2px !important;
+}
+
+.react-flow__controls-button:last-child {
+    margin-bottom: 0 !important;
+}
+
+.react-flow__controls-button svg {
+    fill: rgba(255, 255, 255, 0.3) !important;
+    width: 13px !important;
+    height: 13px !important;
+}
+
+.react-flow__controls-button:hover {
+    background: rgba(123, 57, 252, 0.2) !important;
+    border-color: rgba(123, 57, 252, 0.4) !important;
+    transform: translateY(-1px) !important;
+}
+
+.react-flow__controls-button:hover svg {
+    fill: #7b39fc !important;
+}
+
+.react-flow__controls-button:active {
+    transform: translateY(0px) scale(0.95) !important;
+}

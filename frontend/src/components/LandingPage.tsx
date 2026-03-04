@@ -65,10 +65,13 @@ export default function LandingPage() {
 
                 {/* Dashboard Showcase Spec: 1163px wide, 24px radius, glassmorphic */}
                 <div className="w-full max-w-[1163px] md:w-[1163px] md:max-w-[90vw] mt-20 relative p-[22.5px] rounded-[24px] border-[1.5px] border-white/10 bg-white/5 backdrop-blur-[10px] animate-fade-in">
+                    <div className="absolute top-8 left-1/2 -translate-x-1/2 px-12 py-3 bg-black/40 border border-white/10 rounded-full text-white/40 text-[11px] font-black uppercase tracking-[0.4em] backdrop-blur-3xl z-20">
+                        Synapse Dashboard
+                    </div>
                     <div className="absolute inset-0 bg-gradient-to-br from-primary-purple/10 to-transparent rounded-[24px] pointer-events-none" />
                     <img
-                        src="/C:/Users/rouca/.gemini/antigravity/brain/7b55f7a3-cf9f-45d2-b752-c16339312e06/synapse_dashboard_mockup_1772586504310.png"
-                        alt="Synapse Dashbpard"
+                        src="/synapse_dashboard_mockup.png"
+                        alt="Synapse Dashboard Preview"
                         className="w-full h-auto rounded-[8px] object-cover shadow-2xl relative z-10"
                     />
                 </div>

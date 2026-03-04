@@ -13,7 +13,6 @@ import {
     Circle,
     Activity
 } from 'lucide-react';
-import Navbar from './Navbar';
 import BackgroundVideo from './BackgroundVideo';
 
 interface Deal {
@@ -94,7 +93,6 @@ export default function Dashboard() {
                 src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
             />
 
-            <Navbar />
 
             <main className="relative pt-[160px] pb-20 px-6 max-w-[1440px] mx-auto">
 

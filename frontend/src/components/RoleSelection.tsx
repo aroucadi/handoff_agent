@@ -1,7 +1,6 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Handshake, TrendingUp, Headset, Target, ArrowRight } from 'lucide-react';
-import Navbar from './Navbar';
 import BackgroundVideo from './BackgroundVideo';
 
 interface RoleDef {
@@ -87,7 +86,6 @@ export default function RoleSelection() {
                 src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
             />
 
-            <Navbar />
 
             <main className="relative pt-[160px] pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">
 

@@ -20,7 +20,7 @@ export default function App() {
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/roles" element={<RoleSelection />} />
                     <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/session/:clientId" element={<BriefingSession />} />
+                    <Route path="/briefing/:clientId" element={<BriefingSession />} />
                 </Routes>
             </div>
         </BrowserRouter>
