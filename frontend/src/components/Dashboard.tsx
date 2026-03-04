@@ -46,6 +46,7 @@ export default function Dashboard() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const roleId = searchParams.get('role') || 'csm';
+    const tenantId = searchParams.get('tenant_id');
     const config = ROLE_CONFIG[roleId] || ROLE_CONFIG['csm'];
 
     const [deals, setDeals] = useState<Deal[]>([]);
@@ -56,7 +57,10 @@ export default function Dashboard() {
         const fetchDeals = async () => {
             try {
                 const baseUrl = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${baseUrl}/api/crm/deals`);
+                const url = tenantId
+                    ? `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`
+                    : `${baseUrl}/api/crm/deals`;
+                const res = await fetch(url);
                 const data = await res.json();
 
                 const filtered = (data.deals || []).filter((d: any) =>
@@ -193,12 +197,17 @@ export default function Dashboard() {
 
                                 <button
                                     className="relative z-10 w-full py-4 bg-primary-purple text-white font-bold font-cabin text-sm uppercase tracking-widest rounded-xl hover:bg-primary-purple-hover shadow-lg shadow-primary-purple/20 transition-all flex items-center justify-center gap-3 group/btn hover:scale-[1.02] active:scale-95"
-                                    onClick={() => navigate(`/briefing/${deal.client_id}`, {
-                                        state: {
-                                            dealId: deal.id,
-                                            companyName: deal.account_name
-                                        }
-                                    })}
+                                    onClick={() => {
+                                        const url = tenantId
+                                            ? `/briefing/${deal.client_id}?tenant_id=${tenantId}`
+                                            : `/briefing/${deal.client_id}`;
+                                        navigate(url, {
+                                            state: {
+                                                dealId: deal.id,
+                                                companyName: deal.account_name
+                                            }
+                                        });
+                                    }}
                                 >
                                     Ground Context <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </button>

@@ -150,6 +150,7 @@ async def index_all_nodes(client_id: str, nodes: list[dict], payload: dict = Non
     await status_ref.set({
         "client_id": client_id,
         "company_name": payload.get("company_name", "Unknown Company"),
+        "tenant_id": payload.get("_tenant_id", "default"),
         "deal_id": payload.get("deal_id"),
         "deal_value": payload.get("deal_value", 0),
         "kickoff_date": kickoff_date,

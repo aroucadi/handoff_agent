@@ -413,12 +413,19 @@ async def text_conversation(req: TextMessage):
 # Ã¢â€â‚¬Ã¢â€â‚¬ Client & Graph Status Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 @app.get("/api/clients")
-async def list_clients():
-    """List all client accounts with graph status."""
+async def list_clients(tenant_id: str = None):
+    """List all client accounts with graph status, optionally filtered by tenant."""
     db = get_firestore_client()
 
     clients = []
-    docs = db.collection("skill_graphs").stream()
+    # If tenant_id provided, filter the skill_graphs
+    if tenant_id:
+        # Use simple string prefix match or dedicated field
+        # Since we added tenant_id field to skill_graphs doc, use that
+        docs = db.collection("skill_graphs").where("tenant_id", "==", tenant_id).stream()
+    else:
+        docs = db.collection("skill_graphs").stream()
+
     for doc in docs:
         data = doc.to_dict()
         if data.get("status"):
@@ -433,7 +440,7 @@ async def list_clients():
                 "generated_at": data.get("generated_at"),
             })
 
-    return {"clients": clients, "count": len(clients)}
+    return {"clients": clients, "count": len(clients), "tenant_id": tenant_id}
 
 
 @app.get("/api/clients/{client_id}/graph/status")

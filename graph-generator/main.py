@@ -78,9 +78,12 @@ async def _run_generation(job_id: str, payload: dict):
         print(f"[JOB {job_id}] Step 1: Extracting CRM data...")
         crm_data = extract_from_crm_payload(payload)
 
-        # Use company_name as the universal client identifier so deals merge into one graph
+        # Use tenant_id + company_name as the universal client identifier for isolation
+        tenant_id = payload.get("_tenant_id", "default")
         company_name = payload.get("company_name", "Unknown Company")
-        client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+        raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+        client_id = f"{tenant_id}_{raw_client_id}"
+        
         industry = payload.get("industry", "general")
         historical_deals = payload.get("historical_deals", [])
 

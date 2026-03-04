@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
@@ -15,9 +15,11 @@ interface ClientDetails {
 
 export default function BriefingSession() {
     const { clientId } = useParams<{ clientId: string }>();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
 
+    const tenantId = searchParams.get('tenant_id');
     // Get deal context from dashboard state if available
     const dealId = location.state?.dealId;
 
@@ -73,6 +75,7 @@ export default function BriefingSession() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         client_id: clientId,
+                        tenant_id: tenantId,
                         deal_id: dealId,
                         role: 'csm' // Default to CSM for briefing
                     })
