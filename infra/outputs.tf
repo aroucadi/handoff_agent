@@ -8,6 +8,16 @@ output "uploads_bucket" {
   value       = module.storage.uploads_bucket_name
 }
 
+output "knowledge_center_bucket" {
+  description = "GCS bucket for ClawdView Knowledge Center"
+  value       = module.storage.knowledge_center_bucket_name
+}
+
+output "knowledge_center_url" {
+  description = "Public URL for ClawdView Knowledge Center"
+  value       = module.storage.knowledge_center_bucket_url
+}
+
 output "firestore_database" {
   description = "Firestore database name"
   value       = module.firestore.database_name
