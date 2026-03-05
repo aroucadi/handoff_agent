@@ -1,55 +1,139 @@
 # 🤖 Synapse AI Agents Architecture
 
-Synapse relies on a suite of **specialized, purpose-driven AI Agents** powered by Google's Gemini models. By dividing cognitive labor between asynchronous data extraction models and sub-second real-time conversational models, Synapse achieves its "Level 5 Agent" status.
+Synapse relies on a suite of **specialized, purpose-driven AI Agents** powered by Google's Gemini models. By dividing cognitive labor between asynchronous data extraction, real-time voice conversation, and on-demand document generation, Synapse achieves its "Level 5 Agent" status.
 
 ---
 
 ## 1. The Graph Generator (Asynchronous Multi-Agent)
-**Model Usage:** `gemini-3.1-pro`
+**Model:** `gemini-3.1-pro`
 
-When a deal transitions to "Closed Won," the webhook triggers the Graph Generator pipeline. Producing a highly accurate, structured skill graph from unstructured transcripts and PDFs is too complex for a single zero-shot prompt. Thus, we utilize a **Multi-Agent pattern**:
+### Ontology-Driven Pipeline
+
+When CRM data arrives (via webhook or Hub sync), the Graph Generator builds a structured knowledge graph using a formal ontology with 20+ entity types and typed relationships:
+
+**Entity Types:** `Client`, `Deal`, `Contact`, `Risk`, `Product`, `Feature`, `Limitation`, `SuccessMetric`, `Competitor`, `Integration`, `Timeline`, `KBArticle`, and more.
+
+**Edge Types:** `HAS_RISK`, `INCLUDES`, `CHAMPIONS`, `USES_PRODUCT`, `MITIGATED_BY`, `DEPENDS_ON`, `COMPETES_WITH`, etc.
 
 ### Phase A: The Extractor Agents
-- **CRM Extractor**: Parses strictly structured JSON payload data (Account names, MRR, Stakeholders).
-- **Transcript Extractor**: Summarizes raw sales call transcripts, identifying technical requirements and objections.
-- **Contract Extractor**: Extracts line-items, SLAs, and technical deliverables from the signed PDF.
+- **CRM Extractor**: Parses structured CRM data (accounts, deals, contacts, products) via Hub's agnostic field mapping. Emits typed entities + relationships.
+- **Knowledge Center Extractor**: Crawls the static ClawdView Knowledge Center site to extract product docs, features, limitations, and KB articles.
 
-### Phase B: Generator vs. Reviewer (Account-Oriented Delta)
-1. **The Generator Pass**: The primary agent takes the compiled extractions from Phase A and drafts an array of "Nodes". In the latest evolution, this is **Account-Oriented**: it pulls historical deals and existing account context to generate "Delta" nodes that only reflect new changes or deep-dive specifics.
-2. **The Reviewer Pass**: A secondary agent acting as a "Critic" evaluates the delta. It ensures wikilinks correctly point to both new delta nodes and existing core account nodes (e.g., [[account-profile]]).
+### Phase B: Generator + Reviewer
+1. **Generator**: Takes extracted entities and generates delta knowledge graph nodes. Account-oriented: pulls historical deals to generate only new/changed content.
+2. **Reviewer**: QA agent that validates entity types match the ontology, edges are correctly typed, and cross-references resolve.
 
 ---
 
 ## 2. The Semantic Indexer
-**Model Usage:** `text-embedding-004` (via Vertex Vector Search)
+**Model:** `gemini-embedding-001` (768d vectors)
 
-Before the Live Agent can query the graph, Synapse generates high-dimensional vector embeddings for the content of every generated node. These embeddings are stored alongside the node metadata in **Google Firestore**. 
-
-When a CSM asks a vague question ("What were their security concerns?"), the system converts the query to an embedding and performs a fast ANN (Approximate Nearest Neighbor) vector search in Firestore to retrieve the exact nodes required, bypassing exact-keyword dependencies.
+Every entity in the knowledge graph is embedded and stored in **Firestore** with typed metadata. Supports:
+- **Type-filtered search**: Search only `Risk` entities, or only `Product` entities
+- **Multi-hop traversal**: Follow typed edges across entities (e.g., Deal → Risk → Mitigation Strategy)
+- **Cross-layer linking**: Client entities link to Product features and KB articles
 
 ---
 
-## 3. The Vision Live Agent (Real-Time WebRTC)
-**Model Usage:** `gemini-2.0-flash-exp`
+## 3. The Multimodal Live Agent (Real-Time Voice + Vision)
+**Model:** `gemini-2.5-flash-native-audio-preview`
 
-The crown jewel of Synapse is the interactive Voice Agent. When a CSM clicks "Start Briefing", the browser connects a bidirectional WebRTC audio/video stream directly to the Gemini Live endpoint via the backend Python broker.
+### 13 ADK Tools
 
-### WebRTC Architecture
-- **Audio Input:** The CSM speaks naturally into their microphone. No push-to-talk.
-- **Audio Output:** The agent responds with a natural, synthesized human voice.
-- **Vision Input:** The React frontend captures `<canvas>` snapshots of the CSM's screen (the interactive skill graph) and streams them as `image/jpeg` frames over WebRTC. The agent literally **sees** what the user is looking at or hovering their mouse over.
+The agent has access to 13 function-calling tools organized into three categories:
 
-### Function Calling (Tools)
-To make the agent capable of taking action, its system prompt assigns it three server-side tools:
-1. `search_graph(query)`: Invokes the Semantic Indexer to find relevant nodes across product, industry, and account layers.
-2. `follow_link(source_id)`: Fetches the connected child nodes to explore a topic deeply (e.g., from an account-level risk to a specific deal requirement).
-3. `escalate_risk(client_id, reason)`: Directly hits the CRM Simulator API to flag a customer account as "At Risk".
+#### Structured Graph Tools (7)
+| Tool | Description |
+|---|---|
+| `graph_overview` | High-level graph overview: entity types, counts, format |
+| `get_entity` | Retrieve a specific entity and its connections |
+| `get_entities_by_type` | All entities of a type (e.g., all Risks, all Contacts) |
+| `traverse_graph` | Multi-hop traversal following typed edges |
+| `search_entities` | Semantic search with optional type filter |
+| `risk_profile` | Comprehensive risk assessment with severity breakdown |
+| `product_knowledge` | Products, features, limitations, and KB articles |
+
+#### Output Generation Tools (3)
+| Tool | Description |
+|---|---|
+| `generate_briefing` | Pre-meeting briefing with stakeholders, risks, talking points |
+| `generate_action_plan` | Post-session prioritized action items with owners |
+| `generate_transcript` | Role-based scripts (6 types — see below) |
+
+#### Legacy Tools (3)
+| Tool | Description |
+|---|---|
+| `read_index` | Table-of-contents for a skill graph layer |
+| `follow_link` | Navigate to a specific node by wikilink |
+| `search_graph` | Semantic search across the graph |
+
+### Google Search Grounding
+
+The Live agent has access to **Google Search** as a supplementary information source:
+
+- **When**: Industry trends, competitor context, market data not in the knowledge graph
+- **When NOT**: Client deal data, internal CRM info, pricing (always from the graph)
+- **Guardrails**: Prompt policy limits searches to 1-2 per conversation, requires the agent to cite when using external data
 
 ### Multi-Role Support
-Synapse now supports dynamic personas based on the user's role:
-- **CSM**: Focused on customer health, success metrics, and long-term ROI.
-- **Sales (Account Executive)**: Focused on expansion opportunities, historical deal context, and stakeholder mapping.
-- **Customer Support**: Focused on technical requirements, SLAs, and resolved/open issues.
-- **Win Back**: Specialized persona for at-risk accounts, focusing on resolving pain points and historical objections.
 
-The Hub allows per-tenant configuration of these roles, ensuring the agent adopts the correct tone and knowledge-retrieval strategy for each session.
+The system prompt dynamically adapts based on the user's role:
+
+| Role | Focus | Vocabulary |
+|---|---|---|
+| **CSM** | Onboarding, health scores, adoption, QBRs | "time-to-value", "champion", "go-live", "milestone" |
+| **Sales** | Pipeline, competitive positioning, win strategy | "MEDDIC", "economic buyer", "value prop", "displacement" |
+| **Support** | Technical context, SLAs, escalation paths | "MTTR", "root cause", "runbook", "severity level" |
+| **Strategy** | Loss analysis, win-back, market positioning | "churn indicators", "whitespace", "cohort analysis" |
+
+---
+
+## 4. The Document Generator (On-Demand)
+**Model:** `gemini-3.1-pro`
+
+### 7 Output Types
+
+Available as both REST API endpoints and agent tools during live sessions:
+
+| Generator | Description |
+|---|---|
+| `generate_briefing` | Executive briefing with stakeholders, risks, talking points |
+| `generate_action_plan` | Prioritized follow-ups grouped by urgency |
+| `generate_risk_report` | Risk assessment with severity dashboard |
+| `generate_recommendations` | Strategic guidance (general/upsell/retention/expansion) |
+| `generate_handoff` | Team transition documents (Sales→CS, CS→Support) |
+| `generate_transcript` | Role-based scripts (6 types) |
+| `list_outputs` / `get_output` | Retrieve versioned artifacts from Firestore |
+
+### 6 Transcript Types
+
+Each type has a tailored Gemini system persona:
+
+| Type | Use Case | Key Sections |
+|---|---|---|
+| `sales_script` | Sales call prep | Opening, Value Prop, Objection Handling, Close |
+| `support_script` | Frustrated customer | Empathetic Greeting, De-escalation, Resolution |
+| `qbr_prep` | QBR discussion guide | Value Delivered, Adoption Metrics, Next Quarter |
+| `renewal_script` | Contract renewal | Value Recap, ROI Summary, Expansion Opportunity |
+| `onboarding_guide` | New customer setup | Account Setup, Feature Tour, 30-60-90 Plan |
+| `discovery_questions` | Qualification | Pain Points, Decision Process, Success Criteria |
+
+### Versioning
+
+All generated artifacts are versioned in Firestore:
+- Each type maintains a version counter
+- Previous versions remain accessible via the ArtifactViewer
+- Dashboard shows artifact badges per client with latest counts
+
+---
+
+## 5. The Hub Integration Layer
+**Stack:** React + FastAPI
+
+The Hub is the multi-tenant configuration portal that makes Synapse CRM-agnostic:
+
+- **Tenant Management**: Create/configure tenants with custom branding
+- **CRM Field Mapping**: Map any CRM's data schema to Synapse's ontology
+- **Role Configuration**: Enable/disable roles per tenant
+- **Webhook Registration**: Auto-register webhooks for deal events
+- **Launch Agent**: Direct link to the Voice UI with tenant context

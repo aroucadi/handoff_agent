@@ -1,49 +1,60 @@
 # Synapse — The Living Memory of Your Customer Journey
 
-> **Gemini-powered voice agent** that transforms CRM deal closure into real-time, grounded customer success briefings.
+> **Gemini-powered multimodal voice agent** that transforms CRM data into real-time, grounded customer intelligence — with role-specific briefings, Google Search enrichment, and AI-generated artifacts.
 
-[![Release](https://img.shields.io/badge/release-v1.0.0-blue)]()
+[![Release](https://img.shields.io/badge/release-v2.0.0-blue)]()
 [![Gemini](https://img.shields.io/badge/Gemini-3.1_Pro_%7C_2.5_Flash_Audio_%7C_Embedding_001-orange)]()
 [![IaC](https://img.shields.io/badge/IaC-Terraform_with_GCP-purple)]()
+[![CRM](https://img.shields.io/badge/CRM-Agnostic_%7C_HubSpot_%7C_Salesforce-green)]()
 
 ---
 
 ## What Is This?
 
-When a B2B SaaS deal closes, critical context is trapped in CRM data and sales transcripts. Synapse uses **Gemini 3.1 Pro** to extract that knowledge into a navigable **skill graph**, then serves it through a **Gemini Live multimodal agent** that Customer Success Managers can talk to and screen-share with before their kickoff call.
+Synapse is a **CRM-agnostic AI briefing platform** for B2B SaaS teams. It connects to any CRM via its **Hub integration layer**, extracts deal data into a structured **ontology-driven knowledge graph**, then serves it through a **Gemini Live multimodal voice agent** that Sales, CSM, Support, and Strategy teams can talk to before customer meetings.
 
-### The Demo Flow
+### Key Capabilities
 
-1. **CSM closes a deal** in the CRM Simulator → webhook fires
-2. **Graph Generator** extracts entities with Gemini 3.1 Pro → creates 8 client-specific knowledge nodes → stores in GCS → indexes with embeddings in Firestore
-3. **CSM opens Synapse** → sees account ready on Dashboard
-4. **CSM clicks "Start Briefing"** → real-time voice conversation with the agent
-5. **Agent navigates the skill graph** using 3 tools (read_index, follow_link, search_graph) → provides grounded, never-hallucinated answers
-6. **Split-screen UI** shows live transcript + React Flow graph topology animating in real-time
+| Capability | Description |
+|---|---|
+| **Knowledge Graph** | Ontology-driven entity extraction (20+ node types, typed edges) from CRM data + static Knowledge Center |
+| **4 Role Personas** | CSM, Sales, Support, Strategy — each with unique system prompts, vocabulary, and data focus |
+| **13 ADK Tools** | 7 structured graph tools + 3 output generators + 3 legacy traversal tools |
+| **6 Transcript Types** | Sales script, support script, QBR prep, renewal script, onboarding guide, discovery questions |
+| **Google Search Grounding** | Enriches briefings with real-time industry trends and competitor data |
+| **Versioned Artifacts** | AI-generated documents (briefings, action plans, risk reports) with version history |
+| **Hub Integration** | Multi-tenant config portal — CRM-agnostic plug & play with custom branding |
+
+### The Flow
+
+1. **Connect CRM** via Hub → configure field mapping + branding
+2. **Graph Generator** extracts entities with Gemini 3.1 Pro → builds ontology-driven knowledge graph → stores in Firestore
+3. **User opens Synapse** → selects role → sees deals on Dashboard
+4. **User clicks "Ground Context"** → real-time voice briefing with the agent
+5. **Agent navigates the knowledge graph** using 13 tools + Google Search → provides grounded, never-hallucinated answers
+6. **Smart Action Chips** → user or agent triggers artifact generation (scripts, reports, action plans)
+7. **Artifacts visible on Dashboard** with version history, Markdown preview, and download
 
 ### Gemini Models Used
 
 | Model | Purpose |
 |---|---|
-| `gemini-3.1-pro-preview` | Entity extraction + node generation |
+| `gemini-3.1-pro-preview` | Entity extraction, node generation, document generation |
 | `gemini-embedding-001` | 768d vector embeddings for semantic search |
-| `gemini-2.0-flash-exp` | Real-time multimodal (Vision + Voice) via Live API |
-| `gemini-2.5-flash-native-audio-preview` | Voice-only fallback |
+| `gemini-2.5-flash-native-audio-preview` | Real-time voice via Multimodal Live API |
+| Google Search Grounding | Industry context enrichment during live sessions |
 
 ---
 
 ## 📚 Documentation Hub
 
-Explore the `docs/` folder for in-depth technical breakdowns of the platform:
-- **[Developer Onboarding](docs/ONBOARDING.md)** — Start here! Monorepo structure, manifests, and cross-platform scripts.
-- **[Product Requirements Document (PRD)](docs/PRD.md)** — The original vision and UX flows.
-- **[System Architecture](docs/ARCHITECTURE.md)** — Core design decisions and data models.
-- **[AI Agents Deep Dive](docs/AI_AGENTS.md)** — How the Multi-Agent Generator and Gemini Live Vision interact.
-- **[Cloud Infrastructure](docs/INFRASTRUCTURE.md)** — Detailed GCP Terraform diagrams and Cloud Run topologies.
-- **[API Reference](docs/API_REFERENCE.md)** — Webhook payloads, internal endpoints, and WebSocket negotiation.
-- **[Observability & Telemetry](docs/OBSERVABILITY.md)** — Level 5 Agent tracing, token counting, and tool-call logging.
-- **[Hackathon Submission Pitch](docs/DEVPOST_SUBMISSION.md)** — The elevator pitch, inspiration, and judging criteria responses.
-- **[Demo Scipt](docs/DEMO_SCRIPT.md)** — The narrative flow for the 4-minute demonstration.
+- **[Developer Onboarding](docs/ONBOARDING.md)** — Monorepo structure, manifests, and cross-platform scripts
+- **[Product Requirements Document (PRD)](docs/PRD.md)** — Vision and UX flows
+- **[System Architecture](docs/ARCHITECTURE.md)** — Core design decisions, data flows, and knowledge graph ontology
+- **[AI Agents Deep Dive](docs/AI_AGENTS.md)** — Agent tools, Google Search grounding, generative outputs, and role-aware prompts
+- **[Cloud Infrastructure](docs/INFRASTRUCTURE.md)** — GCP Terraform diagrams and Cloud Run topologies
+- **[API Reference](docs/API_REFERENCE.md)** — REST endpoints, WebSocket protocol, and Hub API
+- **[Observability & Telemetry](docs/OBSERVABILITY.md)** — Agent tracing, token counting, and tool-call logging
 
 ---
 
@@ -52,17 +63,14 @@ Explore the `docs/` folder for in-depth technical breakdowns of the platform:
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
-- A Gemini API key ([Google AI Studio](https://aistudio.google.com/))
+- A GCP project with Gemini API enabled
 
 ### Setup
 
 ```bash
 # Clone
-git clone https://github.com/aroucadi/synapse_agent.git
-cd synapse_agent
-
-# Set your API key
-export GEMINI_API_KEY="your-key-here"
+git clone https://github.com/aroucadi/handoff_agent.git
+cd handoff_agent
 
 # Install everything
 bash scripts/demo-setup.sh
@@ -75,50 +83,44 @@ bash scripts/start-local.sh
 
 | Service | URL |
 |---|---|
-| CRM Simulator | http://localhost:5173 |
-| Synapse UI | http://localhost:5174 |
+| Hub (Tenant Config Portal) | http://localhost:5176 |
+| Synapse Voice UI | http://localhost:5174 |
 | Backend API | http://localhost:8000/health |
 | Graph Generator | http://localhost:8002/health |
-
-### Demo Walkthrough
-
-1. Open **CRM Simulator** → click "Closed Won" on a deal
-2. Open **Synapse UI** → enter the deal ID → click "Start Briefing"
-3. Talk to the agent or type questions
-4. Watch the React Flow graph animate as the agent navigates nodes
-
-### Keyboard Shortcuts
-
-| Key | Action |
-|---|---|
-| **Space** | Toggle microphone on/off |
-| **Escape** | End briefing session |
-| **Enter** | Send text message |
+| CRM Simulator | http://localhost:5173 |
+| Knowledge Center | http://localhost:3000 |
 
 ---
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram.
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system diagram.
 
 ```
-CRM Simulator → webhook → Synapse API → Graph Generator
-                                ↕                 ↓
-                          Gemini Live        GCS + Firestore
-                          (voice)            (skill graphs)
-                                ↕
-                          Voice UI ←── WebSocket (bidirectional audio)
+Hub (Tenant Config)──→ Synapse API ←── CRM (HubSpot/Salesforce/Custom)
+         │                  ↕                      ↓
+         │            Gemini Live          Graph Generator
+         │            (Voice + Search)     (Ontology Pipeline)
+         │                  ↕                      ↓
+         │            Voice UI ←── WebSocket    Firestore
+         │                                    (Knowledge Graph)
+         │                  ↕
+         │            Smart Action Chips → Artifact Generation
+         └────────────────────────────→ Dashboard (Artifact Viewer)
 ```
 
 ---
 
 ## Tech Stack
+
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, TypeScript 5, Vite 6, React Flow |
 | Backend | Python 3.11, FastAPI, WebSockets |
-| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
+| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio, Google Search Grounding |
 | Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
+| Hub | React + FastAPI — multi-tenant CRM integration portal |
+| Knowledge Center | Static ClawdView product knowledge site |
 
 ---
 
@@ -126,17 +128,34 @@ CRM Simulator → webhook → Synapse API → Graph Generator
 
 ```
 synapse/
-├── backend/                # Synapse API (FastAPI)
-│   ├── agent/              # ADK agent (tools, prompts, synapse_agent)
-│   ├── graph/              # Graph traversal engine
-│   └── live/               # Gemini Live session handler
-├── graph-generator/        # Graph Generator (FastAPI)
-│   └── extractors/         # Gemini 3.1 Pro entity extraction
-├── crm-simulator/          # CRM Simulator (FastAPI + React)
-├── frontend/               # Synapse Voice UI (React + React Flow)
-├── skill-graphs/           # 12 static knowledge nodes
-├── infra/                  # Terraform IaC (4 modules)
-└── scripts/                # Deploy, demo-setup, start-local
+├── hub/                        # Synapse Hub (Multi-Tenant Config Portal)
+│   ├── api/                    # Hub CRUD API (tenants, CRM field mapping)
+│   └── src/                    # Hub React Frontend
+├── backend/                    # Synapse API (Core Voice Service)
+│   ├── agent/                  # ADK agent (13 tools, 4 role prompts)
+│   │   ├── prompts.py          # Role-specific system prompts + search policy
+│   │   ├── tools.py            # 13 tool definitions + wrappers
+│   │   └── synapse_agent.py    # Main agent runner
+│   ├── graph/                  # Knowledge Graph Engine
+│   │   ├── traversal.py        # Multi-hop typed entity traversal
+│   │   ├── search.py           # Semantic search with type filters
+│   │   ├── outputs.py          # 7 Gemini-powered document generators
+│   │   └── ontology.py         # 20+ entity types, typed edge schema
+│   └── live/                   # Gemini Live Session Handler
+│       └── session.py          # Voice + Google Search + 13 tools
+├── graph-generator/            # Graph Generator (Ontology Pipeline)
+│   ├── extractors/             # CRM extractor + Knowledge Center extractor
+│   └── main.py                 # Dual-pipeline: CRM + KB
+├── knowledge-center/           # ClawdView Static Knowledge Site
+├── frontend/                   # Synapse Voice UI (React + React Flow)
+│   └── src/components/
+│       ├── Dashboard.tsx        # Deal cards + artifact badges
+│       ├── BriefingSession.tsx  # Voice session + graph panel
+│       ├── ConversationPanel.tsx # Transcript + smart action chips
+│       ├── ArtifactViewer.tsx   # Modal viewer with version history
+│       └── GraphPanel.tsx       # Typed entity visualization
+├── infra/                      # Terraform IaC
+└── scripts/                    # deploy.ps1, start-local, teardown
 ```
 
 ---
@@ -147,51 +166,38 @@ All infrastructure is defined as code in `infra/`:
 
 | Module | Resources |
 |---|---|
-| `storage` | GCS buckets (skill-graphs + uploads) |
-| `firestore` | Firestore database (native mode) |
-| `cloud-run` | 2 Cloud Run services, Artifact Registry, IAM |
-| `firebase` | Firebase Web App |
+| `storage` | GCS buckets (skill-graphs, uploads, knowledge-center) |
+| `firestore` | Firestore database (native mode) — knowledge graphs, sessions, outputs |
+| `cloud-run` | 4 Cloud Run services (API, Graph Generator, CRM Simulator, Hub) |
+| `firebase` | Firebase Web App + Hosting |
 
 ### Deploy to GCP
 
-To deploy the entire architecture (Frontend, FastAPIs, Cloud Run, Firestore, Storage) to Google Cloud, you need a GCP Project ID where you have billing and owner permissions.
-
-We have provided one-click PowerShell scripts to handle the Docker builds, Terraform execution, and Firebase deployment.
-
 ```powershell
-# 1. Open PowerShell and run the deployment script, passing your GCP Project ID:
+# Full deployment: containers, Terraform, Knowledge Center, Firebase Hosting
 .\scripts\deploy.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
 
-# 2. To completely destroy the environment and avoid billing:
+# Teardown
 .\scripts\teardown.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
 ```
-
-See [DEPLOYMENT_PROOF.md](DEPLOYMENT_PROOF.md) for full infrastructure details.
 
 ---
 
 ## Release History
 
-| Version | Release | What Shipped |
-|---|---|---|
-| `v0.1.0` | R0 — Foundation | CRM Simulator, IaC base, 12 static skill graphs |
-| `v1.0.0` | R4 — Submission | Demo polish, documentation, deployment scripts |
-| `v1.4.0` | R8 — Grounding | Native Firestore Vector Search (`FindNearest`) |
-| `v1.6.0` | R10 — Telemetry | Asynchronous `core/telemetry.py` traces |
-| `v1.7.0` | R11 — Vision | Multimodal WebRTC screen sharing |
-| `v1.8.0` | R12 — Polish | Global exception handlers and architecture diagrams |
-| `v1.9.0` | R13 — IaC | Hardened Terraform & PowerShell deployment scripts |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
+| Version | What Shipped |
 |---|---|
-| Frontend | React 19, TypeScript 5, Vite 6, React Flow |
-| Backend | Python 3.11, FastAPI, WebSockets |
-| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
-| Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
+| `v0.1` | CRM Simulator, IaC base, 12 static skill graphs |
+| `v1.0` | Demo polish, documentation, deployment scripts |
+| `v1.4` | Native Firestore Vector Search |
+| `v1.7` | Multimodal WebRTC screen sharing |
+| `v1.9` | Hardened Terraform & PowerShell deployment |
+| `v2.0` | **Hub Integration** — CRM-agnostic multi-tenant portal, field mapping, custom branding |
+| `v2.1` | **Knowledge Center** — ClawdView static product knowledge site for KB enrichment |
+| `v2.2` | **Ontology-Driven Graph** — 20+ entity types, typed edges, structured traversal |
+| `v2.3` | **13 ADK Tools** — Structured graph tools, risk profiles, product knowledge |
+| `v2.4` | **Generative Outputs** — 7 generators, 6 transcript types, versioned artifacts |
+| `v2.5` | **Google Search Grounding** — Real-time industry enrichment, smart action chips |
 
 ---
 
