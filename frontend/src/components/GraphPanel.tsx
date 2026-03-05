@@ -19,8 +19,33 @@ import {
     type EdgeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { User, Package, Factory, ChevronRight, Activity, Zap, FileText } from 'lucide-react';
+import { User, Package, Factory, ChevronRight, Activity, Zap, FileText, AlertTriangle, Shield, Target, GitBranch, BookOpen, Link2, Star, Flag, MessageSquare, Handshake, Eye } from 'lucide-react';
 import type { ToolCallEntry } from '../useVoiceSession';
+
+/* ── Entity Type Colors + Icons (Ontology Mapping) ────────── */
+
+const ENTITY_COLORS: Record<string, { bg: string; border: string; text: string; icon: typeof User }> = {
+    Organization: { bg: 'rgba(123,57,252,0.2)', border: 'rgba(123,57,252,0.6)', text: '#c4a5ff', icon: User },
+    Deal: { bg: 'rgba(0,200,150,0.2)', border: 'rgba(0,200,150,0.6)', text: '#00c896', icon: Zap },
+    Contact: { bg: 'rgba(59,130,246,0.2)', border: 'rgba(59,130,246,0.6)', text: '#93bbfd', icon: User },
+    Activity: { bg: 'rgba(251,146,60,0.2)', border: 'rgba(251,146,60,0.6)', text: '#fb923c', icon: Activity },
+    Contract: { bg: 'rgba(168,85,247,0.2)', border: 'rgba(168,85,247,0.6)', text: '#c084fc', icon: FileText },
+    Renewal: { bg: 'rgba(34,211,238,0.2)', border: 'rgba(34,211,238,0.6)', text: '#22d3ee', icon: GitBranch },
+    Product: { bg: 'rgba(16,185,129,0.2)', border: 'rgba(16,185,129,0.6)', text: '#6ee7b7', icon: Package },
+    Feature: { bg: 'rgba(132,204,22,0.2)', border: 'rgba(132,204,22,0.6)', text: '#bef264', icon: Star },
+    UseCase: { bg: 'rgba(14,165,233,0.2)', border: 'rgba(14,165,233,0.6)', text: '#7dd3fc', icon: Target },
+    KBArticle: { bg: 'rgba(99,102,241,0.2)', border: 'rgba(99,102,241,0.6)', text: '#a5b4fc', icon: BookOpen },
+    Limitation: { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.5)', text: '#fca5a5', icon: AlertTriangle },
+    Integration: { bg: 'rgba(20,184,166,0.2)', border: 'rgba(20,184,166,0.6)', text: '#5eead4', icon: Link2 },
+    Risk: { bg: 'rgba(239,68,68,0.2)', border: 'rgba(239,68,68,0.6)', text: '#fca5a5', icon: AlertTriangle },
+    DeriskingStrategy: { bg: 'rgba(34,197,94,0.2)', border: 'rgba(34,197,94,0.6)', text: '#86efac', icon: Shield },
+    SuccessMetric: { bg: 'rgba(250,204,21,0.2)', border: 'rgba(250,204,21,0.6)', text: '#fde68a', icon: Flag },
+    Milestone: { bg: 'rgba(192,132,252,0.2)', border: 'rgba(192,132,252,0.6)', text: '#e9d5ff', icon: Flag },
+    Objection: { bg: 'rgba(251,146,60,0.2)', border: 'rgba(251,146,60,0.6)', text: '#fdba74', icon: MessageSquare },
+    Commitment: { bg: 'rgba(34,197,94,0.2)', border: 'rgba(34,197,94,0.6)', text: '#86efac', icon: Handshake },
+    CompetitorMention: { bg: 'rgba(244,63,94,0.2)', border: 'rgba(244,63,94,0.6)', text: '#fda4af', icon: Eye },
+};
+const DEFAULT_ENTITY_COLOR = { bg: 'rgba(148,163,184,0.2)', border: 'rgba(148,163,184,0.5)', text: '#cbd5e1', icon: Zap };
 
 interface ServerNodeMetadata {
     node_id: string;
@@ -30,7 +55,65 @@ interface ServerNodeMetadata {
     description: string;
 }
 
-/* ── High-Fidelity Custom Node ─────────────────────────────── */
+interface GraphEntity {
+    entity_id: string;
+    type: string;
+    properties: Record<string, unknown>;
+}
+interface GraphEdge {
+    from_id: string;
+    to_id: string;
+    type: string;
+}
+
+/* ── Entity Node (Structured Graph) ───────────────────────── */
+
+interface EntityNodeData {
+    label: string;
+    entityType: string;
+    properties: Record<string, unknown>;
+    isActive: boolean;
+    [key: string]: unknown;
+}
+
+function EntityNode({ data }: { data: EntityNodeData }) {
+    const colors = ENTITY_COLORS[data.entityType] || DEFAULT_ENTITY_COLOR;
+    const Icon = colors.icon;
+
+    return (
+        <div className={`
+            relative px-6 py-4 rounded-[16px] border transition-all duration-500 min-w-[200px] max-w-[260px]
+            ${data.isActive ? 'scale-105 z-50 shadow-[0_0_30px_rgba(123,57,252,0.2)] ring-1' : 'hover:brightness-110'}
+        `}
+            style={{
+                backgroundColor: colors.bg,
+                borderColor: data.isActive ? '#7b39fc' : colors.border,
+            }}>
+            <Handle type="target" position={Position.Top} className="opacity-0" />
+            {data.isActive && (
+                <div className="absolute inset-0 rounded-[16px] bg-primary-purple/10 animate-pulse pointer-events-none" />
+            )}
+            <div className="flex items-center gap-3 relative z-10">
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center"
+                    style={{ backgroundColor: colors.border, color: '#fff' }}>
+                    <Icon size={18} strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[8px] font-bold uppercase tracking-[0.15em] opacity-70"
+                        style={{ color: colors.text }}>
+                        {data.entityType}
+                    </span>
+                    <span className="text-sm font-semibold text-white/90 truncate">
+                        {data.label}
+                    </span>
+                </div>
+            </div>
+            <Handle type="source" position={Position.Bottom} className="opacity-0" />
+        </div>
+    );
+}
+
+/* ── High-Fidelity Custom Node (Legacy) ──────────────────── */
 
 interface SkillNodeData {
     label: string;
@@ -100,7 +183,7 @@ function SkillNode({ data }: { data: SkillNodeData }) {
     );
 }
 
-const nodeTypes: NodeTypes = { skillNode: SkillNode };
+const nodeTypes: NodeTypes = { skillNode: SkillNode, entityNode: EntityNode };
 
 /* ── Premium Custom Edge ───────────────────────────────────── */
 
@@ -333,52 +416,120 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
     const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [allClientNodes, setAllClientNodes] = useState<ServerNodeMetadata[]>([]);
+    const [graphEntities, setGraphEntities] = useState<GraphEntity[]>([]);
+    const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
+    const [graphFormat, setGraphFormat] = useState<'structured' | 'markdown' | null>(null);
     const breadcrumbRef = useRef<HTMLDivElement>(null);
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
+    // Detect graph format and fetch appropriate data
     useEffect(() => {
-        const fetchAllNodes = async () => {
+        const fetchGraphData = async () => {
             try {
                 const apiUrl = import.meta.env.VITE_API_URL || '';
                 const lowerId = clientId.toLowerCase();
-                const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.nodes) setAllClientNodes(data.nodes);
+
+                // Check status first to determine format
+                const statusRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/status`);
+                if (statusRes.ok) {
+                    const status = await statusRes.json();
+                    const format = status.graph_format || 'markdown';
+                    setGraphFormat(format);
+
+                    if (format === 'structured') {
+                        // Fetch structured entity+edge data
+                        const entRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/entities`);
+                        if (entRes.ok) {
+                            const entData = await entRes.json();
+                            setGraphEntities(entData.entities || []);
+                            setGraphEdges(entData.edges || []);
+                        }
+                    } else {
+                        // Fetch legacy markdown nodes
+                        const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.nodes) setAllClientNodes(data.nodes);
+                        }
+                    }
+                } else {
+                    // Fallback: try legacy
+                    setGraphFormat('markdown');
+                    const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.nodes) setAllClientNodes(data.nodes);
+                    }
                 }
             } catch (err) {
-                console.error('Failed to fetch client nodes:', err);
+                console.error('Failed to fetch graph data:', err);
             }
         };
-        fetchAllNodes();
+        fetchGraphData();
     }, [clientId]);
 
     useEffect(() => {
-        const nodeIdsSet = new Set<string>(allClientNodes.map(n => n.node_id));
-        toolCalls.forEach(tc => {
-            if (tc.name === 'follow_link' && tc.args?.node_id) {
-                nodeIdsSet.add(tc.args.node_id as string);
-            }
-        });
-        const lowerClientId = clientId.toLowerCase();
-        if (nodeIdsSet.size === 0) nodeIdsSet.add(`${lowerClientId}-index`);
+        if (graphFormat === 'structured' && graphEntities.length > 0) {
+            // Build from structured entity+edge data
+            const entityNodes: Node[] = graphEntities.map((entity) => ({
+                id: entity.entity_id,
+                type: 'entityNode',
+                position: { x: 0, y: 0 },
+                data: {
+                    label: (entity.properties?.name as string) || entity.entity_id.split('_').pop() || entity.entity_id,
+                    entityType: entity.type,
+                    properties: entity.properties || {},
+                    isActive: currentNode === entity.entity_id,
+                } as EntityNodeData,
+            }));
 
-        const nodeIds = Array.from(nodeIdsSet);
-        const visitedNodes = new Set(toolCalls
-            .filter(tc => tc.name === 'follow_link')
-            .map(tc => tc.args?.node_id as string)
-            .filter(Boolean));
+            const entityEdgeIds = new Set(graphEntities.map(e => e.entity_id));
+            const flowEdges: Edge[] = graphEdges
+                .filter(e => entityEdgeIds.has(e.from_id) && entityEdgeIds.has(e.to_id))
+                .map((e, idx) => {
+                    const colors = ENTITY_COLORS[e.type] || DEFAULT_ENTITY_COLOR;
+                    return {
+                        id: `edge-${idx}`,
+                        source: e.from_id,
+                        target: e.to_id,
+                        type: 'skillEdge',
+                        label: e.type.replace(/_/g, ' '),
+                        style: { stroke: colors.border },
+                    };
+                });
 
-        const rawNodes = createNodes(nodeIds, currentNode, visitedNodes);
-        const rawEdges = buildEdges(nodeIds, toolCalls, allClientNodes);
+            const layouted = getLayoutedElements(entityNodes, flowEdges);
+            console.log(`[GRAPH] Rendered ${layouted.length} entity nodes and ${flowEdges.length} typed edges`);
+            setNodes(layouted);
+            setEdges(flowEdges);
+        } else {
+            // Legacy markdown wikilink graph
+            const nodeIdsSet = new Set<string>(allClientNodes.map(n => n.node_id));
+            toolCalls.forEach(tc => {
+                if (tc.name === 'follow_link' && tc.args?.node_id) {
+                    nodeIdsSet.add(tc.args.node_id as string);
+                }
+            });
+            const lowerClientId = clientId.toLowerCase();
+            if (nodeIdsSet.size === 0) nodeIdsSet.add(`${lowerClientId}-index`);
 
-        const layouted = getLayoutedElements(rawNodes, rawEdges);
-        console.log(`[GRAPH] Rendered ${layouted.length} nodes and ${rawEdges.length} edges`);
-        setNodes(layouted);
-        setEdges(rawEdges);
-    }, [allClientNodes, toolCalls, currentNode, clientId, setNodes, setEdges]);
+            const nodeIds = Array.from(nodeIdsSet);
+            const visitedNodes = new Set(toolCalls
+                .filter(tc => tc.name === 'follow_link')
+                .map(tc => tc.args?.node_id as string)
+                .filter(Boolean));
+
+            const rawNodes = createNodes(nodeIds, currentNode, visitedNodes);
+            const rawEdges = buildEdges(nodeIds, toolCalls, allClientNodes);
+
+            const layouted = getLayoutedElements(rawNodes, rawEdges);
+            console.log(`[GRAPH] Rendered ${layouted.length} nodes and ${rawEdges.length} edges`);
+            setNodes(layouted);
+            setEdges(rawEdges);
+        }
+    }, [allClientNodes, graphEntities, graphEdges, graphFormat, toolCalls, currentNode, clientId, setNodes, setEdges]);
 
     useEffect(() => {
         if (currentNode && !breadcrumb.includes(currentNode)) {

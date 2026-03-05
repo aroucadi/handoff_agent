@@ -491,9 +491,24 @@ async def list_clients(tenant_id: str = None):
 
 @app.get("/api/clients/{client_id}/graph/status")
 async def get_graph_status(client_id: str):
-    """Check if a client's skill graph is ready."""
+    """Check if a client's knowledge graph is ready (supports both structured and legacy)."""
     db = get_firestore_client()
 
+    # Check structured graph first
+    kg_doc = db.collection("knowledge_graphs").document(client_id).get()
+    if kg_doc.exists:
+        data = kg_doc.to_dict()
+        return {
+            "client_id": client_id,
+            "status": data.get("status", "unknown"),
+            "graph_format": data.get("graph_format", "structured"),
+            "entity_count": data.get("entity_count", 0),
+            "edge_count": data.get("edge_count", 0),
+            "entity_types": data.get("entity_types", []),
+            "generated_at": data.get("generated_at"),
+        }
+
+    # Fall back to legacy skill_graphs
     doc = db.collection("skill_graphs").document(client_id).get()
     if not doc.exists:
         return {"client_id": client_id, "status": "not_found"}
@@ -502,6 +517,7 @@ async def get_graph_status(client_id: str):
     return {
         "client_id": client_id,
         "status": data.get("status", "unknown"),
+        "graph_format": data.get("graph_format", "markdown"),
         "node_count": data.get("node_count", 0),
         "node_ids": data.get("node_ids", []),
         "generated_at": data.get("generated_at"),
@@ -521,8 +537,6 @@ async def list_graph_nodes(client_id: str):
     nodes_metadata = []
     
     for nid in node_ids:
-        # fetch basic metadata (links/layer) without full body content to keep payload small
-        # reuse follow_link logic for consistency
         data = follow_link(client_id, nid)
         if "error" not in data:
             nodes_metadata.append({
@@ -548,3 +562,46 @@ async def read_graph_node(client_id: str, node_id: str):
     if not content:
         return JSONResponse(status_code=404, content={"error": f"Node {node_id} not found"})
     return {"client_id": client_id, "node_id": node_id, "content": content}
+
+
+@app.get("/api/clients/{client_id}/graph/entities")
+async def list_graph_entities(client_id: str):
+    """List all entities and edges in a client's structured knowledge graph.
+    
+    Returns typed entities with properties and typed edges with connections.
+    Used by the frontend GraphPanel to render the entity+edge visualization.
+    """
+    db = get_firestore_client()
+
+    # Get all entities (without embeddings to keep payload small)
+    entities = []
+    entities_ref = db.collection("knowledge_graphs").document(client_id).collection("entities")
+    for doc in entities_ref.stream():
+        data = doc.to_dict()
+        data.pop("embedding", None)
+        data.pop("indexed_at", None)
+        entities.append(data)
+
+    # Get all edges
+    edges = []
+    edges_ref = db.collection("knowledge_graphs").document(client_id).collection("edges")
+    for doc in edges_ref.stream():
+        data = doc.to_dict()
+        data.pop("indexed_at", None)
+        edges.append(data)
+
+    return {
+        "client_id": client_id,
+        "entities": entities,
+        "edges": edges,
+        "entity_count": len(entities),
+        "edge_count": len(edges),
+    }
+
+
+
+
+
+
+
+
