@@ -101,6 +101,29 @@ class DealUpdate(BaseModel):
     employee_count: Optional[int] = None
     sales_transcript: Optional[str] = None
     webhook_url: Optional[str] = None
+    crm_platform: Optional[str] = None
+    tenant_id: Optional[str] = None
+
+
+class DealCreate(BaseModel):
+    deal_id: Optional[str] = None
+    company_name: str
+    deal_value: float
+    stage: DealStage = DealStage.PROSPECTING
+    products: list[DealProduct] = []
+    close_date: Optional[date] = None
+    sla_days: Optional[int] = None
+    csm_id: Optional[str] = None
+    industry: str = ""
+    employee_count: Optional[int] = None
+    contacts: list[Contact] = []
+    risks: list[Risk] = []
+    success_metrics: list[SuccessMetric] = []
+    sales_transcript: Optional[str] = None
+    contract_pdf_url: Optional[str] = None
+    webhook_url: Optional[str] = None
+    crm_platform: str = "custom"
+    tenant_id: Optional[str] = None
 
 
 class WebhookPayload(BaseModel):
@@ -109,6 +132,7 @@ class WebhookPayload(BaseModel):
     deal_id: str
     company_name: str
     deal_value: float
+    stage: str
     products: list[dict]
     close_date: str
     sla_days: Optional[int]
@@ -120,4 +144,5 @@ class WebhookPayload(BaseModel):
     success_metrics: list[dict]
     sales_transcript: Optional[str]
     contract_pdf_url: Optional[str]
+    contract_file_uri: Optional[str] = None
     historical_deals: list[dict] = Field(default_factory=list, description="Other deals mapping to this account")

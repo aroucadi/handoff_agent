@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from google.cloud import storage as gcs
 
-from models import Deal, DealStage, DealUpdate, WebhookPayload
+from models import Deal, DealCreate, DealStage, DealUpdate, WebhookPayload
 from seed_data import DEMO_DEALS
 
 app = FastAPI(
@@ -83,6 +83,20 @@ async def list_deals():
         "deals": [deal.model_dump(mode="json") for deal in deals_store.values()],
         "count": len(deals_store),
     }
+
+
+@app.post("/api/deals")
+async def create_deal(req: DealCreate):
+    deal_id = req.deal_id or f"OPP-{datetime.utcnow().year}-{uuid.uuid4().hex[:4].upper()}"
+    if deal_id in deals_store:
+        raise HTTPException(status_code=409, detail=f"Deal {deal_id} already exists")
+
+    payload = req.model_dump()
+    payload["deal_id"] = deal_id
+    deal = Deal(**payload)
+    deal.updated_at = datetime.utcnow()
+    deals_store[deal_id] = deal
+    return deal.model_dump(mode="json")
 
 
 @app.get("/api/deals/{deal_id}")
@@ -206,6 +220,7 @@ async def _fire_webhook(deal: Deal) -> dict:
         "deal_id": deal.deal_id,
         "company_name": deal.company_name,
         "deal_value": deal.deal_value,
+        "stage": deal.stage.value,
         "products": [p.model_dump() for p in deal.products],
         "close_date": str(deal.close_date or date.today()),
         "sla_days": deal.sla_days,
@@ -217,6 +232,7 @@ async def _fire_webhook(deal: Deal) -> dict:
         "success_metrics": [m.model_dump() for m in deal.success_metrics],
         "sales_transcript": deal.sales_transcript,
         "contract_pdf_url": deal.contract_pdf_url,
+        "contract_file_uri": deal.contract_pdf_url,
         "historical_deals": historical_deals,
     }
 

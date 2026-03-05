@@ -28,6 +28,7 @@ SYNAPSE_SCHEMA_FIELDS = [
     "success_metrics",
     "sales_transcript",
     "contract_pdf_url",
+    "contract_file_uri",
     "csm_id",
 ]
 
@@ -109,16 +110,26 @@ CUSTOM_TEMPLATE = {
     "products": "products",
     "contacts": "contacts",
     "risks": "risks",
-    "success_metrics": "success_metrics",
+    "success_metrics": {
+        "target": "success_metrics",
+        "item_map": {
+            "metric": "name",
+            "current_value": "baseline",
+            "target_value": "target",
+            "timeframe": "timeline",
+        },
+        "preserve_unmapped": True,
+    },
     "sales_transcript": "sales_transcript",
     "contract_pdf_url": "contract_pdf_url",
+    "contract_file_uri": "contract_file_uri",
     "csm_id": "csm_id",
 }
 
 
 # ── Template Registry ───────────────────────────────────────────
 
-CRM_TEMPLATES: dict[str, dict[str, str]] = {
+CRM_TEMPLATES: dict[str, dict[str, object]] = {
     "salesforce": SALESFORCE_TEMPLATE,
     "hubspot": HUBSPOT_TEMPLATE,
     "dynamics": DYNAMICS_TEMPLATE,

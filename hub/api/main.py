@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import firestore
+import httpx
 
 from models import (
     TenantConfig,
@@ -281,6 +282,28 @@ async def generate_knowledge(tenant_id: str):
     })
 
     return {"generated": len([r for r in results if r["status"] == "generated"]), "results": results}
+
+
+@app.post("/api/tenants/{tenant_id}/sync-knowledge")
+async def sync_knowledge(tenant_id: str):
+    """Trigger tenant knowledge sync in the Graph Generator."""
+    doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
+    if not doc.exists:
+        raise HTTPException(404, f"Tenant {tenant_id} not found")
+
+    tenant = TenantConfig(**doc.to_dict())
+    sync_url = f"{GRAPH_GENERATOR_URL.rstrip('/')}/api/sync-knowledge/{tenant.tenant_id}"
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(sync_url, json={"tenant_id": tenant.tenant_id})
+            if resp.status_code >= 400:
+                raise HTTPException(resp.status_code, resp.text[:500])
+            return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Failed to sync knowledge: {e}")
 
 
 # ── Test Webhook ─────────────────────────────────────────────────

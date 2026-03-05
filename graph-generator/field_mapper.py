@@ -35,7 +35,27 @@ def _resolve_dot_path(obj: dict, path: str) -> Any:
     return current
 
 
-def apply_field_mapping(raw_payload: dict, mapping: dict[str, str]) -> dict:
+def _map_list_items(value: Any, item_map: dict[str, str], preserve_unmapped: bool) -> Any:
+    if not isinstance(value, list):
+        return value
+    mapped_list: list[Any] = []
+    for item in value:
+        if not isinstance(item, dict):
+            mapped_list.append(item)
+            continue
+        out: dict[str, Any] = {}
+        for src_key, dst_key in item_map.items():
+            if src_key in item and item[src_key] is not None:
+                out[dst_key] = item[src_key]
+        if preserve_unmapped:
+            for k, v in item.items():
+                if k not in item_map and k not in out:
+                    out[k] = v
+        mapped_list.append(out)
+    return mapped_list
+
+
+def apply_field_mapping(raw_payload: dict, mapping: dict[str, Any]) -> dict:
     """Transform an incoming CRM payload using a field mapping dict.
 
     Args:
@@ -50,10 +70,26 @@ def apply_field_mapping(raw_payload: dict, mapping: dict[str, str]) -> dict:
     normalized = {}
     mapped_source_keys = set()
 
-    for source_path, target_field in mapping.items():
+    for source_path, target_spec in mapping.items():
         value = _resolve_dot_path(raw_payload, source_path)
-        if value is not None:
-            normalized[target_field] = value
+        if value is None:
+            continue
+
+        if isinstance(target_spec, str):
+            normalized[target_spec] = value
+            mapped_source_keys.add(source_path.split(".")[0])
+            continue
+
+        if isinstance(target_spec, dict):
+            target_field = target_spec.get("target")
+            if not target_field:
+                continue
+            item_map = target_spec.get("item_map")
+            preserve_unmapped = bool(target_spec.get("preserve_unmapped", True))
+            if item_map and isinstance(item_map, dict):
+                normalized[target_field] = _map_list_items(value, item_map, preserve_unmapped)
+            else:
+                normalized[target_field] = value
             # Track top-level key as mapped
             mapped_source_keys.add(source_path.split(".")[0])
 

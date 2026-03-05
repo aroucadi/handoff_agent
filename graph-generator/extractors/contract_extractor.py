@@ -184,7 +184,7 @@ async def _download_contract_pdf(client_id: str, contract_pdf_url: str | None) -
 
         if blob.exists():
             return blob.download_as_bytes()
-        return None
+        raise FileNotFoundError(f"Contract PDF not found at {contract_pdf_url}")
 
     # Search for any PDF under contracts/{client_id}/
     prefix = f"contracts/{client_id}/"

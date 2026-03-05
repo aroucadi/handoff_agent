@@ -186,11 +186,11 @@ def extract_entities_from_crm(payload: dict) -> dict:
                     "id": m_id,
                     "type": "SuccessMetric",
                     "properties": {
-                        "name": metric.get("name", ""),
-                        "baseline": metric.get("baseline", ""),
-                        "target": metric.get("target", ""),
+                        "name": metric.get("name") or metric.get("metric", ""),
+                        "baseline": metric.get("baseline") or metric.get("current_value", ""),
+                        "target": metric.get("target") or metric.get("target_value", ""),
                         "measurement_method": metric.get("method", ""),
-                        "timeline": metric.get("timeline", ""),
+                        "timeline": metric.get("timeline") or metric.get("timeframe", ""),
                         "owner": metric.get("owner", ""),
                     },
                 })

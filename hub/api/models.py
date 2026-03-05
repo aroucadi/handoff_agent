@@ -44,6 +44,19 @@ class AuthMethod(str, Enum):
     API_KEY = "api_key"
 
 
+class KnowledgeSourceType(str, Enum):
+    WEBSITE_CRAWL = "website_crawl"
+    DOCUMENT_UPLOAD = "document_upload"
+    ZENDESK_API = "zendesk_api"
+
+
+class SyncStatus(str, Enum):
+    PENDING = "pending"
+    SYNCING = "syncing"
+    COMPLETED = "completed"
+    ERROR = "error"
+
+
 # ── Sub-models ───────────────────────────────────────────────────
 
 class Product(BaseModel):
@@ -84,6 +97,15 @@ class AgentConfig(BaseModel):
     brand_name: str = ""
 
 
+class KnowledgeSource(BaseModel):
+    source_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    type: KnowledgeSourceType
+    uri: str  # URL, GCS path, or API endpoint
+    name: str = ""
+    status: SyncStatus = SyncStatus.PENDING
+    last_synced_at: Optional[str] = None
+
+
 # ── Main Tenant Config ──────────────────────────────────────────
 
 class TenantConfig(BaseModel):
@@ -93,6 +115,7 @@ class TenantConfig(BaseModel):
     crm: CrmConnection = Field(default_factory=CrmConnection)
     products: list[Product] = Field(default_factory=list)
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    knowledge_sources: list[KnowledgeSource] = Field(default_factory=list)
     webhook_url: str = ""  # auto-provisioned: graph-generator ingest endpoint
     webhook_secret: str = Field(
         default_factory=lambda: secrets.token_hex(32)  # HMAC-SHA256 key
@@ -120,6 +143,7 @@ class UpdateTenantRequest(BaseModel):
     brand_name: Optional[str] = None
     crm: Optional[CrmConnection] = None
     agent: Optional[AgentConfig] = None
+    knowledge_sources: Optional[list[KnowledgeSource]] = None
     webhook_url: Optional[str] = None
     status: Optional[TenantStatus] = None
 
