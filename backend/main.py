@@ -649,6 +649,32 @@ async def create_handoff(client_id: str, request: Request):
     return result
 
 
+@app.post("/api/clients/{client_id}/outputs/transcript")
+async def create_transcript(client_id: str, request: Request):
+    """Generate a role-based transcript/script from the knowledge graph."""
+    from graph.outputs import generate_transcript
+    body = await request.json()
+    result = await generate_transcript(
+        client_id,
+        transcript_type=body.get("transcript_type", "sales_script"),
+        user_role=body.get("user_role"),
+        additional_context=body.get("additional_context"),
+    )
+    return result
+
+
+@app.get("/api/clients/{client_id}/outputs/transcript-types")
+async def list_transcript_types(client_id: str):
+    """List available transcript types."""
+    from graph.outputs import TRANSCRIPT_TYPES
+    return {
+        "types": [
+            {"id": k, "title": v["title"]}
+            for k, v in TRANSCRIPT_TYPES.items()
+        ]
+    }
+
+
 @app.get("/api/clients/{client_id}/outputs")
 async def list_client_outputs(client_id: str):
     """List all generated outputs for a client."""
@@ -665,6 +691,7 @@ async def get_client_output(client_id: str, output_id: str):
     if not result:
         return JSONResponse(status_code=404, content={"error": f"Output {output_id} not found"})
     return result
+
 
 
 

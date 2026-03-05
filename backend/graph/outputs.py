@@ -6,6 +6,7 @@ Produces structured documents from the knowledge graph using Gemini:
   - Risk reports
   - Recommendations
   - Handoff documents
+  - Role-based transcripts / scripts (sales, support, QBR, renewal, etc.)
 """
 
 from __future__ import annotations
@@ -366,6 +367,190 @@ Generate a comprehensive handoff document in Markdown:
         "content": content,
         "generated_at": datetime.utcnow().isoformat(),
         "metadata": {"from_team": from_team, "to_team": to_team},
+    }
+
+    _save_output(client_id, result)
+    return result
+
+
+# ── Role-Based Transcript / Script Generator ─────────────────────
+
+# Supported transcript types with their system personas and structure
+TRANSCRIPT_TYPES = {
+    "sales_script": {
+        "title": "Sales Call Script",
+        "system": "You are an expert sales coach who crafts compelling, natural-sounding call scripts. You focus on value-based selling, consultative approaches, and handling objections with confidence.",
+        "structure": [
+            "Opening & Rapport Building — Personalized opener referencing the client's industry/company",
+            "Discovery Questions — 3-5 targeted questions based on known gaps or opportunities",
+            "Value Proposition — Tailored pitch connecting products to client's specific needs",
+            "Objection Handling — Pre-built responses to each known objection from the graph",
+            "Competitive Positioning — How to handle competitor mentions",
+            "Pricing Discussion — Anchoring and negotiation tactics",
+            "Next Steps & Close — Clear call-to-action and commitment request",
+        ],
+    },
+    "support_script": {
+        "title": "Customer Support Script",
+        "system": "You are an experienced customer support specialist who excels at de-escalation and empathy-driven problem resolution. You help agents handle frustrated customers with patience and professionalism.",
+        "structure": [
+            "Greeting & Acknowledgment — Empathetic opening acknowledging their frustration",
+            "Active Listening Prompts — Questions to understand the root issue",
+            "Known Issues — Script for each risk/limitation from the knowledge graph",
+            "De-escalation Techniques — Specific language to calm frustrated customers",
+            "Resolution Paths — Step-by-step solutions for common problems",
+            "Escalation Protocol — When and how to escalate, with warm handoff language",
+            "Follow-up Commitment — Specific promises to make and keep",
+        ],
+    },
+    "qbr_prep": {
+        "title": "QBR Discussion Guide",
+        "system": "You are a strategic Customer Success Manager preparing for an executive-level Quarterly Business Review. You create structured agendas that demonstrate value and drive strategic alignment.",
+        "structure": [
+            "Welcome & Agenda Setting — Professional opener with clear meeting goals",
+            "Value Delivered Summary — ROI metrics and wins since last QBR",
+            "Adoption Metrics Discussion — Usage data, active users, feature adoption",
+            "Success Metric Review — Progress against each defined success metric",
+            "Risk Discussion — Transparent discussion of challenges and derisking plans",
+            "Product Roadmap Preview — Upcoming features relevant to this client",
+            "Strategic Alignment — Ensuring product direction matches client goals",
+            "Next Quarter Goals — Specific, measurable targets to agree on",
+        ],
+    },
+    "renewal_script": {
+        "title": "Renewal Conversation Script",
+        "system": "You are a skilled renewal specialist who builds strong cases for contract renewal and expansion. You focus on demonstrated value, risk mitigation, and mutual growth.",
+        "structure": [
+            "Opening — Re-establish relationship and set a positive tone",
+            "Value Recap — Specific outcomes achieved with data points",
+            "ROI Summary — Cost vs. value delivered, with concrete examples",
+            "Risk of Churning — Address known risks and competitor mentions proactively",
+            "Expansion Opportunity — Natural upsell based on product fit analysis",
+            "Contract Terms Discussion — Pricing, term length, SLA adjustments",
+            "Objection Handling — Responses to budget, timing, and competitor objections",
+            "Close & Next Steps — Clear commitment ask with timeline",
+        ],
+    },
+    "onboarding_guide": {
+        "title": "Onboarding Walkthrough Script",
+        "system": "You are an onboarding specialist who creates structured, easy-to-follow guides that help new customers get value quickly. You focus on quick wins and building confidence.",
+        "structure": [
+            "Welcome & Introduction — Warm welcome with overview of what to expect",
+            "Account Setup — Step-by-step initial configuration based on products purchased",
+            "Key Feature Tour — Guided walkthrough of the features most relevant to their use cases",
+            "Quick Win Exercise — A hands-on activity that demonstrates immediate value",
+            "Known Limitations — Transparent discussion of limitations with workarounds",
+            "Integration Setup — How to connect with their existing tools",
+            "Training Resources — Links to relevant KB articles and guides",
+            "30-60-90 Day Plan — Clear milestones for the first 90 days",
+        ],
+    },
+    "discovery_questions": {
+        "title": "Discovery & Qualification Questions",
+        "system": "You are a consultative sales expert who crafts probing discovery questions that uncover needs, pain points, and buying signals. You help sellers go beyond surface-level conversations.",
+        "structure": [
+            "Company & Context — Questions about their current situation and why they're looking",
+            "Pain Points — Deep-dive questions into specific challenges based on graph data",
+            "Decision Process — Who's involved, timeline, budget, and authority mapping",
+            "Current Solutions — What they use today, what's working, what's not",
+            "Success Criteria — How they'll measure success with specific metrics",
+            "Objection Surfacing — Questions that proactively uncover potential blockers",
+            "Competitive Landscape — Questions to understand alternatives being considered",
+            "Next Steps — Qualification checklist and recommended follow-up actions",
+        ],
+    },
+}
+
+
+async def generate_transcript(
+    client_id: str,
+    transcript_type: str = "sales_script",
+    user_role: str = None,
+    additional_context: str = None,
+) -> dict:
+    """Generate a role-based transcript or script from the knowledge graph.
+
+    Produces a contextual, ready-to-use script tailored to a specific role
+    and scenario. The script leverages knowledge graph data (risks, contacts,
+    objections, products) to create personalized, data-driven talking points.
+
+    Args:
+        client_id: Client identifier.
+        transcript_type: Type of transcript. Options:
+            "sales_script", "support_script", "qbr_prep",
+            "renewal_script", "onboarding_guide", "discovery_questions"
+        user_role: Optional role of the person using the script (e.g., "AE", "CSM").
+        additional_context: Optional extra context (e.g., session notes, CRM comments).
+
+    Returns:
+        Dict with title, content (markdown), and metadata.
+    """
+    ttype = TRANSCRIPT_TYPES.get(transcript_type)
+    if not ttype:
+        available = ", ".join(TRANSCRIPT_TYPES.keys())
+        return {"error": f"Unknown transcript type '{transcript_type}'. Available: {available}"}
+
+    ctx = _collect_graph_context(client_id)
+
+    # Build role context
+    role_line = f"for a {user_role}" if user_role else ""
+    extra_section = ""
+    if additional_context:
+        extra_section = f"\n## Additional Context from User\n{additional_context}\n"
+
+    structure_text = "\n".join(f"{i+1}. **{item}**" for i, item in enumerate(ttype["structure"]))
+
+    prompt = f"""Generate a "{ttype['title']}" {role_line} for the following client engagement.
+
+## Client Knowledge Graph
+**Overview**: {json.dumps(ctx['overview'], default=str)}
+
+**Key Contacts** ({ctx['contacts'].get('count', 0)} total):
+{json.dumps(ctx['contacts'].get('entities', [])[:5], default=str)}
+
+**Products**: {json.dumps(ctx['products'], default=str)}
+
+**Risk Profile** ({ctx['risks'].get('risk_count', 0)} risks):
+{json.dumps(ctx['risks'], default=str)}
+
+**Objections Raised**: {json.dumps(ctx['objections'].get('entities', []), default=str)}
+
+**Commitments Made**: {json.dumps(ctx['commitments'].get('entities', []), default=str)}
+
+**Success Metrics**: {json.dumps(ctx['success_metrics'].get('entities', []), default=str)}
+
+**Competitor Mentions**: {json.dumps(get_entities_by_type(client_id, 'CompetitorMention').get('entities', []), default=str)}
+{extra_section}
+
+## Required Structure
+{structure_text}
+
+## Instructions
+- Write in a **conversational, natural tone** — this should sound like a real person talking, not a template.
+- Include **specific names, numbers, and details** from the graph data whenever possible.
+- For each section, provide the actual words/sentences the person should say or ask.
+- Mark key decision points with [IF...THEN] branching where the conversation could go different ways.
+- Highlight **danger zones** where the script user should be extra careful (e.g., known objections, frustrated contacts).
+- End with a clear set of commitments to secure from the customer.
+
+Output as well-structured Markdown with clear section headers."""
+
+    content = _generate(prompt, system=ttype["system"])
+
+    result = {
+        "type": "transcript",
+        "subtype": transcript_type,
+        "client_id": client_id,
+        "title": f"{ttype['title']} — {client_id}",
+        "content": content,
+        "generated_at": datetime.utcnow().isoformat(),
+        "metadata": {
+            "transcript_type": transcript_type,
+            "user_role": user_role,
+            "has_additional_context": bool(additional_context),
+            "risk_count": ctx["risks"].get("risk_count", 0),
+            "contact_count": ctx["contacts"].get("count", 0),
+        },
     }
 
     _save_output(client_id, result)

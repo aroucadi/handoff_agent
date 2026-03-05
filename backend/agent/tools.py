@@ -238,6 +238,43 @@ def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
+def tool_generate_transcript(
+    client_id: str,
+    transcript_type: str = "sales_script",
+    user_role: str = None,
+    additional_context: str = None,
+) -> str:
+    """Generate a role-based transcript or conversation script from the knowledge graph.
+
+    Use this when a user asks for a script, talking points, or preparation
+    material for a specific type of customer interaction. Available types:
+
+    - "sales_script": Sales call script with objection handling and value props
+    - "support_script": De-escalation script for frustrated customer interactions
+    - "qbr_prep": Quarterly Business Review discussion guide
+    - "renewal_script": Contract renewal negotiation script
+    - "onboarding_guide": New customer onboarding walkthrough
+    - "discovery_questions": Qualification and discovery question set
+
+    Args:
+        client_id: The client identifier
+        transcript_type: One of the 6 transcript types listed above
+        user_role: Optional role (e.g., "AE", "CSM", "Support Agent")
+        additional_context: Optional extra context or session notes
+
+    Returns:
+        Generated transcript/script document in Markdown format.
+    """
+    import asyncio
+    from graph.outputs import generate_transcript
+    result = asyncio.get_event_loop().run_until_complete(
+        generate_transcript(client_id, transcript_type, user_role, additional_context)
+    )
+    if "error" in result:
+        return json.dumps(result, indent=2)
+    return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
+
+
 # ── Tool Definitions for ADK / Gemini Function Calling ────────────
 
 
@@ -417,5 +454,6 @@ TOOL_FUNCTIONS = {
     # Outputs
     "generate_briefing": tool_generate_briefing,
     "generate_action_plan": tool_generate_action_plan,
+    "generate_transcript": tool_generate_transcript,
 }
 

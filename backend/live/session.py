@@ -38,8 +38,139 @@ import json
 
 
 def _build_live_tools() -> list[Tool]:
-    """Build tool declarations for the Live API."""
+    """Build tool declarations for the Live API.
+    
+    Includes: legacy graph tools, structured entity tools, and output generators.
+    """
     declarations = [
+        # ── Structured Graph Tools (Primary) ──
+        FunctionDeclaration(
+            name="graph_overview",
+            description="Get a high-level overview of the client's knowledge graph. "
+                        "Use FIRST to understand available knowledge, entity types, and graph format.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                },
+                "required": ["client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_entity",
+            description="Retrieve a specific entity and its connections from the knowledge graph.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "entity_id": {"type": "string"},
+                },
+                "required": ["client_id", "entity_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_entities_by_type",
+            description="Get all entities of a specific type (e.g., Risk, Contact, Product, Feature).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "entity_type": {"type": "string", "description": "Entity type: Risk, Contact, Product, Feature, etc."},
+                },
+                "required": ["client_id", "entity_type"],
+            },
+        ),
+        FunctionDeclaration(
+            name="traverse_graph",
+            description="Multi-hop graph traversal from an entity. Follows edges to discover connected entities.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "entity_id": {"type": "string"},
+                    "edge_type": {"type": "string", "description": "Optional edge filter: HAS_RISK, INCLUDES, CHAMPIONS, etc."},
+                    "max_hops": {"type": "integer", "description": "Depth 1-3"},
+                },
+                "required": ["client_id", "entity_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="search_entities",
+            description="Semantic search across knowledge graph entities. "
+                        "Optionally filter by entity type.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "query": {"type": "string"},
+                    "entity_type": {"type": "string", "description": "Optional type filter"},
+                },
+                "required": ["client_id", "query"],
+            },
+        ),
+        FunctionDeclaration(
+            name="risk_profile",
+            description="Get comprehensive risk profile: all risks with severity breakdown and derisking strategies.",
+            parameters={
+                "type": "object",
+                "properties": {"client_id": {"type": "string"}},
+                "required": ["client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="product_knowledge",
+            description="Get product knowledge: products, features, limitations, and KB articles.",
+            parameters={
+                "type": "object",
+                "properties": {"client_id": {"type": "string"}},
+                "required": ["client_id"],
+            },
+        ),
+        # ── Output Generation Tools ──
+        FunctionDeclaration(
+            name="generate_briefing",
+            description="Generate a pre-meeting briefing summary from the knowledge graph.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "csm_name": {"type": "string", "description": "CSM name for personalization"},
+                },
+                "required": ["client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="generate_action_plan",
+            description="Generate a post-session action plan with prioritized items.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "meeting_notes": {"type": "string", "description": "Optional session notes"},
+                },
+                "required": ["client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="generate_transcript",
+            description="Generate a role-based script (sales, support, QBR, renewal, onboarding, discovery). "
+                        "Use when user asks for a transcript, script, or talking points.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "client_id": {"type": "string"},
+                    "transcript_type": {
+                        "type": "string",
+                        "enum": ["sales_script", "support_script", "qbr_prep",
+                                 "renewal_script", "onboarding_guide", "discovery_questions"],
+                    },
+                    "user_role": {"type": "string", "description": "User role (AE, CSM, Support Agent)"},
+                    "additional_context": {"type": "string", "description": "Extra context or notes"},
+                },
+                "required": ["client_id", "transcript_type"],
+            },
+        ),
+        # ── Legacy Tools (backward compat) ──
         FunctionDeclaration(
             name="read_index",
             description="Read the index/table-of-contents node for a skill graph layer. ",
