@@ -76,8 +76,27 @@ gcloud run deploy synapse-graph-generator --image ${Region}-docker.pkg.dev/${Pro
 gcloud run deploy synapse-crm-simulator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:${DeployTag} --region $Region --project $ProjectId --quiet
 gcloud run deploy synapse-hub --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/hub:${DeployTag} --region $Region --project $ProjectId --quiet
 
-# 4. Deploy Frontend
-Write-Host "`n[4/4] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow
+# 4. Deploy ClawdView Knowledge Center to GCS Static Site
+Write-Host "`n[4/5] Deploying ClawdView Knowledge Center to GCS..." -ForegroundColor Yellow
+$kcBucket = "${ProjectId}-knowledge-center"
+
+# Create bucket if it doesn't exist and configure as static website
+$bucketExists = gsutil ls -b "gs://${kcBucket}" 2>$null
+if (-not $bucketExists) {
+    Write-Host "---> Creating Knowledge Center bucket: $kcBucket"
+    gsutil mb -p $ProjectId -l $Region "gs://${kcBucket}"
+    gsutil web set -m index.html -e 404.html "gs://${kcBucket}"
+    gsutil iam ch allUsers:objectViewer "gs://${kcBucket}"
+}
+
+Write-Host "---> Syncing knowledge-center/ to gs://${kcBucket}"
+gsutil -m rsync -r -d knowledge-center/ "gs://${kcBucket}"
+
+$kcUrl = "https://storage.googleapis.com/${kcBucket}/index.html"
+Write-Host "---> Knowledge Center deployed at: $kcUrl" -ForegroundColor Green
+
+# 5. Deploy Frontend
+Write-Host "`n[5/5] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow
 Set-Location -Path ./frontend
 npm install
 npm run build
