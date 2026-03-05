@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Release Notes v4.2.0 — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="../guides/enterprise-scaling.html">Guides</a><a
+                href="../best-practices/agile-transformation.html">Best Practices</a><a href="v4-2-0.html"
+                class="active">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="v4-2-0.html">Release Notes</a> / v4.2.0
+        </div>
+        <h1>ClawdView v4.2.0 Release Notes</h1>
+        <p class="subtitle">March 2026 — AI-powered insights, enhanced board performance, new governance templates, and
+            12 new Hub connectors.</p>
+
+        <h2>🆕 New Features</h2>
+
+        <h3>AI-Powered Portfolio Insights (Portfolios)</h3>
+        <p>Powered by Google Gemini, ClawdView now generates natural language insights from your portfolio data.
+            Navigate to any dashboard and click the <strong>"AI Insights"</strong> button to receive:</p>
+        <ul>
+            <li>Portfolio health summary with top 3 risks explained in plain language</li>
+            <li>Resource bottleneck identification with recommended reallocation suggestions</li>
+            <li>Budget forecast analysis with trend-based projections</li>
+            <li>Strategic alignment gaps — initiatives not mapping to any strategic theme</li>
+        </ul>
+
+        <div class="info-box important">
+            <div class="label">🔑 Requirements</div>
+            <p>AI Insights requires Enterprise tier and is available in US and EU regions. Data is processed in Google
+                Cloud's us-central1 or europe-west1 regions based on your tenant configuration. No customer data is used
+                for model training.</p>
+        </div>
+
+        <h3>Board Performance Mode (AgilePlace)</h3>
+        <p>AgilePlace boards with 500+ cards now automatically engage <strong>Performance Mode</strong>, which:</p>
+        <ul>
+            <li>Virtualizes card rendering — only visible cards are in the DOM</li>
+            <li>Reduces initial load time by up to 70% for large boards</li>
+            <li>Enables "infinity scroll" for boards with 1,000+ cards</li>
+            <li>Maintains full search and filter functionality despite virtualization</li>
+        </ul>
+
+        <h3>Governance Templates Library (Portfolios)</h3>
+        <p>12 pre-built governance templates for common scenarios:</p>
+        <ul>
+            <li>IT Portfolio Rationalization, M&A Integration, Annual Planning Cycle</li>
+            <li>SAFe Lean Portfolio Management, PRINCE2 Stage-Gate, ITIL Service Portfolio</li>
+            <li>Each template includes stage-gate definitions, scoring criteria, and dashboard configurations</li>
+        </ul>
+
+        <h3>New Hub Connectors</h3>
+        <table>
+            <tr>
+                <th>Connector</th>
+                <th>Direction</th>
+                <th>Key Capabilities</th>
+            </tr>
+            <tr>
+                <td>Monday.com</td>
+                <td>Bidirectional</td>
+                <td>Board sync, item mapping, status translation</td>
+            </tr>
+            <tr>
+                <td>Asana</td>
+                <td>Bidirectional</td>
+                <td>Project sync, task mapping, custom field support</td>
+            </tr>
+            <tr>
+                <td>Smartsheet</td>
+                <td>Import</td>
+                <td>Sheet import with column mapping</td>
+            </tr>
+            <tr>
+                <td>Wrike</td>
+                <td>Bidirectional</td>
+                <td>Project + task sync with folder hierarchy</td>
+            </tr>
+            <tr>
+                <td>Workday</td>
+                <td>Import</td>
+                <td>Employee data, cost centers, skills</td>
+            </tr>
+            <tr>
+                <td>Google BigQuery</td>
+                <td>Export</td>
+                <td>Analytics data push for custom BI</td>
+            </tr>
+        </table>
+
+        <h2>🔧 Improvements</h2>
+        <ul>
+            <li><strong>PPM Pro Gantt</strong>: 40% faster rendering for projects with 500+ tasks. New mini-map
+                navigation for large plans.</li>
+            <li><strong>Smart Suggest</strong>: Improved skill matching algorithm. Now considers recent project
+                experience alongside certified skills.</li>
+            <li><strong>Portfolios Scoring</strong>: Support for weighted scoring with must-pass (knockout) criteria.
+                Scoring history preserved for audit.</li>
+            <li><strong>Hub Sync</strong>: Retry logic improved with circuit breaker pattern. Failed syncs now provide
+                root cause analysis in the error dashboard.</li>
+            <li><strong>Mobile App</strong>: AgilePlace mobile now supports card creation, board filtering, and push
+                notifications for card movement.</li>
+        </ul>
+
+        <h2>🐛 Bug Fixes</h2>
+        <ul>
+            <li>Fixed: Portfolio roadmap timeline incorrectly displayed cross-year initiatives spanning Q4→Q1</li>
+            <li>Fixed: Hub Jira connector lost custom field mappings after Jira Cloud version upgrades</li>
+            <li>Fixed: PPM Pro resource utilization calculation double-counted shared pool assignments</li>
+            <li>Fixed: AgilePlace board export to CSV truncated card descriptions exceeding 5,000 characters</li>
+            <li>Fixed: SSO SCIM provisioning failed for users with apostrophes in last names</li>
+        </ul>
+
+        <h2>⚠ Breaking Changes</h2>
+        <ul>
+            <li><strong>API v1 Deprecation</strong>: REST API v1 endpoints are now fully deprecated. Migrate to v2
+                before May 2026. See <a href="../guides/api-integration.html">API Guide</a>.</li>
+            <li><strong>Board Card Limit</strong>: Standard tier boards now enforce a hard limit of 500 cards
+                (previously soft warning at 1,000). Use hierarchical board decomposition if hitting this limit.</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

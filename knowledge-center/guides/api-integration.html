@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Integration Patterns — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="enterprise-scaling.html" class="active">Guides</a><a
+                href="../best-practices/agile-transformation.html">Best Practices</a><a
+                href="../release-notes/v4-2-0.html">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="enterprise-scaling.html">Guides</a> / API
+            Integration</div>
+        <h1>API Integration Patterns</h1>
+        <p class="subtitle">REST and GraphQL API reference for ClawdView, covering authentication, endpoints, webhooks,
+            rate limits, pagination, and SDK usage for building custom integrations.</p>
+
+        <h2>Authentication</h2>
+        <p>ClawdView APIs support two authentication methods:</p>
+        <h3>API Key (Service Integrations)</h3>
+        <p>Generate API keys in <strong>Admin → API Keys</strong>. Each key is scoped to a specific workspace and has
+            configurable permissions (read, write, admin). Keys are transmitted via the <code>X-API-Key</code> header.
+        </p>
+        <div class="code-block">curl -H "X-API-Key: cv_live_abc123..." https://api.clawdview.com/v2/projects</div>
+
+        <h3>OAuth 2.0 (User-Context Integrations)</h3>
+        <p>For integrations that act on behalf of users, use the OAuth 2.0 authorization code flow. ClawdView acts as
+            the authorization server with JWT access tokens (15-minute expiry) and refresh tokens (30-day expiry).</p>
+
+        <h2>REST API Overview</h2>
+        <p>Base URL: <code>https://api.clawdview.com/v2</code></p>
+        <table>
+            <tr>
+                <th>Resource</th>
+                <th>Endpoints</th>
+                <th>Methods</th>
+            </tr>
+            <tr>
+                <td>Projects</td>
+                <td>/projects, /projects/{id}</td>
+                <td>GET, POST, PUT, PATCH, DELETE</td>
+            </tr>
+            <tr>
+                <td>Tasks</td>
+                <td>/projects/{id}/tasks</td>
+                <td>GET, POST, PUT, DELETE</td>
+            </tr>
+            <tr>
+                <td>Resources</td>
+                <td>/resources, /resources/{id}/allocations</td>
+                <td>GET, POST, PUT</td>
+            </tr>
+            <tr>
+                <td>Portfolios</td>
+                <td>/portfolios, /portfolios/{id}/items</td>
+                <td>GET, POST, PUT</td>
+            </tr>
+            <tr>
+                <td>Boards (AgilePlace)</td>
+                <td>/boards, /boards/{id}/cards</td>
+                <td>GET, POST, PUT, DELETE</td>
+            </tr>
+            <tr>
+                <td>Financials</td>
+                <td>/projects/{id}/budgets, /projects/{id}/actuals</td>
+                <td>GET, POST</td>
+            </tr>
+            <tr>
+                <td>Time Entries</td>
+                <td>/timesheets, /timesheets/{userId}/entries</td>
+                <td>GET, POST, PUT</td>
+            </tr>
+        </table>
+
+        <h2>Rate Limits</h2>
+        <table>
+            <tr>
+                <th>Tier</th>
+                <th>Requests/Minute</th>
+                <th>Burst Limit</th>
+                <th>Concurrent</th>
+            </tr>
+            <tr>
+                <td>Standard</td>
+                <td>100</td>
+                <td>20 req/sec</td>
+                <td>5</td>
+            </tr>
+            <tr>
+                <td>Enterprise</td>
+                <td>1,000</td>
+                <td>50 req/sec</td>
+                <td>20</td>
+            </tr>
+            <tr>
+                <td>Partner</td>
+                <td>5,000</td>
+                <td>100 req/sec</td>
+                <td>50</td>
+            </tr>
+        </table>
+        <p>Rate limit headers are returned on every response: <code>X-RateLimit-Remaining</code>,
+            <code>X-RateLimit-Reset</code>. When limits are exceeded, the API returns <code>429 Too Many Requests</code>
+            with a <code>Retry-After</code> header.</p>
+
+        <h2>Pagination</h2>
+        <p>List endpoints return paginated results using cursor-based pagination:</p>
+        <div class="code-block">GET /v2/projects?limit=50&cursor=eyJpZCI6MTIzfQ==
+
+            Response:
+            {
+            "data": [...],
+            "pagination": {
+            "next_cursor": "eyJpZCI6MTczfQ==",
+            "has_more": true,
+            "total_count": 342
+            }
+            }</div>
+
+        <h2>Webhooks</h2>
+        <p>ClawdView can send real-time notifications to your endpoints when resources change:</p>
+        <ul>
+            <li><strong>Events</strong>: project.created, project.updated, task.completed, card.moved, budget.exceeded,
+                risk.escalated</li>
+            <li><strong>Delivery</strong>: HTTPS POST with JSON payload. HMAC-SHA256 signature in
+                <code>X-CV-Signature</code> header for verification.</li>
+            <li><strong>Retry Policy</strong>: 3 attempts with exponential backoff (1s, 30s, 5min). Failed delivery
+                after 3 attempts → event logged to webhook failure dashboard.</li>
+            <li><strong>Filtering</strong>: Configure per-webhook event types and resource scopes (e.g., only
+                project.updated for workspace "IT PMO")</li>
+        </ul>
+
+        <div class="info-box tip">
+            <div class="label">💡 Webhook Best Practice</div>
+            <p>Always verify the <code>X-CV-Signature</code> header before processing webhook payloads. Use a
+                <strong>shared secret</strong> configured in Admin → Webhooks. The signature is computed as
+                <code>HMAC-SHA256(secret, payload_body)</code>. Failing to verify signatures exposes your endpoint to
+                spoofed events.</p>
+        </div>
+
+        <h2>GraphQL API (Beta)</h2>
+        <p>For complex queries that span multiple resources, ClawdView offers a GraphQL endpoint at
+            <code>https://api.clawdview.com/graphql</code>. This is particularly useful for:</p>
+        <ul>
+            <li>Fetching a project with its tasks, resources, and financials in a single request</li>
+            <li>Querying portfolio items with filtered scoring criteria</li>
+            <li>Real-time subscriptions for board card movement (WebSocket-based)</li>
+        </ul>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Beta Notice</div>
+            <p>The GraphQL API is in public beta. Breaking changes may occur between releases. Pin to specific schema
+                versions using the <code>X-Schema-Version</code> header. GA is planned for v4.3.0.</p>
+        </div>
+
+        <h2>SDKs & Libraries</h2>
+        <table>
+            <tr>
+                <th>Language</th>
+                <th>Package</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Python</td>
+                <td><code>pip install clawdview-sdk</code></td>
+                <td>GA</td>
+            </tr>
+            <tr>
+                <td>Node.js</td>
+                <td><code>npm install @clawdview/sdk</code></td>
+                <td>GA</td>
+            </tr>
+            <tr>
+                <td>Java</td>
+                <td><code>com.clawdview:sdk:2.0.0</code></td>
+                <td>GA</td>
+            </tr>
+            <tr>
+                <td>C# / .NET</td>
+                <td><code>ClawdView.SDK</code> (NuGet)</td>
+                <td>Beta</td>
+            </tr>
+        </table>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

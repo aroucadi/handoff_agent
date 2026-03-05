@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Migration Guide — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="enterprise-scaling.html" class="active">Guides</a><a
+                href="../best-practices/agile-transformation.html">Best Practices</a><a
+                href="../release-notes/v4-2-0.html">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="enterprise-scaling.html">Guides</a> / Data
+            Migration</div>
+        <h1>Data Migration Guide</h1>
+        <p class="subtitle">Migrate from Clarity CA PPM, Microsoft Project Server, Jira Portfolio, or spreadsheet-based
+            PPM to ClawdView with minimal disruption and zero data loss.</p>
+
+        <h2>Migration Framework</h2>
+        <p>ClawdView migrations follow a proven 5-phase framework that has been validated across 200+ enterprise
+            deployments:</p>
+        <table>
+            <tr>
+                <th>Phase</th>
+                <th>Duration</th>
+                <th>Key Activities</th>
+            </tr>
+            <tr>
+                <td>1. Discovery</td>
+                <td>1-2 weeks</td>
+                <td>Source system audit, data quality assessment, scope definition</td>
+            </tr>
+            <tr>
+                <td>2. Mapping</td>
+                <td>1-2 weeks</td>
+                <td>Field mapping, data transformation rules, custom field creation in ClawdView</td>
+            </tr>
+            <tr>
+                <td>3. Trial Migration</td>
+                <td>1 week</td>
+                <td>Migrate 10-20% of data to validate mappings and transformations</td>
+            </tr>
+            <tr>
+                <td>4. Full Migration</td>
+                <td>1-3 days</td>
+                <td>Complete data extraction, transformation, and load with parallel running</td>
+            </tr>
+            <tr>
+                <td>5. Validation</td>
+                <td>1-2 weeks</td>
+                <td>Data integrity checks, user acceptance testing, rollback readiness</td>
+            </tr>
+        </table>
+
+        <h2>Source System: Clarity CA PPM</h2>
+        <h3>ClawdView Migration Accelerator</h3>
+        <p>The <strong>Migration Accelerator</strong> is a pre-built ETL tool specifically designed for Clarity →
+            ClawdView migrations. It includes:</p>
+        <ul>
+            <li>Pre-configured field mappings for Clarity's standard data model (projects, resources, timesheets,
+                financials)</li>
+            <li>OBS (Organizational Breakdown Structure) → ClawdView workspace hierarchy converter</li>
+            <li>Process step → Stage-gate mapping templates</li>
+            <li>Financial period actuals migration with currency conversion support</li>
+            <li>Custom attribute and lookup table migration</li>
+        </ul>
+        <p>Typical migration timelines from Clarity:</p>
+        <ul>
+            <li><strong>Projects + Resources</strong>: 2-4 weeks (includes testing)</li>
+            <li><strong>Financial History</strong>: Additional 2-3 weeks (high-fidelity, auditable)</li>
+            <li><strong>Timesheets</strong>: Additional 1-2 weeks (optional — most clients start fresh)</li>
+        </ul>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Common Pitfall</div>
+            <p>Clarity custom attributes often have <strong>inconsistent data types</strong> across instances (e.g., a
+                "Priority" field stored as text in one project and as a lookup in another). The Migration Accelerator
+                detects these inconsistencies during Discovery phase and generates a remediation report. Address data
+                quality issues <strong>before</strong> the trial migration, not during.</p>
+        </div>
+
+        <h2>Source System: Microsoft Project Server / Project Online</h2>
+        <p>Migrations from Microsoft Project environments involve these key considerations:</p>
+        <ul>
+            <li><strong>MPP Files</strong>: PPM Pro natively imports .mpp files with full WBS, dependencies, and
+                resource assignments. Batch import available via the API.</li>
+            <li><strong>Server Fields</strong>: Custom enterprise fields map to ClawdView custom fields. The field type
+                mapping handles text, lookup, date, number, and formula fields.</li>
+            <li><strong>Resource Pool</strong>: The centralized resource pool migrates to PPM Pro's Resource Management
+                module. Cost rates, availability calendars, and skill profiles are preserved.</li>
+            <li><strong>Baselines</strong>: Up to 11 baselines per project are migrated. ClawdView preserves baseline
+                snapshots for variance analysis post-migration.</li>
+        </ul>
+
+        <h2>Source System: Jira Portfolio / Jira Align</h2>
+        <p>For organizations using Jira at scale, two migration strategies exist:</p>
+        <h3>Strategy A: Coexistence (Recommended)</h3>
+        <p>Keep Jira for team-level execution and use ClawdView for portfolio/program management. Use Hub connectors for
+            bidirectional sync. This avoids disrupting developer workflows.</p>
+        <h3>Strategy B: Full Migration</h3>
+        <p>Migrate portfolio-level data (Initiatives, Epics, Themes) to ClawdView Portfolios. Map Jira Align Program
+            Increments to AgilePlace PI structure. Team-level stories remain in Jira with Hub sync.</p>
+
+        <h2>Source System: Spreadsheets</h2>
+        <p>ClawdView provides a <strong>Spreadsheet Import Wizard</strong> that handles:</p>
+        <ul>
+            <li>Excel (.xlsx) and CSV file ingestion</li>
+            <li>Column-to-field auto-mapping with manual override</li>
+            <li>Date format detection and normalization</li>
+            <li>Hierarchical relationship inference (via indentation or ID columns)</li>
+            <li>Duplicate detection across imported batches</li>
+        </ul>
+
+        <div class="info-box tip">
+            <div class="label">💡 Best Practice</div>
+            <p>Before migrating from spreadsheets, spend one week <strong>standardizing your data model</strong>. Create
+                a master template with consistent column names, date formats, and status values. Migrations from
+                well-structured spreadsheets complete in hours; migrations from inconsistent spreadsheets take weeks of
+                cleanup.</p>
+        </div>
+
+        <h2>Rollback Strategy</h2>
+        <p>Every ClawdView migration includes a documented rollback path:</p>
+        <ul>
+            <li><strong>Pre-migration snapshot</strong>: Full data export from ClawdView before migration (preserves any
+                manually-created content)</li>
+            <li><strong>Source system preservation</strong>: Source system remains operational for 90 days
+                post-migration (read-only mode if licensing allows)</li>
+            <li><strong>Reverse ETL</strong>: ClawdView data can be exported back to source format if rollback is needed
+                within 30 days</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

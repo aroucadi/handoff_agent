@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawdView AgilePlace — Product Documentation</title>
+    <meta name="description"
+        content="ClawdView AgilePlace documentation: enterprise agile planning boards with SAFe support, Kanban, and cross-team dependency tracking.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="portfolios.html" class="active">Products</a>
+            <a href="../guides/enterprise-scaling.html">Guides</a>
+            <a href="../best-practices/agile-transformation.html">Best Practices</a>
+            <a href="../release-notes/v4-2-0.html">Release Notes</a>
+        </nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="portfolios.html">Products</a> / AgilePlace
+        </div>
+        <h1>ClawdView AgilePlace</h1>
+        <p class="subtitle">Enterprise agile planning boards with SAFe support, Kanban workflow management, cross-team
+            dependency tracking, and real-time team collaboration — built for organizations with 50 to 10,000+
+            practitioners.</p>
+
+        <h2>Overview</h2>
+        <p>AgilePlace is ClawdView's <strong>enterprise agile delivery platform</strong>. While most agile tools focus
+            on teams of 5-12, AgilePlace is designed from the ground up for large-scale agile at the <strong>program,
+                portfolio, and value stream</strong> level. It supports SAFe (Scaled Agile Framework), LeSS, DAD, and
+            custom hybrid methodologies.</p>
+        <p>Teams use visual Kanban boards for day-to-day work, while program managers use the <strong>Program
+                Board</strong> to coordinate across multiple agile release trains (ARTs). Portfolio leaders connect
+            upward to ClawdView Portfolios for strategic alignment.</p>
+
+        <h2>Core Features</h2>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <h4>Visual Kanban Boards</h4>
+                <p>Unlimited custom board layouts with swimlanes, WIP limits, card types, and automated workflow rules.
+                    Supports nested boards for multi-level hierarchies.</p>
+            </div>
+            <div class="feature-item">
+                <h4>SAFe Program Board</h4>
+                <p>Digital PI Planning board with team-level iteration planning, feature-to-team mapping, dependency
+                    visualization, and capacity modeling.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Cross-Team Dependencies</h4>
+                <p>Visual dependency lines between cards across boards. Automated risk flagging when dependencies create
+                    critical path bottlenecks.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Metrics & Analytics</h4>
+                <p>Cumulative flow diagrams, cycle time analysis, throughput tracking, and predictive completion
+                    modeling using Monte Carlo simulation.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Automation Rules</h4>
+                <p>If-then rules for card movement, notifications, label assignment, and field updates. Mirror cards
+                    across boards for visibility without duplication.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Timeline & Roadmap View</h4>
+                <p>Gantt-style timeline overlay on agile work. Map features to PI increments and visualize delivery
+                    progress against strategic milestones.</p>
+            </div>
+        </div>
+
+        <h2>Board Architecture & Limits</h2>
+        <p>Each AgilePlace board operates as an independent work container with the following constraints:</p>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Standard</th>
+                <th>Enterprise</th>
+            </tr>
+            <tr>
+                <td>Cards per board</td>
+                <td>500</td>
+                <td>2,000</td>
+            </tr>
+            <tr>
+                <td>Boards per workspace</td>
+                <td>50</td>
+                <td>Unlimited</td>
+            </tr>
+            <tr>
+                <td>Custom card fields</td>
+                <td>20</td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td>Automation rules per board</td>
+                <td>25</td>
+                <td>200</td>
+            </tr>
+            <tr>
+                <td>Connected boards (dependencies)</td>
+                <td>10</td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td>Real-time concurrent editors</td>
+                <td>25</td>
+                <td>100</td>
+            </tr>
+        </table>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Performance Considerations</div>
+            <p>Boards exceeding <strong>500 cards</strong> on Standard tier (or 2,000 on Enterprise) will experience
+                noticeable rendering latency, particularly in the timeline view. The recommended pattern for large
+                organizations is <strong>hierarchical board decomposition</strong>: create a portfolio-level board with
+                summary cards, linked to team-level boards with detailed work items. This approach typically reduces
+                board load by 80% while maintaining full traceability. See <a
+                    href="../best-practices/agile-transformation.html">Enterprise Agile Transformation</a> for patterns.
+            </p>
+        </div>
+
+        <h2>SAFe Implementation</h2>
+        <p>AgilePlace provides purpose-built support for the Scaled Agile Framework at all configurations:</p>
+        <ul>
+            <li><strong>Essential SAFe</strong>: ART-level PI Planning with team boards, feature tracking, and PI
+                objectives. Minimum configuration: 3-5 teams.</li>
+            <li><strong>Large Solution SAFe</strong>: Solution Train coordination across multiple ARTs. Solution Board
+                with cross-ART dependency tracking and solution-level Kanban.</li>
+            <li><strong>Full SAFe</strong>: Portfolio-level strategy connected via ClawdView Portfolios.
+                Epic-to-feature-to-story traceability. Lean budget guardrails.</li>
+            <li><strong>Portfolio SAFe</strong>: Strategic themes flowing from Portfolios into AgilePlace Epics.
+                Investment horizon management and portfolio Kanban.</li>
+        </ul>
+
+        <h3>PI Planning Digital Experience</h3>
+        <p>The digital Program Board supports distributed PI Planning events with these capabilities:</p>
+        <ul>
+            <li>Team breakout boards with iteration-level planning</li>
+            <li>Feature assignment drag-and-drop from the program backlog</li>
+            <li>Real-time dependency string creation between teams</li>
+            <li>Capacity visualization per team per iteration</li>
+            <li>Confidence vote collection and results display</li>
+            <li>Risks & Impediments board with ROAM categorization</li>
+        </ul>
+
+        <h2>Integration Ecosystem</h2>
+        <p>AgilePlace integrates through ClawdView Hub with the following tools:</p>
+        <ul>
+            <li><strong>Jira</strong>: Bidirectional sync of stories, tasks, and epics. Field mapping configurable per
+                project. Sync frequency: near real-time (< 60 seconds).</li>
+            <li><strong>Azure DevOps</strong>: Work item sync with custom field mapping. Board-to-board mirroring for
+                cross-platform visibility.</li>
+            <li><strong>GitHub / GitLab</strong>: Commit and PR linking to cards. Automatic card movement on merge
+                completion.</li>
+            <li><strong>ServiceNow</strong>: Incident-to-card creation for production support workflow tracking.</li>
+            <li><strong>Slack / Teams</strong>: Card notifications, board summaries, and slash commands for quick card
+                creation.</li>
+        </ul>
+
+        <div class="info-box tip">
+            <div class="label">💡 Best Practice</div>
+            <p>When integrating with Jira, avoid syncing at the <strong>sub-task level</strong> — this creates excessive
+                API traffic and board noise. Our recommended integration depth is <strong>Story and Epic level
+                    only</strong>, with tasks remaining native to either Jira or AgilePlace. This reduces sync volume by
+                60-70% and eliminates most conflict resolution scenarios.</p>
+        </div>
+
+        <h2>Common Use Cases</h2>
+        <h3>Multi-ART Program Coordination</h3>
+        <p>Organizations running 3+ Agile Release Trains need cross-ART visibility that individual Jira instances can't
+            provide. AgilePlace's Program Board creates a shared dependency network across all trains, with automated
+            risk scoring when dependencies create schedule conflicts. Companies like Northrop Grumman and Boeing have
+            used this pattern across 50+ teams.</p>
+
+        <h3>Agile-Waterfall Hybrid</h3>
+        <p>Many enterprises can't go fully agile overnight. AgilePlace supports hybrid delivery by allowing Kanban
+            boards for agile teams alongside timeline/Gantt views for waterfall teams, with unified dependency tracking
+            and status reporting across both paradigms. The Portfolio roll-up normalizes metrics regardless of
+            methodology.</p>
+
+        <h2>Prerequisites</h2>
+        <ul>
+            <li>ClawdView Platform license with AgilePlace module</li>
+            <li>Minimum 3 teams for meaningful SAFe configuration</li>
+            <li>SSO configured (see <a href="../guides/sso-configuration.html">SSO Guide</a>)</li>
+            <li>Recommended: Complete <a href="../best-practices/agile-transformation.html">Enterprise Agile
+                    Transformation</a> readiness assessment</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

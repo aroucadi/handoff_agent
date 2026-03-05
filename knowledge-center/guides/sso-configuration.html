@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSO & SAML Configuration — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="enterprise-scaling.html" class="active">Guides</a><a
+                href="../best-practices/agile-transformation.html">Best Practices</a><a
+                href="../release-notes/v4-2-0.html">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="enterprise-scaling.html">Guides</a> / SSO
+            Configuration</div>
+        <h1>SSO & SAML Configuration</h1>
+        <p class="subtitle">Configure single sign-on for ClawdView using Okta, Azure AD, OneLogin, Google Workspace, or
+            any SAML 2.0 / OIDC-compatible identity provider.</p>
+
+        <h2>Supported Protocols</h2>
+        <table>
+            <tr>
+                <th>Protocol</th>
+                <th>Status</th>
+                <th>Recommended For</th>
+            </tr>
+            <tr>
+                <td>SAML 2.0</td>
+                <td>✅ Fully supported</td>
+                <td>Enterprise IdPs (Okta, Azure AD, ADFS)</td>
+            </tr>
+            <tr>
+                <td>OpenID Connect (OIDC)</td>
+                <td>✅ Fully supported</td>
+                <td>Google Workspace, Auth0, Keycloak</td>
+            </tr>
+            <tr>
+                <td>LDAP/AD Direct</td>
+                <td>⚠ Via connector only</td>
+                <td>On-premise AD without federation</td>
+            </tr>
+        </table>
+
+        <h2>Configuration Steps</h2>
+        <h3>Step 1: Prepare Your IdP</h3>
+        <p>In your identity provider, create a new SAML 2.0 application with these settings:</p>
+        <ul>
+            <li><strong>Entity ID</strong>: <code>https://auth.clawdview.com/saml/{your-tenant-slug}</code></li>
+            <li><strong>ACS URL</strong>: <code>https://auth.clawdview.com/saml/{your-tenant-slug}/acs</code></li>
+            <li><strong>Name ID Format</strong>: <code>emailAddress</code> (required)</li>
+            <li><strong>Signed Response</strong>: Required (SHA-256)</li>
+        </ul>
+
+        <h3>Step 2: Configure Attribute Mapping</h3>
+        <p>Map the following IdP attributes to ClawdView user properties:</p>
+        <table>
+            <tr>
+                <th>ClawdView Property</th>
+                <th>Required</th>
+                <th>Okta Attribute</th>
+                <th>Azure AD Attribute</th>
+            </tr>
+            <tr>
+                <td>email</td>
+                <td>✅ Yes</td>
+                <td>user.email</td>
+                <td>user.mail</td>
+            </tr>
+            <tr>
+                <td>firstName</td>
+                <td>✅ Yes</td>
+                <td>user.firstName</td>
+                <td>user.givenname</td>
+            </tr>
+            <tr>
+                <td>lastName</td>
+                <td>✅ Yes</td>
+                <td>user.lastName</td>
+                <td>user.surname</td>
+            </tr>
+            <tr>
+                <td>department</td>
+                <td>Optional</td>
+                <td>user.department</td>
+                <td>user.department</td>
+            </tr>
+            <tr>
+                <td>groups</td>
+                <td>Optional</td>
+                <td>user.groups</td>
+                <td>user.assignedroles</td>
+            </tr>
+        </table>
+
+        <h3>Step 3: Enable in ClawdView Admin</h3>
+        <p>Navigate to <strong>Admin → Security → SSO Configuration</strong>:</p>
+        <ol>
+            <li>Upload your IdP's metadata XML file (or paste the metadata URL)</li>
+            <li>ClawdView auto-populates the IdP Entity ID, SSO URL, and certificate</li>
+            <li>Test the connection with the "Test SSO" button (pre-production validation)</li>
+            <li>Enable SSO for your tenant. Optionally enforce SSO-only login (disables password auth)</li>
+        </ol>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Important</div>
+            <p>Before enforcing SSO-only login, ensure at least <strong>one emergency admin account</strong> retains
+                password access. If your IdP goes down, this account is the only way to access ClawdView and disable the
+                SSO enforcement. Store the credentials in a secure vault (e.g., 1Password, HashiCorp Vault).</p>
+        </div>
+
+        <h2>Group-Based Provisioning</h2>
+        <p>For organizations with 200+ users, manual user management is impractical. ClawdView supports <strong>SCIM 2.0
+                provisioning</strong> for automated user lifecycle management:</p>
+        <ul>
+            <li><strong>Auto-Create</strong>: When a user is added to the ClawdView group in the IdP, their ClawdView
+                account is automatically created</li>
+            <li><strong>Auto-Deactivate</strong>: When removed from the IdP group, the ClawdView account is deactivated
+                (data preserved for 90 days)</li>
+            <li><strong>Group → Role Mapping</strong>: Map IdP groups to ClawdView roles (e.g., "CV-Admins" → Admin
+                role, "CV-PMO" → PMO role)</li>
+            <li><strong>Group → Workspace Mapping</strong>: Map IdP groups to ClawdView workspaces for automatic access
+                provisioning</li>
+        </ul>
+
+        <h2>Troubleshooting</h2>
+        <table>
+            <tr>
+                <th>Issue</th>
+                <th>Cause</th>
+                <th>Solution</th>
+            </tr>
+            <tr>
+                <td>SAML response signature invalid</td>
+                <td>Certificate mismatch or clock skew</td>
+                <td>Re-upload IdP certificate; ensure NTP sync (±5 min tolerance)</td>
+            </tr>
+            <tr>
+                <td>User not found after SSO</td>
+                <td>Email attribute not mapped</td>
+                <td>Verify NameID format is emailAddress in IdP config</td>
+            </tr>
+            <tr>
+                <td>Groups not syncing</td>
+                <td>Group attribute not released</td>
+                <td>Add group claim to SAML assertion in IdP</td>
+            </tr>
+            <tr>
+                <td>Redirect loop</td>
+                <td>ACS URL mismatch</td>
+                <td>Verify tenant slug matches exactly in both IdP and ClawdView</td>
+            </tr>
+        </table>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

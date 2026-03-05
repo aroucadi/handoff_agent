@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Scaling Guide — ClawdView Knowledge Center</title>
+    <meta name="description"
+        content="Guide for scaling ClawdView from pilot to enterprise-wide deployment. Covers architecture, performance tuning, and organizational change management.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="../products/portfolios.html">Products</a>
+            <a href="enterprise-scaling.html" class="active">Guides</a>
+            <a href="../best-practices/agile-transformation.html">Best Practices</a>
+            <a href="../release-notes/v4-2-0.html">Release Notes</a>
+        </nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="enterprise-scaling.html">Guides</a> /
+            Enterprise Scaling</div>
+        <h1>Enterprise Scaling Guide</h1>
+        <p class="subtitle">Successfully scale ClawdView from a departmental pilot to an enterprise-wide platform
+            serving thousands of users across multiple business units and geographies.</p>
+
+        <h2>Scaling Dimensions</h2>
+        <p>Scaling ClawdView involves four interconnected dimensions that must be addressed in parallel:</p>
+
+        <h3>1. User Scale</h3>
+        <p>Moving from 50 pilot users to 1,000+ enterprise users requires careful attention to <strong>SSO provisioning,
+                role hierarchy design, and workspace organization</strong>. The most common failure mode is
+            underestimating the diversity of workflows across business units — what works for IT PMO rarely works as-is
+            for Marketing or R&D.</p>
+        <ul>
+            <li><strong>50-200 users</strong>: Single workspace, shared configuration. Direct user management
+                acceptable.</li>
+            <li><strong>200-1,000 users</strong>: Multiple workspaces per division. SSO with group-based provisioning.
+                Dedicated admin per workspace.</li>
+            <li><strong>1,000-5,000 users</strong>: Federated workspace model. Central governance with local
+                customization. Tiered support team. Consider Enterprise tier for API rate limits.</li>
+            <li><strong>5,000+ users</strong>: Multi-region deployment. Dedicated ClawdView success team. Custom SLA.
+                Performance monitoring dashboards.</li>
+        </ul>
+
+        <h3>2. Data Scale</h3>
+        <p>Performance characteristics vary by module:</p>
+        <table>
+            <tr>
+                <th>Module</th>
+                <th>Comfortable Limit</th>
+                <th>Hard Limit</th>
+                <th>Mitigation</th>
+            </tr>
+            <tr>
+                <td>Portfolios</td>
+                <td>2,000 items</td>
+                <td>10,000</td>
+                <td>Portfolio Groups, filtered views</td>
+            </tr>
+            <tr>
+                <td>AgilePlace boards</td>
+                <td>500 cards/board</td>
+                <td>2,000</td>
+                <td>Hierarchical board decomposition</td>
+            </tr>
+            <tr>
+                <td>PPM Pro projects</td>
+                <td>500 active</td>
+                <td>5,000</td>
+                <td>Archive completed projects quarterly</td>
+            </tr>
+            <tr>
+                <td>Hub sync items</td>
+                <td>10,000/connector</td>
+                <td>100,000</td>
+                <td>Incremental sync, filtered scope</td>
+            </tr>
+        </table>
+
+        <div class="info-box important">
+            <div class="label">🔑 Critical</div>
+            <p>The #1 scaling issue we see is <strong>board overload in AgilePlace</strong>. Organizations that dump all
+                work items onto a single board experience severe rendering performance degradation above 500 cards. The
+                solution is always the same: <strong>decompose into a board hierarchy</strong> (portfolio board →
+                program board → team boards) with summary cards rolling up status from child boards.</p>
+        </div>
+
+        <h3>3. Integration Scale</h3>
+        <p>Each Hub connector consumes API quota from both ClawdView and the external system. Key considerations:</p>
+        <ul>
+            <li>Limit the number of <strong>bidirectional connectors</strong> — they consume 2x the API budget of
+                read-only connectors</li>
+            <li>Use <strong>webhook-triggered sync</strong> instead of polling where available (reduces unnecessary API
+                calls by 90%)</li>
+            <li>Schedule heavy batch syncs (SAP financial actuals, HR data) during off-peak hours (typically 2-5 AM
+                local time)</li>
+            <li>Monitor the Hub <strong>Sync Health Dashboard</strong> weekly — increasing error rates often indicate
+                upstream system changes</li>
+        </ul>
+
+        <h3>4. Organizational Scale</h3>
+        <p>The hardest dimension. Enterprise rollout fails more often due to change management than technology:</p>
+        <ul>
+            <li><strong>Executive Sponsorship</strong>: Secure a C-level sponsor who can mandate adoption across
+                divisions</li>
+            <li><strong>Champions Network</strong>: Train 1 champion per 50 users. Champions provide peer support and
+                reduce help desk volume by 60%</li>
+            <li><strong>Phased Rollout</strong>: Roll out one division per quarter, not "big bang." Each wave validates
+                and refines the templates for the next</li>
+            <li><strong>Governance Council</strong>: Establish a cross-divisional governance council that owns the
+                ClawdView standard configuration and process standards</li>
+        </ul>
+
+        <h2>Performance Optimization Checklist</h2>
+        <ul>
+            <li>☐ Archive projects older than 12 months (PPM Pro: Settings → Archive Policies)</li>
+            <li>☐ Enable lazy loading on Portfolios roadmap view (Settings → Performance → Lazy Load: ON)</li>
+            <li>☐ Set board card limits in AgilePlace (Board Settings → WIP Limits → Max Cards)</li>
+            <li>☐ Configure Hub sync filters to exclude inactive items (Connector Settings → Scope Filters)</li>
+            <li>☐ Use CDN-accelerated analytics export for large dashboards (Admin → Analytics → CDN Mode)</li>
+            <li>☐ Set up monitoring alerts for API rate limit breaches (Admin → Notifications → API Alerts)</li>
+        </ul>
+
+        <div class="info-box tip">
+            <div class="label">💡 Success Metric</div>
+            <p>Enterprises that follow the phased rollout approach achieve <strong>85% user adoption within 6
+                    months</strong> vs. 45% for big-bang deployments. Track daily active users (DAU), feature usage
+                depth, and time-to-first-action as leading indicators.</p>
+        </div>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

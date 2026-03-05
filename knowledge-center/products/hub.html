@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawdView Hub — Product Documentation</title>
+    <meta name="description"
+        content="ClawdView Hub documentation: the integration and workflow engine connecting ClawdView with Jira, ServiceNow, SAP, Azure DevOps, Salesforce, and 100+ enterprise tools.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="portfolios.html" class="active">Products</a>
+            <a href="../guides/enterprise-scaling.html">Guides</a>
+            <a href="../best-practices/agile-transformation.html">Best Practices</a>
+            <a href="../release-notes/v4-2-0.html">Release Notes</a>
+        </nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="portfolios.html">Products</a> / Hub</div>
+        <h1>ClawdView Hub</h1>
+        <p class="subtitle">The integration and workflow engine connecting ClawdView with your existing enterprise tools
+            — Jira, ServiceNow, SAP, Azure DevOps, Salesforce, and 100+ pre-built connectors. No code required.</p>
+
+        <h2>Overview</h2>
+        <p>ClawdView Hub is the <strong>integration backbone</strong> of the ClawdView platform. It enables
+            bidirectional data flow between ClawdView modules (Portfolios, AgilePlace, PPM Pro) and external enterprise
+            systems. Hub uses a <strong>connector-based architecture</strong> where each integration is a configured
+            connector with field mapping, sync rules, and conflict resolution policies.</p>
+        <p>Hub eliminates the need for custom middleware or point-to-point integrations. Organizations typically reduce
+            integration maintenance effort by <strong>60-80%</strong> compared to custom API scripts by centralizing all
+            data flows through Hub's managed connectors.</p>
+
+        <h2>Connector Catalog</h2>
+        <p>Hub ships with <strong>100+ pre-built connectors</strong> across these categories:</p>
+        <table>
+            <tr>
+                <th>Category</th>
+                <th>Connectors</th>
+                <th>Sync Type</th>
+            </tr>
+            <tr>
+                <td>Agile Tools</td>
+                <td>Jira, Azure DevOps, Rally, VersionOne</td>
+                <td>Bidirectional, near real-time</td>
+            </tr>
+            <tr>
+                <td>ITSM</td>
+                <td>ServiceNow, BMC Remedy, Cherwell</td>
+                <td>Bidirectional</td>
+            </tr>
+            <tr>
+                <td>ERP/Finance</td>
+                <td>SAP S/4HANA, Oracle Cloud, NetSuite</td>
+                <td>Scheduled batch</td>
+            </tr>
+            <tr>
+                <td>CRM</td>
+                <td>Salesforce, HubSpot, Microsoft Dynamics 365</td>
+                <td>Unidirectional (read)</td>
+            </tr>
+            <tr>
+                <td>Collaboration</td>
+                <td>Slack, Microsoft Teams, Google Chat</td>
+                <td>Events/notifications</td>
+            </tr>
+            <tr>
+                <td>DevOps</td>
+                <td>GitHub, GitLab, Bitbucket, Jenkins</td>
+                <td>Event-driven</td>
+            </tr>
+            <tr>
+                <td>BI/Analytics</td>
+                <td>Power BI, Tableau, Looker, Google BigQuery</td>
+                <td>Export/push</td>
+            </tr>
+            <tr>
+                <td>HR/Identity</td>
+                <td>Workday, SuccessFactors, Okta, Azure AD</td>
+                <td>Scheduled import</td>
+            </tr>
+        </table>
+
+        <h2>Architecture</h2>
+        <p>Hub operates on a <strong>three-tier architecture</strong>:</p>
+        <h3>Connector Layer</h3>
+        <p>Each connector encapsulates the logic for communicating with a specific external system. Connectors handle
+            authentication (OAuth 2.0, API keys, SAML tokens), pagination, rate limiting, and error retry. The connector
+            SDK allows customer-developed connectors for proprietary systems.</p>
+
+        <h3>Mapping Engine</h3>
+        <p>The visual field mapper allows administrators to define how data transforms between ClawdView and external
+            systems. Features include:</p>
+        <ul>
+            <li><strong>Direct Mapping</strong>: 1:1 field mapping (e.g., Jira "Story Points" → AgilePlace "Effort")
+            </li>
+            <li><strong>Value Transformation</strong>: Lookup tables, formulas, and conditional logic (e.g., Jira
+                priority "P1" → ClawdView priority "Critical")</li>
+            <li><strong>Calculated Fields</strong>: Derive new values from multiple source fields</li>
+            <li><strong>Default Values</strong>: Provide fallbacks when source data is missing</li>
+            <li><strong>Custom Scripts</strong>: JavaScript-based transformation functions for complex logic</li>
+        </ul>
+
+        <h3>Sync Engine</h3>
+        <p>The sync engine manages data flow with these capabilities:</p>
+        <ul>
+            <li><strong>Near Real-Time</strong>: Webhook-triggered sync within 60 seconds for supported connectors</li>
+            <li><strong>Scheduled Batch</strong>: Configurable intervals (5 min to 24 hours) for polling-based
+                connectors</li>
+            <li><strong>Conflict Resolution</strong>: Last-writer-wins, source-system-wins, or manual review policies
+            </li>
+            <li><strong>Audit Trail</strong>: Full sync history with field-level change tracking</li>
+            <li><strong>Retry & Dead Letter</strong>: Automatic retry with exponential backoff. Failed records routed to
+                review queue</li>
+        </ul>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Rate Limits</div>
+            <p>Hub respects external system rate limits. For <strong>Jira Cloud</strong>, this means a maximum of 100
+                requests per 60 seconds per connector. Large initial syncs (>10,000 items) are automatically throttled
+                and may take 2-4 hours. Plan initial sync during off-peak hours. For <strong>Jira Data Center</strong>,
+                limits are configurable on the Jira side.</p>
+        </div>
+
+        <h2>Common Integration Patterns</h2>
+        <h3>Jira ↔ AgilePlace Bidirectional Sync</h3>
+        <p>The most common Hub pattern. Development teams continue using Jira for sprint execution, while program
+            managers use AgilePlace for cross-team coordination. Hub syncs epics and stories bidirectionally, keeping
+            both systems as sources of truth for their respective audiences. Recommended field mapping:</p>
+        <ul>
+            <li>Jira Epic → AgilePlace Feature card (with children aggregation)</li>
+            <li>Jira Story → AgilePlace Story card (status, assignee, estimate, labels)</li>
+            <li>Sprint boundaries → AgilePlace iteration lanes</li>
+            <li>Avoid: Sub-task sync, comment sync (creates noise and API load)</li>
+        </ul>
+
+        <h3>SAP Financial Actuals → PPM Pro</h3>
+        <p>Nightly batch sync of actual costs from SAP cost centers to PPM Pro projects. Mapping uses WBS element IDs as
+            the join key. Hub transforms SAP's cost element hierarchy into PPM Pro's budget categories. Typical data
+            volume: 10,000-50,000 cost line items per sync cycle.</p>
+
+        <h3>ServiceNow Incident → AgilePlace Card</h3>
+        <p>Production incidents in ServiceNow auto-create cards on a "Production Support" board in AgilePlace. When the
+            AgilePlace card is moved to "Done," Hub updates the ServiceNow incident to "Resolved." This creates a
+            unified view of planned work and unplanned production support within the same team board.</p>
+
+        <div class="info-box tip">
+            <div class="label">💡 Integration Architecture Tip</div>
+            <p>Always designate a <strong>system of record</strong> for each data entity. For example: Jira is system of
+                record for developer-facing story details, while AgilePlace is system of record for program-level
+                metadata (PI assignments, dependencies, business value). This principle prevents the most common
+                integration failure: <strong>update loops</strong> where both systems write the same field and trigger
+                infinite sync cycles.</p>
+        </div>
+
+        <h2>Connector Development SDK</h2>
+        <p>For proprietary systems not in the pre-built catalog, Hub provides a <strong>Connector SDK</strong>
+            (TypeScript/Node.js):</p>
+        <div class="code-block">
+            // Example: Custom connector for internal asset management system
+            export class AssetConnector extends BaseConnector {
+            async fetchItems(since: Date): Promise&lt;Item[]&gt; { ... }
+            async pushItem(item: Item): Promise&lt;void&gt; { ... }
+            getFieldSchema(): FieldSchema[] { ... }
+            }
+        </div>
+        <p>Custom connectors are deployed as serverless functions on Google Cloud Functions and registered in Hub's
+            admin console. The SDK handles authentication, retry logic, and error reporting — developers only implement
+            data fetch/push logic.</p>
+
+        <h2>Prerequisites</h2>
+        <ul>
+            <li>ClawdView Platform license with Hub module</li>
+            <li>Admin access to target external systems for API credentials</li>
+            <li>Network connectivity: Hub operates from GCP (us-central1, eu-west1, ap-southeast1); ensure firewall
+                rules allow outbound HTTPS</li>
+            <li>For custom connectors: Node.js 18+ development environment and GCP project access</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

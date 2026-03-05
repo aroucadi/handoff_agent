@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawdView PPM Pro — Product Documentation</title>
+    <meta name="description"
+        content="ClawdView PPM Pro documentation: project and portfolio management with resource planning, financial tracking, Gantt scheduling, and executive dashboards.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="portfolios.html" class="active">Products</a>
+            <a href="../guides/enterprise-scaling.html">Guides</a>
+            <a href="../best-practices/agile-transformation.html">Best Practices</a>
+            <a href="../release-notes/v4-2-0.html">Release Notes</a>
+        </nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="portfolios.html">Products</a> / PPM Pro
+        </div>
+        <h1>ClawdView PPM Pro</h1>
+        <p class="subtitle">Project and portfolio management with resource planning, financial tracking, Gantt
+            scheduling, risk management, and executive dashboards — engineered for PMOs managing 50 to 5,000+ projects.
+        </p>
+
+        <h2>Overview</h2>
+        <p>PPM Pro is ClawdView's <strong>operational project management</strong> powerhouse. It's purpose-built for
+            Project Management Offices (PMOs) that need to manage the full lifecycle of projects from intake to closure,
+            with robust financial controls, resource management, and compliance tracking. PPM Pro serves as the
+            <strong>execution engine</strong> beneath ClawdView Portfolios' strategic layer.</p>
+        <p>Key differentiators include <strong>zero-code workflow automation</strong>, native time tracking with
+            approval workflows, and a built-in resource management module that eliminates the need for separate capacity
+            planning tools.</p>
+
+        <h2>Core Features</h2>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <h4>Project Intake & Demand Management</h4>
+                <p>Configurable intake forms with scoring, routing, and approval workflows. Auto-convert approved
+                    requests into project plans.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Gantt Scheduling</h4>
+                <p>Interactive Gantt charts with predecessor/successor dependencies, critical path calculation, baseline
+                    comparisons, and auto-scheduling.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Resource Management</h4>
+                <p>Role-based and named resource allocation. Capacity heat maps, skill matching, and what-if modeling
+                    for resource scenario planning.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Financial Management</h4>
+                <p>Capital vs. operational expense tracking. Budget, forecast, and actuals comparison with variance
+                    analysis and EVM indicators.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Risk & Issue Management</h4>
+                <p>Risk registers with probability/impact scoring, mitigation plans, and escalation workflows. Issue
+                    tracking with SLA-driven resolution timelines.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Time Tracking</h4>
+                <p>Timesheet entry with project/task allocation. Approval workflows, overtime rules, and integration
+                    with payroll/HR systems.</p>
+            </div>
+        </div>
+
+        <h2>Project Lifecycle</h2>
+        <p>PPM Pro manages projects through a configurable lifecycle with built-in governance:</p>
+        <table>
+            <tr>
+                <th>Stage</th>
+                <th>Key Activities</th>
+                <th>Governance Gate</th>
+            </tr>
+            <tr>
+                <td>Ideation</td>
+                <td>Intake forms, initial scoring</td>
+                <td>Business case approval</td>
+            </tr>
+            <tr>
+                <td>Planning</td>
+                <td>WBS creation, resource allocation, budgeting</td>
+                <td>Planning review</td>
+            </tr>
+            <tr>
+                <td>Execution</td>
+                <td>Task management, time tracking, status reporting</td>
+                <td>Stage-gate reviews (configurable)</td>
+            </tr>
+            <tr>
+                <td>Monitoring</td>
+                <td>EVM analysis, risk reviews, change requests</td>
+                <td>Change control board</td>
+            </tr>
+            <tr>
+                <td>Closure</td>
+                <td>Lessons learned, resource release, financial closeout</td>
+                <td>Final acceptance</td>
+            </tr>
+        </table>
+
+        <h2>Resource Management Deep Dive</h2>
+        <p>The resource management module is one of PPM Pro's strongest differentiators. It operates at three levels:
+        </p>
+        <h3>Capacity Planning (Strategic)</h3>
+        <p>Model future resource demand against available supply by <strong>role, skill, location, and cost
+                center</strong>. The capacity heat map provides a 12-month forward view with color-coded utilization
+            bands (green: 70-85%, yellow: 85-95%, red: >95%). This view rolls up automatically into ClawdView Portfolios
+            for investment decision support.</p>
+
+        <h3>Resource Allocation (Tactical)</h3>
+        <p>Assign named resources or role-based placeholders to project tasks. The <strong>Smart Suggest</strong>
+            feature uses skill matching and availability to recommend the best-fit resource for each assignment,
+            considering current workload, location preferences, and cost rates.</p>
+
+        <h3>Utilization Tracking (Operational)</h3>
+        <p>Real-time utilization dashboards showing planned vs. actual hours. Integration with timesheet data provides
+            accurate utilization metrics. Configurable targets per role (e.g., engineers: 80%, managers: 60%) with
+            automated alerts when thresholds are exceeded.</p>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Known Limitation</div>
+            <p>The Smart Suggest algorithm currently operates within a <strong>single PPM Pro instance</strong>. For
+                organizations with multiple PPM Pro workspaces (e.g., by division), cross-workspace resource
+                recommendations require ClawdView Hub's Resource Aggregation connector, available on Enterprise tier
+                only. A unified Smart Suggest across workspaces is planned for v4.3.0 (Q3 2026).</p>
+        </div>
+
+        <h2>Financial Controls</h2>
+        <p>PPM Pro provides comprehensive financial management capabilities:</p>
+        <ul>
+            <li><strong>Budget Management</strong>: Multi-year budgets with capital/operational split. Phase-level
+                budgeting for staged projects.</li>
+            <li><strong>Forecasting</strong>: ETC (Estimate to Complete) and EAC (Estimate at Completion) calculations.
+                Trend-based and manual forecasting modes.</li>
+            <li><strong>Earned Value Management</strong>: CPI, SPI, TCPI, and VAC indicators calculated automatically
+                from schedule and cost data.</li>
+            <li><strong>Cost Rate Management</strong>: Blended rates, role-based rates, and named resource rates.
+                Historical rate tracking for accurate retrospective analysis.</li>
+            <li><strong>Procurement</strong>: Vendor cost tracking, PO management, and invoice matching against project
+                budgets.</li>
+        </ul>
+
+        <h2>Integration Points</h2>
+        <ul>
+            <li><strong>ClawdView Portfolios</strong>: Automatic status roll-up, budget aggregation, resource demand
+                supply</li>
+            <li><strong>ClawdView AgilePlace</strong>: Hybrid project tracking — Gantt milestones linked to agile
+                delivery</li>
+            <li><strong>SAP/Oracle</strong>: Financial actuals import, resource cost sync, PO data exchange</li>
+            <li><strong>MS Project</strong>: Import/export .mpp files with full WBS, dependencies, and resource
+                assignments</li>
+            <li><strong>SharePoint</strong>: Document management integration for project documentation storage</li>
+        </ul>
+
+        <div class="info-box tip">
+            <div class="label">💡 Implementation Tip</div>
+            <p>When migrating from Clarity (CA PPM), use the <strong>ClawdView Migration Accelerator</strong> — a
+                pre-built ETL tool that maps Clarity's data model to PPM Pro. Typical migration timelines: 2-4 weeks for
+                projects + resources, 4-6 weeks including financial history. See <a
+                    href="../guides/data-migration.html">Data Migration Guide</a>.</p>
+        </div>
+
+        <h2>Prerequisites</h2>
+        <ul>
+            <li>ClawdView Platform license with PPM Pro module</li>
+            <li>SSO configured (see <a href="../guides/sso-configuration.html">SSO Guide</a>)</li>
+            <li>Recommended: Financial system integration for budget actuals (otherwise manual entry required)</li>
+            <li>Recommended: HR system integration for resource availability and cost rates</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>
