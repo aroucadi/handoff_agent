@@ -197,7 +197,49 @@ def tool_search_graph(client_id: str, query: str) -> str:
     return json.dumps(result, indent=2, default=str)
 
 
+# ── Output Generation Tools ──────────────────────────────────────
+
+def tool_generate_briefing(client_id: str, csm_name: str = "CSM") -> str:
+    """Generate a pre-meeting briefing summary from the knowledge graph.
+
+    Use this when the CSM asks for a briefing, summary, or preparation document.
+    Reads the full knowledge graph and produces a professional Markdown briefing
+    covering stakeholders, risks, products, success metrics, and talking points.
+
+    Args:
+        client_id: The client identifier
+        csm_name: CSM name for personalization (optional)
+
+    Returns:
+        Generated briefing document in Markdown format.
+    """
+    import asyncio
+    from graph.outputs import generate_briefing
+    result = asyncio.get_event_loop().run_until_complete(generate_briefing(client_id, csm_name))
+    return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
+
+
+def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
+    """Generate a post-session action plan based on graph data.
+
+    Use this when the CSM asks for next steps, action items, or a follow-up plan.
+    Produces a prioritized action plan grouped by urgency with owners and deadlines.
+
+    Args:
+        client_id: The client identifier
+        meeting_notes: Optional notes or context from the session
+
+    Returns:
+        Generated action plan document in Markdown format.
+    """
+    import asyncio
+    from graph.outputs import generate_action_plan
+    result = asyncio.get_event_loop().run_until_complete(generate_action_plan(client_id, meeting_notes))
+    return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
+
+
 # ── Tool Definitions for ADK / Gemini Function Calling ────────────
+
 
 TOOL_DEFINITIONS = [
     # ── Structured Graph Tools (Primary) ──
@@ -330,6 +372,31 @@ TOOL_DEFINITIONS = [
             "required": ["client_id", "query"],
         },
     },
+    # ── Output Generation Tools ──
+    {
+        "name": "generate_briefing",
+        "description": tool_generate_briefing.__doc__,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "client_id": {"type": "string", "description": "The client identifier"},
+                "csm_name": {"type": "string", "description": "CSM name for personalization"},
+            },
+            "required": ["client_id"],
+        },
+    },
+    {
+        "name": "generate_action_plan",
+        "description": tool_generate_action_plan.__doc__,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "client_id": {"type": "string", "description": "The client identifier"},
+                "meeting_notes": {"type": "string", "description": "Optional notes from the session"},
+            },
+            "required": ["client_id"],
+        },
+    },
 ]
 
 
@@ -347,4 +414,8 @@ TOOL_FUNCTIONS = {
     "read_index": read_index,
     "follow_link": tool_follow_link,
     "search_graph": tool_search_graph,
+    # Outputs
+    "generate_briefing": tool_generate_briefing,
+    "generate_action_plan": tool_generate_action_plan,
 }
+

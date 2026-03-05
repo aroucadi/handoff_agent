@@ -599,6 +599,75 @@ async def list_graph_entities(client_id: str):
     }
 
 
+# ── Agent Generative Outputs ─────────────────────────────────────
+
+@app.post("/api/clients/{client_id}/outputs/briefing")
+async def create_briefing(client_id: str, request: Request):
+    """Generate a pre-meeting briefing summary from the knowledge graph."""
+    from graph.outputs import generate_briefing
+    body = await request.json() if await request.body() else {}
+    result = await generate_briefing(client_id, csm_name=body.get("csm_name", "CSM"))
+    return result
+
+
+@app.post("/api/clients/{client_id}/outputs/action-plan")
+async def create_action_plan(client_id: str, request: Request):
+    """Generate a post-session action plan."""
+    from graph.outputs import generate_action_plan
+    body = await request.json() if await request.body() else {}
+    result = await generate_action_plan(client_id, meeting_notes=body.get("meeting_notes"))
+    return result
+
+
+@app.post("/api/clients/{client_id}/outputs/risk-report")
+async def create_risk_report(client_id: str):
+    """Generate a comprehensive risk assessment report."""
+    from graph.outputs import generate_risk_report
+    result = await generate_risk_report(client_id)
+    return result
+
+
+@app.post("/api/clients/{client_id}/outputs/recommendations")
+async def create_recommendations(client_id: str, request: Request):
+    """Generate strategic recommendations."""
+    from graph.outputs import generate_recommendations
+    body = await request.json() if await request.body() else {}
+    result = await generate_recommendations(client_id, focus=body.get("focus", "general"))
+    return result
+
+
+@app.post("/api/clients/{client_id}/outputs/handoff")
+async def create_handoff(client_id: str, request: Request):
+    """Generate a team handoff document."""
+    from graph.outputs import generate_handoff
+    body = await request.json()
+    result = await generate_handoff(
+        client_id,
+        from_team=body.get("from_team", "Sales"),
+        to_team=body.get("to_team", "Customer Success"),
+    )
+    return result
+
+
+@app.get("/api/clients/{client_id}/outputs")
+async def list_client_outputs(client_id: str):
+    """List all generated outputs for a client."""
+    from graph.outputs import list_outputs
+    outputs = await list_outputs(client_id)
+    return {"client_id": client_id, "outputs": outputs, "count": len(outputs)}
+
+
+@app.get("/api/clients/{client_id}/outputs/{output_id}")
+async def get_client_output(client_id: str, output_id: str):
+    """Retrieve a specific generated output."""
+    from graph.outputs import get_output
+    result = await get_output(client_id, output_id)
+    if not result:
+        return JSONResponse(status_code=404, content={"error": f"Output {output_id} not found"})
+    return result
+
+
+
 
 
 
