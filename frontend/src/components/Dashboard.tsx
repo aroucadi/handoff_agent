@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -11,9 +11,11 @@ import {
     Zap,
     Briefcase,
     Circle,
-    Activity
+    Activity,
+    FileText
 } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
+import ArtifactViewer from './ArtifactViewer';
 
 interface Deal {
     id: string; // The deal_id (e.g. WON-2025-CS01)
@@ -52,6 +54,9 @@ export default function Dashboard() {
     const [deals, setDeals] = useState<Deal[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [artifactCounts, setArtifactCounts] = useState<Record<string, Record<string, number>>>({});
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerClientId, setViewerClientId] = useState('');
 
     useEffect(() => {
         const fetchDeals = async () => {
@@ -87,6 +92,35 @@ export default function Dashboard() {
 
         fetchDeals();
     }, [roleId, config.stages]);
+
+    // Fetch artifact counts per client
+    const fetchArtifactCounts = useCallback(async (clientIds: string[]) => {
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const counts: Record<string, Record<string, number>> = {};
+        await Promise.all(clientIds.map(async (cid) => {
+            try {
+                const res = await fetch(`${apiUrl}/api/clients/${cid}/outputs`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const typeCounts: Record<string, number> = {};
+                    for (const o of (data.outputs || [])) {
+                        if (o.is_latest !== false) {
+                            typeCounts[o.type] = (typeCounts[o.type] || 0) + 1;
+                        }
+                    }
+                    counts[cid] = typeCounts;
+                }
+            } catch { /* skip */ }
+        }));
+        setArtifactCounts(counts);
+    }, []);
+
+    useEffect(() => {
+        if (deals.length > 0) {
+            const clientIds = [...new Set(deals.map(d => d.client_id))];
+            fetchArtifactCounts(clientIds);
+        }
+    }, [deals, fetchArtifactCounts]);
 
     const filteredDeals = deals.filter(d =>
         d.account_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -195,13 +229,33 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
+                                {/* Artifact Badges */}
+                                {artifactCounts[deal.client_id] && Object.keys(artifactCounts[deal.client_id]).length > 0 && (
+                                    <div
+                                        className="relative z-10 flex items-center gap-2 px-1 py-2 cursor-pointer group/artifacts"
+                                        onClick={(e) => { e.stopPropagation(); setViewerClientId(deal.client_id); setViewerOpen(true); }}
+                                    >
+                                        <FileText size={12} className="text-white/20" />
+                                        {Object.entries(artifactCounts[deal.client_id]).map(([type, count]) => (
+                                            <span
+                                                key={type}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-bold text-white/40 group-hover/artifacts:border-primary-purple/30 group-hover/artifacts:text-primary-purple/60 transition-all"
+                                            >
+                                                {type === 'briefing' ? '📋' : type === 'risk_report' ? '⚠️' : type === 'transcript' ? '💼' : type === 'action_plan' ? '✅' : '📄'}
+                                                ×{count}
+                                            </span>
+                                        ))}
+                                        <span className="text-[9px] text-white/20 uppercase tracking-wider group-hover/artifacts:text-primary-purple/40 transition-colors">View</span>
+                                    </div>
+                                )}
+
                                 <button
                                     className="relative z-10 w-full py-4 bg-primary-purple text-white font-bold font-cabin text-sm uppercase tracking-widest rounded-xl hover:bg-primary-purple-hover shadow-lg shadow-primary-purple/20 transition-all flex items-center justify-center gap-3 group/btn hover:scale-[1.02] active:scale-95"
                                     onClick={() => {
-                                        const url = tenantId
-                                            ? `/briefing/${deal.client_id}?tenant_id=${tenantId}`
-                                            : `/briefing/${deal.client_id}`;
-                                        navigate(url, {
+                                        const params = new URLSearchParams();
+                                        if (tenantId) params.set('tenant_id', tenantId);
+                                        params.set('role', roleId);
+                                        navigate(`/briefing/${deal.client_id}?${params.toString()}`, {
                                             state: {
                                                 dealId: deal.id,
                                                 companyName: deal.account_name
@@ -216,6 +270,13 @@ export default function Dashboard() {
                     </div>
                 )}
             </main>
+
+            {/* Artifact Viewer Modal */}
+            <ArtifactViewer
+                clientId={viewerClientId}
+                isOpen={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+            />
         </div>
     );
 }

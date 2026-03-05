@@ -19,6 +19,7 @@ from google.genai.types import (
     Content,
     FunctionDeclaration,
     FunctionResponse,
+    GoogleSearch,
     LiveConnectConfig,
     Modality,
     Part,
@@ -297,7 +298,7 @@ class LiveSession:
             system_instruction=Content(
                 parts=[Part.from_text(text=self._build_system_prompt())]
             ),
-            tools=_build_live_tools(),
+            tools=_build_live_tools() + [Tool(google_search=GoogleSearch())],
         )
 
         # The live.connect returns an async context manager in google-genai 1.0.0+

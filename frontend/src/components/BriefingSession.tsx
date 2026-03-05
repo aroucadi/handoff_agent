@@ -20,6 +20,7 @@ export default function BriefingSession() {
     const location = useLocation();
 
     const tenantId = searchParams.get('tenant_id');
+    const roleId = searchParams.get('role') || 'csm';
     // Get deal context from dashboard state if available
     const dealId = location.state?.dealId;
 
@@ -77,7 +78,7 @@ export default function BriefingSession() {
                         client_id: clientId,
                         tenant_id: tenantId,
                         deal_id: dealId,
-                        role: 'csm' // Default to CSM for briefing
+                        role: roleId
                     })
                 });
 
@@ -205,6 +206,7 @@ export default function BriefingSession() {
                                 isScreenShared={isScreenShared}
                                 agentStatus={agentStatus}
                                 sessionId={realSessionId || ''}
+                                role={roleId}
                                 onToggleMic={toggleMic}
                                 onToggleScreenShare={toggleScreenShare}
                                 onSendText={sendText}

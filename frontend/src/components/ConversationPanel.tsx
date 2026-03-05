@@ -8,7 +8,35 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { TranscriptEntry, AgentStatus } from '../useVoiceSession';
 import SynapseOrb, { OrbState } from './SynapseOrb';
-import { Bot, User, Mic, MicOff, MonitorSmartphone, MonitorOff, Send, XCircle, Sparkles, Activity } from 'lucide-react';
+import { Bot, User, Mic, MicOff, MonitorSmartphone, MonitorOff, Send, XCircle, Sparkles, Activity, FileText, Shield, HelpCircle, RefreshCw, BookOpen, Target } from 'lucide-react';
+
+// Role-aware smart action chips
+const ROLE_ACTIONS: Record<string, Array<{ label: string; icon: React.ReactNode; command: string }>> = {
+    sales: [
+        { label: 'Sales Script', icon: <FileText size={13} />, command: 'Generate a sales call script for this client' },
+        { label: 'Discovery Qs', icon: <HelpCircle size={13} />, command: 'Generate discovery and qualification questions for this prospect' },
+        { label: 'Action Plan', icon: <Target size={13} />, command: 'Generate a post-session action plan' },
+        { label: 'Briefing', icon: <BookOpen size={13} />, command: 'Generate a briefing summary for this deal' },
+    ],
+    csm: [
+        { label: 'QBR Prep', icon: <FileText size={13} />, command: 'Generate a QBR discussion guide for this client' },
+        { label: 'Action Plan', icon: <Target size={13} />, command: 'Generate a post-session action plan' },
+        { label: 'Risk Report', icon: <Shield size={13} />, command: 'Generate a risk assessment report for this client' },
+        { label: 'Briefing', icon: <BookOpen size={13} />, command: 'Generate a briefing summary for this deal' },
+    ],
+    support: [
+        { label: 'Support Script', icon: <FileText size={13} />, command: 'Generate a customer support de-escalation script' },
+        { label: 'Onboarding Guide', icon: <BookOpen size={13} />, command: 'Generate an onboarding walkthrough for this client' },
+        { label: 'Action Plan', icon: <Target size={13} />, command: 'Generate a post-session action plan' },
+        { label: 'Risk Report', icon: <Shield size={13} />, command: 'Generate a risk assessment report' },
+    ],
+    strategy: [
+        { label: 'Recommendations', icon: <Target size={13} />, command: 'Generate strategic recommendations for this account' },
+        { label: 'Renewal Script', icon: <RefreshCw size={13} />, command: 'Generate a renewal conversation script for this client' },
+        { label: 'Risk Report', icon: <Shield size={13} />, command: 'Generate a risk assessment report' },
+        { label: 'Discovery Qs', icon: <HelpCircle size={13} />, command: 'Generate discovery questions for re-engagement' },
+    ],
+};
 
 interface ConversationPanelProps {
     transcript: TranscriptEntry[];
@@ -16,6 +44,7 @@ interface ConversationPanelProps {
     isScreenShared: boolean;
     agentStatus: AgentStatus;
     sessionId: string;
+    role?: string;
     onToggleMic: () => void;
     onToggleScreenShare: () => void;
     onSendText: (text: string) => void;
@@ -28,6 +57,7 @@ export default function ConversationPanel({
     isScreenShared,
     agentStatus,
     sessionId,
+    role = 'csm',
     onToggleMic,
     onToggleScreenShare,
     onSendText,
@@ -129,6 +159,21 @@ export default function ConversationPanel({
                     </div>
                 ))}
                 <div ref={transcriptEndRef} />
+            </div>
+            {/* Smart Action Chips */}
+            <div className="shrink-0 px-4 pt-3 pb-1">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                    {(ROLE_ACTIONS[role] || ROLE_ACTIONS['csm']).map((action) => (
+                        <button
+                            key={action.label}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap hover:bg-primary-purple/20 hover:border-primary-purple/30 hover:text-primary-purple transition-all duration-300 group"
+                            onClick={() => onSendText(action.command)}
+                        >
+                            <span className="opacity-50 group-hover:opacity-100 transition-opacity">{action.icon}</span>
+                            {action.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Input & Controls */}

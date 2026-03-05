@@ -560,16 +560,48 @@ Output as well-structured Markdown with clear section headers."""
 # ── Persistence ───────────────────────────────────────────────────
 
 def _save_output(client_id: str, output: dict):
-    """Save a generated output to Firestore for retrieval by the Dashboard."""
+    """Save a generated output to Firestore with version tracking.
+    
+    Each output type maintains a version counter. New generations increment
+    the version and mark the previous as non-latest.
+    """
     db = get_firestore_client()
-    doc_id = f"{output['type']}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+    outputs_ref = db.collection("knowledge_graphs").document(client_id).collection("outputs")
 
-    db.collection("knowledge_graphs").document(client_id).collection("outputs").document(doc_id).set({
+    # Determine the output type key (e.g., "briefing", "transcript_sales_script")
+    output_type = output["type"]
+    subtype = output.get("subtype", "")
+    type_key = f"{output_type}_{subtype}" if subtype else output_type
+
+    # Find existing versions of this type to calculate next version
+    existing = list(
+        outputs_ref
+        .where("output_type_key", "==", type_key)
+        .order_by("version", direction="DESCENDING")
+        .limit(1)
+        .stream()
+    )
+
+    if existing:
+        prev_doc = existing[0]
+        prev_version = prev_doc.to_dict().get("version", 1)
+        next_version = prev_version + 1
+        # Mark previous as non-latest
+        outputs_ref.document(prev_doc.id).update({"is_latest": False})
+    else:
+        next_version = 1
+
+    doc_id = f"{type_key}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+
+    outputs_ref.document(doc_id).set({
         **output,
+        "output_type_key": type_key,
+        "version": next_version,
+        "is_latest": True,
         "saved_at": datetime.utcnow().isoformat(),
     })
 
-    print(f"[OUTPUTS] Saved {output['type']} for {client_id} as {doc_id}")
+    print(f"[OUTPUTS] Saved {type_key} v{next_version} for {client_id} as {doc_id}")
 
 
 async def list_outputs(client_id: str) -> list[dict]:
@@ -592,8 +624,11 @@ async def list_outputs(client_id: str) -> list[dict]:
         results.append({
             "id": doc.id,
             "type": data.get("type"),
+            "subtype": data.get("subtype"),
             "title": data.get("title"),
             "generated_at": data.get("generated_at"),
+            "version": data.get("version", 1),
+            "is_latest": data.get("is_latest", True),
             "metadata": data.get("metadata", {}),
         })
 
