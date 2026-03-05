@@ -1,10 +1,9 @@
-"""Graph Generator Ã¢â‚¬â€ Main Orchestrator.
+"""Graph Generator - Main Orchestrator.
 
-Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline:
-1. Extract entities from CRM data and transcript (Gemini 2.5 Pro)
-2. Generate markdown skill graph nodes (Gemini 2.5 Pro)
-3. Write nodes to GCS
-4. Index nodes with embeddings in Firestore (gemini-embedding-001)
+Receives a deal-closed webhook payload, orchestrates the full graph generation pipeline.
+Supports two output modes:
+  - "structured" (Phase 1B): Ontology-driven entity+edge extraction
+  - "markdown" (legacy): 8-node markdown document generation
 """
 
 from __future__ import annotations
@@ -24,17 +23,17 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.config import config
-from extractors.crm_extractor import extract_from_crm_payload
+from extractors.crm_extractor import extract_from_crm_payload, extract_entities_from_crm
 from extractors.transcript_extractor import extract_from_transcript
 from extractors.contract_extractor import extract_from_contract
-from node_generator import generate_client_nodes
+from node_generator import generate_client_nodes, generate_structured_entities
 from core.storage import write_all_nodes
-from indexer import index_all_nodes, get_graph_status
+from indexer import index_all_nodes, index_structured_graph, get_graph_status
 
 app = FastAPI(
     title="Synapse Graph Generator",
-    description="Generates client skill graphs from CRM data using Gemini 2.5 Pro",
-    version="3.2.0",
+    description="Generates client skill graphs from CRM data using Gemini",
+    version="4.0.0",
 )
 
 app.add_middleware(
@@ -66,125 +65,120 @@ jobs: dict[str, dict] = {}
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "graph-generator", "version": "0.2.0"}
+    return {"status": "ok", "service": "graph-generator", "version": "4.0.0"}
 
 
 async def _run_generation(job_id: str, payload: dict):
-    """Background task that runs the full graph generation pipeline."""
+    """Background task: runs the full graph generation pipeline.
+    
+    Branches between structured (entities+edges) and legacy (markdown) mode
+    based on config.graph_output_format.
+    """
     jobs[job_id]["status"] = "extracting"
+    use_structured = config.graph_output_format == "structured"
 
     try:
-        # Step 1: Extract from CRM payload
-        print(f"[JOB {job_id}] Step 1: Extracting CRM data...")
-        crm_data = extract_from_crm_payload(payload)
-
-        # Use tenant_id + company_name as the universal client identifier for isolation
+        # Common: identifiers
         tenant_id = payload.get("_tenant_id", "default")
         company_name = payload.get("company_name", "Unknown Company")
         raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
         client_id = f"{tenant_id}_{raw_client_id}"
-        
         industry = payload.get("industry", "general")
-        historical_deals = payload.get("historical_deals", [])
 
-        # Step 2: Extract asynchronously (Transcript & Contract in parallel)
-        print(f"[JOB {job_id}] Step 2: Running parallel AI extractions (Gemini 2.5 Pro)...")
+        # Step 1: CRM Extraction
+        mode_label = "structured" if use_structured else "legacy"
+        print(f"[JOB {job_id}] Step 1: Extracting CRM data ({mode_label})...")
+        if use_structured:
+            crm_entities = extract_entities_from_crm(payload)
+        else:
+            crm_data = extract_from_crm_payload(payload)
+
+        # Step 2: Parallel AI Extractions
+        print(f"[JOB {job_id}] Step 2: Running parallel AI extractions...")
         jobs[job_id]["status"] = "analyzing_documents"
-        
         transcript = payload.get("sales_transcript")
         contract_pdf_url = payload.get("contract_pdf_url")
-        
+
         async def safe_extract_transcript():
             if transcript and transcript.strip():
-                print(f"[JOB {job_id}] Extracting from transcript...")
                 return await extract_from_transcript(transcript)
-            print(f"[JOB {job_id}] No transcript provided.")
             return None
-            
+
         async def safe_extract_contract():
             if contract_pdf_url:
-                print(f"[JOB {job_id}] Extracting from contract PDF...")
                 return await extract_from_contract(client_id, contract_pdf_url)
-            print(f"[JOB {job_id}] No contract PDF URL provided.")
             return None
-            
+
         import asyncio
         transcript_data, contract_data = await asyncio.gather(
-            safe_extract_transcript(),
-            safe_extract_contract(),
+            safe_extract_transcript(), safe_extract_contract(),
         )
-        
-        if transcript_data:
-            print(f"[JOB {job_id}] Transcript extraction complete: {len(transcript_data.get('stakeholders', []))} stakeholders")
-        if contract_data:
-            print(f"[JOB {job_id}] Contract extraction complete: {len(contract_data.get('contracted_modules', []))} modules")
 
-        # Step 3: Generate nodes
-        print(f"[JOB {job_id}] Step 3: Generating nodes (Multi-Agent: Generator + Reviewer) with Gemini 2.5 Pro...")
-        jobs[job_id]["status"] = "generating_nodes"
-        
-        # Pull tenant_id from hub metadata if present
-        tenant_id = payload.get("_tenant_id")
-        
-        # This function now orchestrates both the Generation and Review passes internally
-        nodes = await generate_client_nodes(
-            client_id=client_id,
-            company_name=company_name,
-            industry=industry,
-            crm_data=crm_data,
-            transcript_data=transcript_data,
-            contract_data=contract_data,
-            tenant_id=tenant_id,
-        )
-        
-        jobs[job_id]["status"] = "reviewing_nodes" # Set briefly before writing to GCS
-        print(f"[JOB {job_id}] Generated and reviewed {len(nodes)} nodes")
+        # Step 3+: Branch by output format
+        if use_structured:
+            print(f"[JOB {job_id}] Step 3: Extracting structured entities...")
+            jobs[job_id]["status"] = "extracting_entities"
+            graph_data = await generate_structured_entities(
+                client_id=client_id, company_name=company_name, industry=industry,
+                crm_entities=crm_entities, transcript_data=transcript_data,
+                contract_data=contract_data, tenant_id=tenant_id,
+            )
+            e_count = len(graph_data.get("nodes", []))
+            r_count = len(graph_data.get("edges", []))
+            print(f"[JOB {job_id}] Extracted {e_count} entities, {r_count} edges")
 
-        # Step 4: Write to GCS
-        print(f"[JOB {job_id}] Step 4: Writing nodes to GCS...")
-        jobs[job_id]["status"] = "writing_to_gcs"
-        uris = await write_all_nodes(client_id, nodes)
-        print(f"[JOB {job_id}] Written {len(uris)} files to GCS")
+            print(f"[JOB {job_id}] Step 4: Indexing structured graph...")
+            jobs[job_id]["status"] = "indexing"
+            status = await index_structured_graph(client_id, graph_data, payload=payload)
 
-        # Step 5: Index with embeddings
-        print(f"[JOB {job_id}] Step 5: Indexing nodes with embeddings (gemini-embedding-001)...")
-        jobs[job_id]["status"] = "indexing"
-        indexed = await index_all_nodes(client_id, nodes, payload=payload)
-        print(f"[JOB {job_id}] Indexed {len(indexed)} nodes in Firestore")
+            jobs[job_id].update({
+                "status": "complete", "client_id": client_id,
+                "graph_format": "structured", "entity_count": e_count,
+                "edge_count": r_count, "entity_types": status.get("entity_types", []),
+                "completed_at": datetime.utcnow().isoformat(),
+            })
+        else:
+            print(f"[JOB {job_id}] Step 3: Generating markdown nodes...")
+            jobs[job_id]["status"] = "generating_nodes"
+            nodes = await generate_client_nodes(
+                client_id=client_id, company_name=company_name, industry=industry,
+                crm_data=crm_data, transcript_data=transcript_data,
+                contract_data=contract_data, tenant_id=tenant_id,
+            )
+            print(f"[JOB {job_id}] Generated {len(nodes)} nodes")
 
-        # Done!
-        jobs[job_id].update({
-            "status": "complete",
-            "client_id": client_id,
-            "node_count": len(nodes),
-            "node_ids": [n.get("node_id") for n in nodes],
-            "gcs_uris": uris,
-            "completed_at": datetime.utcnow().isoformat(),
-        })
+            jobs[job_id]["status"] = "writing_to_gcs"
+            uris = await write_all_nodes(client_id, nodes)
+            jobs[job_id]["status"] = "indexing"
+            indexed = await index_all_nodes(client_id, nodes, payload=payload)
 
-        # Step 6: Notify CSM (Firestore document)
+            jobs[job_id].update({
+                "status": "complete", "client_id": client_id,
+                "graph_format": "markdown", "node_count": len(nodes),
+                "node_ids": [n.get("node_id") for n in nodes],
+                "gcs_uris": uris, "completed_at": datetime.utcnow().isoformat(),
+            })
+
+        # Notify CSM
         from core.db import get_firestore_client
         db = get_firestore_client()
         db.collection("notifications").document(client_id).set({
-            "client_id": client_id,
-            "company_name": company_name,
+            "client_id": client_id, "company_name": company_name,
             "status": "graph_ready",
-            "node_count": len(nodes),
+            "graph_format": "structured" if use_structured else "markdown",
             "generated_at": datetime.utcnow().isoformat(),
             "csm_id": payload.get("csm_id", "unknown"),
             "deal_id": payload.get("deal_id", "unknown"),
         })
-
-        print(f"[JOB {job_id}] Ã¢Å“â€¦ Graph generation complete for {company_name}")
+        print(f"[JOB {job_id}] Graph generation complete for {company_name}")
 
     except Exception as e:
         traceback.print_exc()
         jobs[job_id].update({
-            "status": "failed",
-            "error": str(e),
+            "status": "failed", "error": str(e),
             "failed_at": datetime.utcnow().isoformat(),
         })
-        print(f"[JOB {job_id}] Ã¢ÂÅ’ Graph generation failed: {e}")
+        print(f"[JOB {job_id}] Graph generation failed: {e}")
 
 
 @app.post("/generate")

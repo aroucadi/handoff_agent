@@ -207,3 +207,112 @@ async def search_by_embedding(client_id: str, query_embedding: list[float], top_
 
     results.sort(key=lambda r: r["similarity"], reverse=True)
     return results[:top_k]
+
+
+# ── Structured Graph Indexing (Phase 1B) ──────────────────────────
+
+async def index_structured_graph(
+    client_id: str,
+    graph_data: dict,
+    payload: dict | None = None,
+) -> dict:
+    """Index a structured entity graph in Firestore.
+
+    Stores entities in `knowledge_graphs/{client_id}/entities/{entity_id}`
+    and edges in `knowledge_graphs/{client_id}/edges/{edge_idx}`.
+    Each entity gets a vector embedding for semantic search.
+
+    Args:
+        client_id: Client identifier.
+        graph_data: Dict with "nodes" list and "edges" list.
+        payload: Original webhook payload for status document.
+
+    Returns:
+        Summary dict with counts and status.
+    """
+    if payload is None:
+        payload = {}
+
+    db = _get_firestore()
+    nodes = graph_data.get("nodes", [])
+    edges = graph_data.get("edges", [])
+    tenant_id = graph_data.get("tenant_id", payload.get("_tenant_id", "default"))
+
+    # Index each entity with embedding
+    for node in nodes:
+        node_id = node.get("id", "unknown")
+        node_type = node.get("type", "Unknown")
+        props = node.get("properties", {})
+
+        # Build text for embedding from type + key properties
+        embed_parts = [node_type, props.get("name", ""), props.get("description", "")]
+        embed_parts.extend(str(v) for v in props.values() if isinstance(v, str) and len(str(v)) > 5)
+        embed_text = " | ".join(p for p in embed_parts if p)[:500]
+
+        try:
+            embedding = await generate_embedding(embed_text)
+        except Exception as e:
+            print(f"[INDEX] Warning: Embedding failed for {node_id}: {e}")
+            embedding = []
+
+        doc_data = {
+            "entity_id": node_id,
+            "type": node_type,
+            "properties": props,
+            "embedding": embedding,
+            "client_id": client_id,
+            "tenant_id": tenant_id,
+            "indexed_at": datetime.utcnow().isoformat(),
+        }
+
+        entity_ref = (db.collection("knowledge_graphs")
+                      .document(client_id)
+                      .collection("entities")
+                      .document(node_id))
+        await entity_ref.set(doc_data)
+
+    # Index each edge
+    for idx, edge in enumerate(edges):
+        edge_data = {
+            "type": edge.get("type", "RELATED_TO"),
+            "from_id": edge.get("from_id", ""),
+            "to_id": edge.get("to_id", ""),
+            "properties": edge.get("properties", {}),
+            "client_id": client_id,
+            "tenant_id": tenant_id,
+            "indexed_at": datetime.utcnow().isoformat(),
+        }
+
+        edge_ref = (db.collection("knowledge_graphs")
+                    .document(client_id)
+                    .collection("edges")
+                    .document(f"edge_{idx}"))
+        await edge_ref.set(edge_data)
+
+    # Write client-level status document (compatible with existing dashboard checks)
+    company_name = payload.get("company_name", "Unknown Company")
+    kickoff_date = payload.get("close_date", datetime.utcnow().isoformat()[:10])
+
+    status_data = {
+        "client_id": client_id,
+        "company_name": company_name,
+        "tenant_id": tenant_id,
+        "deal_id": payload.get("deal_id"),
+        "deal_value": payload.get("deal_value", 0),
+        "kickoff_date": kickoff_date,
+        "csm_id": payload.get("csm_id", "unknown"),
+        "status": "ready",
+        "graph_format": "structured",
+        "entity_count": len(nodes),
+        "edge_count": len(edges),
+        "entity_types": list(set(n.get("type", "") for n in nodes)),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+    # Write to BOTH collections for backward compatibility
+    await db.collection("knowledge_graphs").document(client_id).set(status_data)
+    await db.collection("skill_graphs").document(client_id).set(status_data)
+
+    print(f"[INDEX] Structured graph indexed: {len(nodes)} entities, {len(edges)} edges for {client_id}")
+    return status_data
+

@@ -35,6 +35,19 @@ class CoreConfig:
     embedding_model: str = "gemini-embedding-001"
     embedding_dims: int = 768  # Hackathon/demo standard
 
+    # Knowledge Center (ClawdView product documentation)
+    knowledge_center_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "KNOWLEDGE_CENTER_URL",
+            "http://localhost:8080"   # local dev — gsutil serves on :8080
+        )
+    )
+
+    # Graph output: "structured" emits entities+edges; "markdown" is legacy 8-node format
+    graph_output_format: str = field(
+        default_factory=lambda: os.environ.get("GRAPH_OUTPUT_FORMAT", "structured")
+    )
+
     # Storage buckets
     skill_graphs_bucket: str = field(
         default_factory=lambda: os.environ.get(
