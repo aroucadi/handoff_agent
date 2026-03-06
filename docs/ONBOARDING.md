@@ -1,6 +1,6 @@
-# 🚀 Synapse Developer Onboarding Guide
+# 🚀 ClawdView (Synapse) Developer Onboarding Guide
 
-Welcome to the Synapse monorepo! This repository houses the entire Level 5 AI Voice Agent for Customer Success platform — a CRM-agnostic, multi-tenant briefing system powered by Gemini. It contains multiple independent microservices, a frontend dashboard, a tenant configuration hub, a static knowledge center, shared libraries, and infrastructure-as-code (IaC).
+Welcome to the **ClawdView** monorepo! This repository houses a Level 5 AI Voice Agent for Customer Success — a CRM-agnostic, multi-tenant briefing system powered by the **Synapse Core Engine (Gemini 3.1 Pro + 2.5 Flash)**.
 
 ---
 
@@ -89,6 +89,7 @@ $env:GEMINI_API_KEY = "your-key-here"
 
 - **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) — System diagrams and data flow
 - **AI Agents**: [AI_AGENTS.md](AI_AGENTS.md) — 13 tools, Google Search, 7 generators, 4 role personas
+- **GCP Safety**: [CLAWVIEW_GCP_SURVIVAL.md](CLAWVIEW_GCP_SURVIVAL.md) — Safeguards against API abuse
 - **API Reference**: [API_REFERENCE.md](API_REFERENCE.md) — All REST endpoints and WebSocket protocol
 - **Infrastructure**: [INFRASTRUCTURE.md](INFRASTRUCTURE.md) — GCP Terraform modules and deployment pipeline
 - **Contributing**: [CONTRIBUTING.md](../CONTRIBUTING.md) — Code style, PR process, testing

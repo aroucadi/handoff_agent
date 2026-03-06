@@ -31,7 +31,7 @@ DEFAULT_WEBHOOK_URL = "https://synapse-api-uicugotuta-uc.a.run.app/api/webhooks/
 WEBHOOK_URL = os.environ.get("SYNAPSE_WEBHOOK_URL") or DEFAULT_WEBHOOK_URL
 
 
-async def seed_rag(tenant_id: str = "default-tenant"):
+async def seed_rag(tenant_id: str = "default-tenant", lite: bool = False):
     # Group deals by company for historical context
     companies: dict[str, list] = {}
     for deal in DEMO_DEALS:
@@ -39,13 +39,17 @@ async def seed_rag(tenant_id: str = "default-tenant"):
             companies[deal.company_name] = []
         companies[deal.company_name].append(deal)
 
-    total_deals = len(DEMO_DEALS)
+    deals_to_process = DEMO_DEALS[:3] if lite else DEMO_DEALS
+    total_deals = len(deals_to_process)
+    
     print(f"Starting RAG seeding for tenant: {tenant_id}")
-    print(f"Stats: {total_deals} deals across {len(companies)} accounts")
+    print(f"Stats: {total_deals} deals across {len(set(d.company_name for d in deals_to_process))} accounts")
+    if lite:
+        print("⚠️ LITE MODE ACTIVE: Processing heavily restricted to prevent quota abuse.")
     print("=" * 60)
 
     async with httpx.AsyncClient() as client:
-        for idx, deal in enumerate(DEMO_DEALS, 1):
+        for idx, deal in enumerate(deals_to_process, 1):
             # Build historical context: all OTHER deals for the same account
             account_deals = companies[deal.company_name]
             historical_deals = []
@@ -110,6 +114,10 @@ async def seed_rag(tenant_id: str = "default-tenant"):
             except Exception as e:
                 print(f"    ❌ Error: {str(e)}")
 
+            if lite and idx < total_deals:
+                print("    ⏳ [LITE MODE] Pausing 5s before next webhook payload to throttle LLMs...")
+                await asyncio.sleep(5)
+
     print("\n" + "=" * 60)
     print(f"RAG seeding complete for tenant: {tenant_id}")
     print("Note: Graph generation is async. Check Firestore skill_graphs collection for status.")
@@ -118,6 +126,7 @@ async def seed_rag(tenant_id: str = "default-tenant"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed RAG data for a specific tenant.")
     parser.add_argument("--tenant", type=str, default="default-tenant", help="The tenant_id to seed for.")
+    parser.add_argument("--lite", action="store_true", help="Limit to 3 deals and add delays to prevent API abuse.")
     args = parser.parse_args()
     
-    asyncio.run(seed_rag(args.tenant))
+    asyncio.run(seed_rag(args.tenant, lite=args.lite))

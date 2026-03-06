@@ -57,18 +57,28 @@ const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId }
 
             {/* Integration Status Badge */}
             {guide && (
-                <div className="glass-card p-4 mb-8 flex items-center justify-between stagger-1">
-                    <div className="flex items-center gap-3">
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-${statusConfig.color}-500/10 text-${statusConfig.color}-400 border border-${statusConfig.color}-500/20`}>
-                            <div className={`w-1.5 h-1.5 rounded-full bg-${statusConfig.color}-400 ${statusConfig.pulse ? 'animate-pulse' : ''}`} />
+                <div className="glass-card p-4 mb-8 flex justify-between items-center stagger-1 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent" />
+                    <div className="flex items-center gap-4">
+                        <div className={`
+                            flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest
+                            bg-${statusConfig.color}-500/10 text-${statusConfig.color}-400 border border-${statusConfig.color}-500/20
+                        `}>
+                            <div className={`w-2 h-2 rounded-full bg-${statusConfig.color}-400 ${statusConfig.pulse ? 'animate-pulse' : ''}`} />
                             {statusConfig.label}
                         </div>
-                        <span className="text-white/30 text-xs">Integration Status</span>
+                        <span className="text-slate-500 text-[11px] font-bold uppercase tracking-wider">Neural Handshake Status</span>
                     </div>
+                    {guide.integration_status === 'verified' && (
+                        <div className="text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                            <span>Connection Secure</span>
+                            <span className="text-lg">🛡️</span>
+                        </div>
+                    )}
                 </div>
             )}
 
-            <div className="crm-types grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <div className="crm-types grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
                 {[
                     { id: 'salesforce', icon: '☁️', label: 'Salesforce' },
                     { id: 'hubspot', icon: '🟠', label: 'HubSpot' },
@@ -78,14 +88,19 @@ const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId }
                     <div
                         key={item.id}
                         className={`
-                            glass-card p-6 text-center cursor-pointer transition-all duration-300 group
-                            ${crm.crm_type === item.id ? 'border-primary-purple bg-primary-purple/10 scale-[1.02]' : 'opacity-60 hover:opacity-100 hover:scale-[1.02]'}
+                            glass-card p-8 text-center cursor-pointer transition-all duration-500 group relative overflow-hidden
+                            ${crm.crm_type === item.id
+                                ? 'border-primary-purple bg-primary-purple/10 scale-[1.02] shadow-[0_0_30px_rgba(123,57,252,0.1)]'
+                                : 'opacity-60 hover:opacity-100 hover:scale-[1.02] hover:bg-white/5'}
                             stagger-${idx + 1}
                         `}
                         onClick={() => onChange({ ...crm, crm_type: item.id })}
                     >
-                        <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-500">{item.icon}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                        {crm.crm_type === item.id && (
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary-purple shadow-[0_0_10px_#7b39fc]" />
+                        )}
+                        <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-500">{item.icon}</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-white">{item.label}</div>
                     </div>
                 ))}
             </div>

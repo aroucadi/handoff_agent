@@ -142,7 +142,7 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
         # Step 3a: Create tenant (as if user clicked "Create Tenant" in wizard)
         print("  Creating tenant via POST /api/tenants ...")
         resp = await client.post(f"{hub_url}/api/tenants", json={
-            "name": "ClawdView Demo",
+            "name": "ClawdView Global Enterprise",
             "brand_name": "ClawdView",
             "crm_type": "custom",
         })
@@ -158,7 +158,7 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
             db = firestore.Client(project=config.project_id)
             db.collection("tenants").document(tenant_id).set({
                 "tenant_id": tenant_id,
-                "name": "ClawdView Demo",
+                "name": "ClawdView Global Enterprise",
                 "brand_name": "ClawdView",
                 "status": "configuring",
                 "crm": {"crm_type": "custom", "connected": False},
@@ -220,8 +220,8 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
             "status": "active",
             "agent": {
                 "roles": ["csm", "sales", "support", "win-back"],
-                "persona": "Professional, data-driven, and proactive enterprise assistant.",
-                "brand_name": "Synapse",
+                "persona": "Professional, data-driven, and proactive enterprise assistant for ClawdView customers.",
+                "brand_name": "ClawdView",
             },
         })
         if resp.status_code == 200:

@@ -87,7 +87,7 @@ async def webhook_deal_closed(request: Request):
     generator_url = config.graph_generator_url
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(generator_url, json=payload)
+            response = await client.post(f"{generator_url.rstrip('/')}/generate", json=payload)
             result = response.json()
             print(f"[WEBHOOK] Graph generation triggered: {result}")
             return JSONResponse(

@@ -81,7 +81,7 @@ Write-Host "`n[4/5] Syncing ClawdView Knowledge Center to GCS..." -ForegroundCol
 $kcBucket = "${ProjectId}-knowledge-center"
 
 Write-Host "---> Syncing knowledge-center/ to gs://${kcBucket}"
-gcloud storage rsync knowledge-center/ "gs://${kcBucket}" --recursive --delete-unmatched
+gcloud storage rsync knowledge-center/ "gs://${kcBucket}" --recursive --delete-unmatched-destination-objects
 
 $kcUrl = "https://storage.googleapis.com/${kcBucket}/index.html"
 Write-Host "---> Knowledge Center deployed at: $kcUrl" -ForegroundColor Green
@@ -102,3 +102,21 @@ Set-Location -Path ..
 
 Write-Host -Object 'Deployment Complete! The Voice Agent is now LIVE.' -ForegroundColor Green
 Write-Host -Object 'Check output variables from Terraform for URLs.' -ForegroundColor Green
+
+# 6. Run Integrated System Test
+Write-Host "`n[6/6] Verifying Data Pipelines Architecture & Event Handlers..." -ForegroundColor Yellow
+$crmUrlDeployed = gcloud run services describe synapse-crm-simulator --region $Region --format "value(status.url)"
+if ($crmUrlDeployed) {
+    $graphUrlDeployed = gcloud run services describe synapse-graph-generator --region $Region --format "value(status.url)"
+    Write-Host "---> Found CRM URL: $crmUrlDeployed"
+    Write-Host "---> Found Graph URL: $graphUrlDeployed"
+    py scripts/test_pipeline.py --crm_url $crmUrlDeployed --graph_url $graphUrlDeployed
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Integration Test Failed! The pipeline might be broken." -ForegroundColor Red
+        exit $LASTEXITCODE
+    } else {
+        Write-Host "✅ Pipeline End-to-End Governance Tested Successfully!" -ForegroundColor Green
+    }
+} else {
+    Write-Host "⚠️ Could not resolve CRM Simulator URL for testing." -ForegroundColor Yellow
+}

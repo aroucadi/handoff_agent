@@ -45,7 +45,7 @@ def _generate(prompt: str, system: str = None) -> str:
         gen_config.system_instruction = system
 
     response = client.models.generate_content(
-        model=config.generation_model,
+        model=config.gen_model,
         contents=prompt,
         config=gen_config,
     )

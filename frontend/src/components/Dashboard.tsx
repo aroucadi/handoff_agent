@@ -25,7 +25,7 @@ interface Deal {
     amount: number;
     close_date: string;
     graph_status?: 'ready' | 'generating' | 'not_found' | 'error';
-    account_details?: any;
+    account_details?: Record<string, unknown>;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -37,7 +37,7 @@ const STAGE_LABELS: Record<string, string> = {
     'closed_lost': 'Lost'
 };
 
-const ROLE_CONFIG: Record<string, { title: string; subtitle: string; stages: string[]; icon: any }> = {
+const ROLE_CONFIG: Record<string, { title: string; subtitle: string; stages: string[]; icon: React.ElementType }> = {
     'csm': { title: 'Success Dashboard', subtitle: 'Onboarding & ImplementationBriefings', stages: ['closed_won'], icon: LayoutDashboard },
     'sales': { title: 'Pipeline Intelligence', subtitle: 'Grounded Deal Strategy', stages: ['prospecting', 'qualification', 'negotiation'], icon: Zap },
     'support': { title: 'Deployment Hub', subtitle: 'Technical Knowledge Base', stages: ['implemented'], icon: Database },
@@ -68,17 +68,17 @@ export default function Dashboard() {
                 const res = await fetch(url);
                 const data = await res.json();
 
-                const filtered = (data.deals || []).filter((d: any) =>
+                const filtered = (data.deals || []).filter((d: { stage: string }) =>
                     config.stages.includes(d.stage)
                 );
 
-                const mapped = filtered.map((d: any) => ({
+                const mapped = filtered.map((d: { deal_id?: string; id: string; client_id: string; account_name?: string; company_name: string; stage: string; amount?: number; deal_value: number; graph_ready?: boolean }) => ({
                     id: d.deal_id || d.id,
                     client_id: d.client_id,
                     account_name: d.account_name || d.company_name,
                     stage: d.stage,
                     amount: d.amount || d.deal_value,
-                    close_date: d.close_date || new Date().toISOString(),
+                    close_date: new Date().toISOString(), // Mock close date if missing
                     graph_status: d.graph_ready ? 'ready' : 'generating'
                 }));
 

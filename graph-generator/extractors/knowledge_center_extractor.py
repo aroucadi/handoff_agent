@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -140,8 +141,8 @@ async def extract_entities_from_page(page: dict) -> dict | None:
     try:
         gen_config = GenerateContentConfig(
             response_mime_type="application/json",
-            temperature=0.1,
-            max_output_tokens=8192,
+            temperature=0.5, # Slightly higher temperature is often recommended for thinking models
+            max_output_tokens=8192
         )
 
         raw_text = await generate_content_with_fallback(
@@ -168,7 +169,7 @@ async def extract_entities_from_page(page: dict) -> dict | None:
                     "category": page["category"],
                     "url": page["url"],
                     "summary": page["text_content"][:200],
-                    "last_updated": "2026-03-05",
+                    "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 },
             })
 
@@ -195,8 +196,16 @@ async def extract_all_knowledge_center(kc_dir: str | Path) -> dict:
     all_edges = []
     seen_ids = set()
 
-    for page in pages:
-        result = await extract_entities_from_page(page)
+    import asyncio
+    sem = asyncio.Semaphore(4)
+
+    async def _safe_extract(page):
+        async with sem:
+            return await extract_entities_from_page(page)
+
+    results = await asyncio.gather(*[_safe_extract(p) for p in pages])
+
+    for result in results:
         if result:
             for node in result.get("nodes", []):
                 if node["id"] not in seen_ids:

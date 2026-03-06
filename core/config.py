@@ -26,8 +26,8 @@ class CoreConfig:
 
     # Gemini Model Strategy — Vertex AI resource names (no "models/" prefix)
     # Queried from: genai.Client(vertexai=True).models.list()
-    gen_model: str = "gemini-3.1-pro-preview"
-    fallback_model: str = "gemini-3-flash-preview"
+    gen_model: str = "gemini-3.1-flash-lite-preview"
+    fallback_model: str = "gemini-2.5-flash"
     summary_model: str = "gemini-3-flash-preview"
     graph_gen_model: str = "gemini-3-flash-preview"  # Used by the text agent in synapse_agent.py
     # Switch to 2.5-flash for Hackathon True Multimodal Vision and Text natively over Vertex AI
@@ -64,7 +64,7 @@ class CoreConfig:
 
     # Simulator URLs (for local dev callbacks)
     graph_generator_url: str = field(
-        default_factory=lambda: os.environ.get("GRAPH_GENERATOR_URL", "http://localhost:8002/generate")
+        default_factory=lambda: os.environ.get("GRAPH_GENERATOR_URL", "http://localhost:8002")
     )
     crm_simulator_url: str = field(
         default_factory=lambda: os.environ.get("CRM_SIMULATOR_URL", "http://localhost:8001")

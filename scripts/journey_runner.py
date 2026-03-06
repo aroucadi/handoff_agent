@@ -40,21 +40,21 @@ def _slug_company(name: str) -> str:
     return name.lower().replace(" ", "-").replace(",", "").replace(".", "")
 
 
-async def _get_json(url: str, timeout: float = 10.0) -> dict:
+async def _get_json(url: str, timeout: float = 60.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.json()
 
 
-async def _post_json(url: str, payload: dict | None = None, timeout: float = 30.0) -> dict:
+async def _post_json(url: str, payload: dict | None = None, timeout: float = 120.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.post(url, json=payload or {})
         resp.raise_for_status()
         return resp.json()
 
 
-async def _patch_json(url: str, payload: dict, timeout: float = 30.0) -> dict:
+async def _patch_json(url: str, payload: dict, timeout: float = 120.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.patch(url, json=payload)
         resp.raise_for_status()
@@ -146,8 +146,41 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
     for p in products:
         await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/products", p, timeout=30.0)
 
-    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/generate-knowledge", timeout=300.0)
-    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/sync-knowledge", timeout=600.0)
+    print("\n[RUNNER] Triggering knowledge generation (background)...")
+    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/generate-knowledge", timeout=120.0)
+
+    print("[RUNNER] Waiting for knowledge generation to complete...")
+    for _ in range(30):
+        await asyncio.sleep(10)
+        tenant_status = await _get_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}", timeout=10.0)
+        products_list = tenant_status.get("products", [])
+        if all(p.get("knowledge_generated") for p in products_list):
+            print(f"[RUNNER] Knowledge generation complete for all {len(products_list)} products!")
+            break
+        generated_count = len([p for p in products_list if p.get("knowledge_generated")])
+        print(f"[RUNNER] Progress: {generated_count}/{len(products_list)} products generated...")
+    else:
+        print("[RUNNER] WARNING: Knowledge generation timed out (polling stopped).")
+    print("\n[RUNNER] Triggering knowledge center sync (background)...")
+    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/sync-knowledge", timeout=120.0)
+
+    print("[RUNNER] Waiting for knowledge sync to complete (may take up to 5 minutes due to AI quotas)...")
+    for _ in range(60):
+        await asyncio.sleep(10)
+        try:
+            status_resp = await _get_json(f"{urls.graph.rstrip('/')}/api/sync-knowledge/{tenant_id}/status", timeout=15.0)
+            status = status_resp.get("status")
+            if status == "ready":
+                print(f"[RUNNER] Knowledge sync complete! Found {status_resp.get('entity_count')} entities.")
+                break
+            elif status == "error":
+                print(f"[RUNNER] WARNING: Knowledge sync failed: {status_resp}")
+                break
+            print(f"[RUNNER] Still syncing... ({status})")
+        except (httpx.NetworkError, httpx.TimeoutException) as e:
+            print(f"[RUNNER] Transient connection error polling status: {e}. Retrying in 10s...")
+    else:
+        print("[RUNNER] WARNING: Knowledge sync timed out after 10 minutes.")
 
     return tenant_id
 
@@ -229,9 +262,22 @@ async def _crm_upload_contract(urls: ServiceUrls, deal_id: str, pdf_path: Path):
         return resp.json()
 
 
-async def seed_deals_via_crm(urls: ServiceUrls, tenant_id: str, out_dir: Path):
-    for deal in DEMO_DEALS:
-        await _crm_patch(urls, deal.deal_id, {"tenant_id": tenant_id, "crm_platform": deal.crm_platform})
+async def seed_deals_via_crm(urls: ServiceUrls, tenant_id: str, out_dir: Path, lite: bool = False):
+    deals_to_process = DEMO_DEALS[:3] if lite else DEMO_DEALS
+    for deal in deals_to_process:
+        # 1. Try to associate existing deal with tenant (Upsert Pattern)
+        try:
+            print(f"[SEED] Patching deal {deal.deal_id} for tenant {tenant_id}...")
+            await _crm_patch(urls, deal.deal_id, {"tenant_id": tenant_id, "crm_platform": deal.crm_platform})
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                print(f"[SEED] Deal {deal.deal_id} missing. Creating fresh...")
+                # Use POST to create from scratch using the full seed data
+                payload = deal.model_dump(mode="json")
+                payload["tenant_id"] = tenant_id # Ensure it belongs to our new tenant
+                await _post_json(f"{urls.crm.rstrip('/')}/api/deals", payload)
+            else:
+                raise
 
         transcript = deal.sales_transcript or ""
         if transcript.strip():
@@ -242,14 +288,18 @@ async def seed_deals_via_crm(urls: ServiceUrls, tenant_id: str, out_dir: Path):
         await _crm_upload_contract(urls, deal.deal_id, pdf_path)
 
         await _crm_stage(urls, deal.deal_id, deal.stage.value)
+        
+        if lite:
+            print("    ⏳ [LITE MODE] Pausing 5s before NEXT deal to throttle CRM Webhook -> Graph Gen pipeline...")
+            await asyncio.sleep(5)
 
 
 async def seed_negative_deal(urls: ServiceUrls, tenant_id: str, out_dir: Path):
     new_deal = await _post_json(
         f"{urls.crm.rstrip('/')}/api/deals",
         {
-            "deal_id": "NEG-TEST-001",
-            "company_name": "Negative Mapping Co.",
+            "deal_id": "COMP-REJECT-001",
+            "company_name": "PharmaLink Compliance-Heavy Int.",
             "deal_value": 123000,
             "stage": "closed_won",
             "industry": "tech",
@@ -268,7 +318,7 @@ async def seed_negative_deal(urls: ServiceUrls, tenant_id: str, out_dir: Path):
     class _TmpDeal:
         def __init__(self):
             self.deal_id = deal_id
-            self.company_name = "Negative Mapping Co."
+            self.company_name = "PharmaLink Compliance-Heavy Int."
             self.industry = "tech"
             self.employee_count = 1200
             self.products = [type("P", (), {"name": "ClawdView Hub", "annual_value": 250000})()]
@@ -312,17 +362,27 @@ async def main():
     parser.add_argument("--backend_url", default="http://localhost:8000")
     parser.add_argument("--kc_uri", default=str(Path(__file__).parent.parent / "knowledge-center"))
     parser.add_argument("--skip_clean", action="store_true")
+    parser.add_argument("--lite", action="store_true", help="Limit to 3 deals and stagger delays to prevent API abuse")
     args = parser.parse_args()
 
     urls = ServiceUrls(hub=args.hub_url, crm=args.crm_url, graph=args.graph_url, backend=args.backend_url)
+
+    # Auto-resolve kc_uri to HTTPS if hitting production
+    kc_uri = args.kc_uri
+    is_local = kc_uri.lower().startswith("d:\\") or kc_uri.startswith("/")
+    if "localhost" not in args.hub_url and is_local:
+        # If we are hitting a remote hub but using a local path, switch to the public static site URL
+        project_id = config.project_id
+        kc_uri = f"https://storage.googleapis.com/{project_id}-knowledge-center/index.html"
+        print(f"[INFO] Remote Hub detected. Switching kc_uri to: {kc_uri}")
 
     if not args.skip_clean:
         clean_state()
 
     await healthcheck(urls)
 
-    tenant_id = await tenant_onboard(urls, "ClawdView Demo", args.kc_uri)
-    neg_tenant_id = await tenant_onboard_negative(urls, "ClawdView Negative Mapping", args.kc_uri)
+    tenant_id = await tenant_onboard(urls, "ClawdView Global Enterprise", kc_uri)
+    neg_tenant_id = await tenant_onboard_negative(urls, "ClawdView Regulatory High-Security", kc_uri)
 
     out_dir = Path(__file__).parent.parent / "crm-simulator" / "uploads" / "contracts"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -335,9 +395,10 @@ async def main():
     if neg_status != "error":
         raise RuntimeError(f"Expected integration_status=error for negative tenant, got {neg_status}")
 
-    await seed_deals_via_crm(urls, tenant_id, out_dir)
+    await seed_deals_via_crm(urls, tenant_id, out_dir, lite=args.lite)
 
-    for deal in DEMO_DEALS:
+    deals_to_process = DEMO_DEALS[:3] if args.lite else DEMO_DEALS
+    for deal in deals_to_process:
         summary = await wait_for_graph_ready(tenant_id, deal.deal_id, deal.company_name, timeout_s=900)
         client_id = summary.get("client_id") or f"{tenant_id}_{_slug_company(deal.company_name)}"
         await verify_outputs(urls, client_id)
@@ -357,4 +418,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

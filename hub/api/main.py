@@ -12,7 +12,7 @@ import re
 import logging
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from google.cloud import firestore
 import httpx
@@ -235,25 +235,37 @@ def remove_product(tenant_id: str, product_id: str):
 # ── Knowledge Generation ────────────────────────────────────────
 
 @app.post("/api/tenants/{tenant_id}/generate-knowledge")
-async def generate_knowledge(tenant_id: str):
-    """Generate AI-powered product knowledge nodes for all pending products."""
+async def generate_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
+    """Trigger tenant knowledge generation (background)."""
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
         raise HTTPException(404, f"Tenant {tenant_id} not found")
 
+    background_tasks.add_task(_run_generate_knowledge, tenant_id)
+    return {"status": "started", "tenant_id": tenant_id}
+
+
+async def _run_generate_knowledge(tenant_id: str):
+    """Background worker for knowledge generation."""
+    log.info(f"[HUB] Starting background knowledge generation for {tenant_id}")
+    doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        return
+
     tenant = TenantConfig(**doc.to_dict())
     pending = [p for p in tenant.products if not p.knowledge_generated]
 
     if not pending:
-        return {"message": "All products already have knowledge generated", "generated": 0}
+        log.info(f"[HUB] No pending products for {tenant_id}")
+        return
 
-    # Import here to avoid circular deps and make it optional
     from knowledge_generator import generate_product_knowledge
 
-    results = []
     for product in pending:
         try:
+            log.info(f"[HUB] Generating knowledge for product: {product.name}")
             node_count = await generate_product_knowledge(
                 tenant_id=tenant.tenant_id,
                 brand_name=tenant.brand_name,
@@ -261,18 +273,8 @@ async def generate_knowledge(tenant_id: str):
             )
             product.knowledge_generated = True
             product.node_count = node_count
-            results.append({
-                "product": product.name,
-                "status": "generated",
-                "nodes": node_count,
-            })
         except Exception as e:
             log.error(f"Failed to generate knowledge for {product.name}: {e}")
-            results.append({
-                "product": product.name,
-                "status": "failed",
-                "error": str(e),
-            })
 
     # Save updated product statuses
     tenant.updated_at = _now()
@@ -280,30 +282,34 @@ async def generate_knowledge(tenant_id: str):
         "products": [p.model_dump() for p in tenant.products],
         "updated_at": tenant.updated_at,
     })
-
-    return {"generated": len([r for r in results if r["status"] == "generated"]), "results": results}
+    log.info(f"[HUB] Completed knowledge generation for {tenant_id}")
 
 
 @app.post("/api/tenants/{tenant_id}/sync-knowledge")
-async def sync_knowledge(tenant_id: str):
-    """Trigger tenant knowledge sync in the Graph Generator."""
+async def sync_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
+    """Trigger tenant knowledge sync in the Graph Generator (background)."""
     doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
     if not doc.exists:
         raise HTTPException(404, f"Tenant {tenant_id} not found")
 
-    tenant = TenantConfig(**doc.to_dict())
-    sync_url = f"{GRAPH_GENERATOR_URL.rstrip('/')}/api/sync-knowledge/{tenant.tenant_id}"
+    background_tasks.add_task(_run_sync_knowledge_background, tenant_id)
+    return {"status": "started", "tenant_id": tenant_id}
+
+
+async def _run_sync_knowledge_background(tenant_id: str):
+    """Background worker to trigger the Graph Generator sync."""
+    log.info(f"[HUB] Triggering background sync-knowledge for {tenant_id}")
+    sync_url = f"{GRAPH_GENERATOR_URL.rstrip('/')}/api/sync-knowledge/{tenant_id}"
 
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            resp = await client.post(sync_url, json={"tenant_id": tenant.tenant_id})
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(sync_url)
             if resp.status_code >= 400:
-                raise HTTPException(resp.status_code, resp.text[:500])
-            return resp.json()
-    except HTTPException:
-        raise
+                log.error(f"[HUB] Graph Generator sync request failed: {resp.status_code} {resp.text}")
+            else:
+                log.info(f"[HUB] Successfully triggered sync in Graph Generator for {tenant_id}")
     except Exception as e:
-        raise HTTPException(500, f"Failed to sync knowledge: {e}")
+        log.error(f"[HUB] Failed to trigger sync in Graph Generator: {e}")
 
 
 # ── Test Webhook ─────────────────────────────────────────────────

@@ -1,6 +1,9 @@
-# 🛰️ Synapse API Reference
+# 🛰️ ClawdView (Synapse) API Reference
 
-Synapse uses a multi-tenant microservice architecture with 4 services. All requests support the `X-Tenant-ID` header for multi-tenant context.
+ClawdView is powered by the **Synapse Core Engine**, a multi-tenant microservice architecture. All requests support the `X-Tenant-ID` header for multi-tenant context.
+
+> [!NOTE]
+> All base URLs below are examples. Use `terraform output` after deployment to retrieve your specific service endpoints.
 
 ---
 

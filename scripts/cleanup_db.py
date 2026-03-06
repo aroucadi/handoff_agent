@@ -46,9 +46,17 @@ def main():
     collections = [
         "notifications",
         "skill_graphs",
+        "knowledge_graphs",
         "agent_traces",
         "sessions",
         "client_insights",
+        "deals",
+        "tenant_knowledge",
+        "skill_graph_nodes",
+        "tenants",
+        "crm_deals",
+        "crm_webhooks",
+        "graph_jobs",
     ]
     
     print("\n[1/3] Purging Firestore collections...")

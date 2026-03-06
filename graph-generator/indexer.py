@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import yaml
 from datetime import datetime
+import asyncio
 
 from google import genai
 from google.genai.types import EmbedContentConfig
@@ -48,26 +49,45 @@ def _extract_wikilinks(content: str) -> list[str]:
     return re.findall(r'\[\[([^\]]+)\]\]', content)
 
 
-async def generate_embedding(text: str) -> list[float]:
-    """Generate a vector embedding using gemini-embedding-001.
+EMBEDDING_SEMAPHORE = asyncio.Semaphore(5)
+
+
+async def generate_embedding(text: str, retries: int = 5) -> list[float]:
+    """Generate a vector embedding using gemini-embedding-001 with backoff.
 
     Args:
         text: Text to embed.
+        retries: Number of allowed retries on 429 errors.
 
     Returns:
         List of float values (768 dimensions for hackathon config).
     """
     client = genai.Client(vertexai=True, project=config.project_id, location=config.region)
+    delay = 1.0
 
-    result = await client.aio.models.embed_content(
-        model=config.embedding_model,
-        contents=text,
-        config=EmbedContentConfig(
-            output_dimensionality=config.embedding_dims,
-        ),
-    )
+    for attempt in range(retries):
+        try:
+            async with EMBEDDING_SEMAPHORE:
+                result = await client.aio.models.embed_content(
+                    model=config.embedding_model,
+                    contents=text,
+                    config=EmbedContentConfig(
+                        output_dimensionality=config.embedding_dims,
+                    ),
+                )
+                return result.embeddings[0].values
+        except Exception as e:
+            err_str = str(e).lower()
+            if "429" in err_str or "resource" in err_str or "quota" in err_str:
+                if attempt < retries - 1:
+                    print(f"[INDEXER] Rate limit / Resource Exhausted. Retrying embedding in {delay}s... (Attempt {attempt+1}/{retries})")
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                    continue
+            # If it's not a rate limit or we ran out of retries, raise it
+            raise
 
-    return result.embeddings[0].values
+    return []
 
 
 async def index_node(client_id: str, node_id: str, content: str) -> dict:

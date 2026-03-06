@@ -53,6 +53,19 @@ graph LR
     DASH -->|Fetch| API
     AV -->|Outputs| API
     CRMSIM -->|Webhook| API
+
+    subgraph Scripts ["Maintenance & Seeding"]
+        CU["cleanup_db.py"]
+        JR["journey_runner.py"]
+        TP["test_pipeline.py"]
+    end
+
+    CU -->|Reset| FS
+    CU -->|Reset| GCS
+    JR -->|Onboard| HubAPI
+    JR -->|Seed| CRMSIM
+    TP -->|Test| HubAPI
+    TP -->|Verify| FS
 ```
 
 ---
@@ -106,47 +119,59 @@ sequenceDiagram
 
 ---
 
+## Hub Integration Flow (Multi-Tenant)
+
+The Hub acts as a configuration layer that maps agnostic CRM data into the Synapse internal schema.
+
+```mermaid
+sequenceDiagram
+    participant CRM as Customer CRM
+    participant Hub as Synapse Hub (FastAPI)
+    participant UI as Hub UI (React)
+    participant Backend as Synapse API
+    
+    UI->>Hub: Define Tenant & Brand
+    UI->>Hub: Set Field Mappings (e.g. "DealName" -> "synapse_title")
+    Hub->>CRM: Register Webhook
+    CRM->>Hub: EVENT: "Deal Closed Won"
+    Hub-->>Hub: Resolve Mapping + Tenant Config
+    Hub->>Backend: POST /generate-knowledge (Structured Data)
+```
+
+---
+
 ## Ontology-Driven Graph Pipeline
+
+This pipeline transforms raw, unformatted CRM objects and web pages into a structured knowledge net.
 
 ```mermaid
 graph TD
-    subgraph Sources ["Data Sources"]
-        CRM["CRM Data (via Hub)"]
-        KC["Knowledge Center"]
-        TR["Sales Transcripts"]
+    subgraph Ingress ["Ingress Engine"]
+        W["Web Scraper (KC)"]
+        C["CRM Scraper (SalesClaw)"]
     end
 
-    subgraph Extractors ["Extractor Agents"]
-        CE["CRM Extractor"]
-        KCE["Knowledge Center Extractor"]
+    subgraph Extraction ["GenAI Extraction Layer"]
+        EX["Extractor Agent (Gemini 3.1 Pro)"]
+        SEM["Semaphore Control (limit=3)"]
     end
 
-    subgraph Generator ["Graph Generator"]
-        ONT["Ontology Schema (20+ types)"]
-        GEN["Generator Agent (Gemini 3.1 Pro)"]
-        REV["Reviewer Agent (QA)"]
+    subgraph Transformation ["Ontology Processing"]
+        TYP["Typed Node Construction (20+ types)"]
+        EDG["Typed Edge Linking (15+ types)"]
     end
 
-    subgraph Storage ["Firestore"]
-        ENT["Typed Entities"]
-        EDG["Typed Edges"]
-        VEC["Vector Embeddings"]
-        OUT["Versioned Outputs"]
+    subgraph Storage ["Persistent State"]
+        FS["Firestore (NoSQL Nodes)"]
+        VEC["Firestore Vector Search"]
     end
 
-    CRM --> CE
-    KC --> KCE
-    TR --> CE
-    CE -->|Entities + Relationships| GEN
-    KCE -->|KB Articles + Products| GEN
-    ONT -.->|Schema Validation| GEN
-    GEN -->|Draft Nodes| REV
-    REV -->|Validated Graph| ENT
-    REV --> EDG
-    ENT -->|Embed| VEC
-    
-    style ONT fill:#d4edda,stroke:#28a745
-    style REV fill:#cce5ff,stroke:#007bff
+    Ingress --> SEM
+    SEM --> EX
+    EX --> TYP
+    TYP --> EDG
+    EDG --> FS
+    FS --> VEC
 ```
 
 ### Entity Types (Ontology)
@@ -234,5 +259,24 @@ synapse/
 │       └── GraphPanel.tsx       # Typed entity visualization
 ├── core/                       # Shared Config + DB
 ├── infra/                      # Terraform (4 modules)
-└── scripts/                    # deploy.ps1, start-local, teardown
+└── scripts/                    # Maintenance & Seeding Scripts
+    ├── deploy.ps1              # Full Infra + App deployment
+    ├── cleanup_db.py           # Atomic Firestore + GCS purge
+    ├── journey_runner.py       # Tenant onboarding + demo seeding
+    └── test_pipeline.py        # E2E integration verification
 ```
+
+---
+
+## Script Interoperability & Terraform Integration
+
+The maintenance scripts are designed to work together as an atomic pipeline. They dynamically resolve infrastructure state using Terraform outputs to ensure consistency across environments.
+
+### The "Perfect Run" Sequence
+See [PERFECT_RUN.md](PERFECT_RUN.md) for the exact command sequence.
+
+### Terraform Logic
+The scripts utilize `terraform output -raw <variable>` to satisfy the following dependencies:
+- **`hub_url`**: Used by `journey_runner.py` to target the correct multi-tenant entry point.
+- **`crm_simulator_url`**: Used by both `journey_runner.py` and `test_pipeline.py` for deal simulation.
+- **`firestore_database`**: Ensures `cleanup_db.py` targets the correct native-mode instance.

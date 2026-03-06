@@ -129,25 +129,31 @@ const TenantWizard: React.FC = () => {
                 </p>
             </div>
 
-            <div className="wizard-progress flex gap-2 mb-12 bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-3xl">
+            <div className="wizard-progress flex gap-4 mb-12 p-2 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-3xl">
                 {steps.map(s => (
                     <div
                         key={s.n}
                         className={`
-                            flex-1 py-4 text-center rounded-xl cursor-pointer transition-all duration-500 flex items-center justify-center gap-2
+                            flex-1 py-4 text-center rounded-xl cursor-pointer transition-all duration-500 flex flex-col items-center justify-center gap-2 relative
                             ${step === s.n
                                 ? 'bg-primary-purple text-white font-bold shadow-lg shadow-primary-purple/20 scale-[1.02]'
                                 : step > s.n
-                                    ? 'text-emerald-400/80 hover:text-emerald-400'
-                                    : 'text-slate-500 hover:text-slate-300 font-semibold'
+                                    ? 'text-emerald-400'
+                                    : 'text-slate-500'
                             }
-                            text-[10px] uppercase tracking-widest
                         `}
                         onClick={() => setStep(s.n)}
                     >
-                        <span className="opacity-40">{s.n}</span>
-                        <span>{s.title}</span>
-                        {step > s.n && <span className="text-[10px]">✓</span>}
+                        <div className={`
+                            w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 mb-1
+                            ${step === s.n ? 'border-white bg-white/20' : step > s.n ? 'border-emerald-400 bg-emerald-400/10' : 'border-slate-700 bg-slate-800'}
+                        `}>
+                            {step > s.n ? '✓' : s.n}
+                        </div>
+                        <span className="text-[10px] uppercase font-black tracking-widest">{s.title}</span>
+                        {step === s.n && (
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-[0_0_10px_white]" />
+                        )}
                     </div>
                 ))}
             </div>

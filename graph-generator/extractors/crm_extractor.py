@@ -139,7 +139,8 @@ def extract_entities_from_crm(payload: dict) -> dict:
                     })
 
     # ── Products (Deal → Product edges) ─────────────────────
-    for j, product_name in enumerate(products):
+    for j, product_item in enumerate(products):
+        product_name = product_item.get("name", "") if isinstance(product_item, dict) else product_item
         p_id = f"product_{product_name.lower().replace(' ', '-')}"
         # Don't create the Product node here — it comes from the Knowledge Center
         # Only create the edge linking the deal to the product

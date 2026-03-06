@@ -87,7 +87,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name  = "GRAPH_GENERATOR_URL"
-        value = "${google_cloud_run_v2_service.graph_generator.uri}/generate"
+        value = google_cloud_run_v2_service.graph_generator.uri
       }
       env {
         name  = "CRM_SIMULATOR_URL"
@@ -301,6 +301,10 @@ resource "google_cloud_run_v2_service" "hub" {
       env {
         name  = "PYTHONUNBUFFERED"
         value = "1"
+      }
+      env {
+        name  = "GRAPH_GENERATOR_URL"
+        value = google_cloud_run_v2_service.graph_generator.uri
       }
       env {
         name = "GEMINI_API_KEY"

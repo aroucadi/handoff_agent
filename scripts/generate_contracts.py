@@ -18,39 +18,64 @@ sys.path.append(str(crm_sim_path))
 
 from seed_data import DEMO_DEALS
 
-CLAWDVIEW_TERMS = [
-    "1. MASTER SUBSCRIPTION AGREEMENT",
-    "This Master Subscription Agreement ('Agreement') is entered into by and between ClawdView, Inc. ('ClawdView') and the Customer.",
-    "",
-    "2. PROVISION OF PURCHASED SERVICES",
-    "ClawdView will (a) make the Services available to Customer pursuant to this Agreement, and the applicable Order Forms, (b) provide applicable ClawdView standard support.",
-    "",
-    "3. USE OF SERVICES AND CONTENT",
-    "Customer will (a) be responsible for Users' compliance with this Agreement, (b) be responsible for the accuracy, quality and legality of Customer Data.",
-    "",
-    "4. FEES AND PAYMENT",
-    "Customer will pay all fees specified in Order Forms. Except as otherwise specified herein or in an Order Form, (i) fees are based on Services and Content subscriptions purchased and not actual usage."
+CLAWDVIEW_MSA = [
+    ("1. DEFINITIONS", [
+        "'Affiliate' means any entity that is controlled by, under common control with, or controls a party.",
+        "'Customer Data' means electronic data and information submitted by or for Customer to the Services.",
+        "'Services' means the ClawdView products and services ordered by Customer under an Order Form."
+    ]),
+    ("2. PROVISION OF SERVICES", [
+        "ClawdView will (a) make the Services available to Customer pursuant to this Agreement and the applicable Order Forms, (b) provide standard support for the Services at no additional charge, and (c) use commercially reasonable efforts to make the online Services available 24 hours a day, 7 days a week.",
+        "The Services are subject to usage limits, including, for example, the quantities specified in Order Forms."
+    ]),
+    ("3. PROPRIETARY RIGHTS AND LICENSES", [
+        "ClawdView reserves all rights, title and interest in and to the Services and Content, including all related intellectual property rights.",
+        "Customer grants ClawdView a worldwide, limited-term license to host, copy, transmit and display Customer Data as necessary for ClawdView to provide the Services."
+    ]),
+    ("4. CONFIDENTIALITY", [
+        "'Confidential Information' means all information disclosed by a party to the other party that is designated as confidential or that reasonably should be understood to be confidential given the nature of the information.",
+        "The receiving party will use the same degree of care that it uses to protect the confidentiality of its own confidential information (but not less than reasonable care)."
+    ]),
+    ("5. LIMITATION OF LIABILITY", [
+        "IN NO EVENT SHALL THE AGGREGATE LIABILITY OF EACH PARTY ARISING OUT OF OR RELATED TO THIS AGREEMENT EXCEED THE TOTAL AMOUNT PAID BY CUSTOMER HEREUNDER FOR THE SERVICES GIVING RISE TO THE LIABILITY IN THE TWELVE MONTHS PRECEDING THE FIRST INCIDENT OUT OF WHICH THE LIABILITY AROSE."
+    ]),
+    ("6. TERM AND TERMINATION", [
+        "This Agreement commences on the date Customer first accepts it and continues until all subscriptions hereunder have expired or have been terminated.",
+        "Either party may terminate this Agreement for cause (i) upon 30 days written notice to the other party of a material breach if such breach remains uncured at the expiration of such period."
+    ])
 ]
 
 
 PRODUCT_CLAUSES = {
     "agileplace": [
-        "AgilePlace includes enterprise Kanban, team planning, and portfolio rollups.",
-        "Customer will designate an Agile Coach and provide 2 hours/week for working sessions during rollout."
+        "AgilePlace Enterprise Subscription includes unlimited Kanban boards, portfolio rollups, and cross-team dependency tracking.",
+        "Rollout Support: Customer will designate one (1) 'Agile Champion' per business unit to serve as the primary point of contact for ClawdView's implementation team.",
+        "Methodology Alignment: ClawdView provides standard templates for SAFe, Scrum, and Kanban; custom schema modifications are subject to the Professional Services SOW."
     ],
     "portfolios": [
-        "Portfolios includes portfolio hierarchy, investment planning, and strategic alignment reporting.",
-        "Executive dashboards will be delivered using standard templates unless custom requirements are documented in Exhibit B."
+        "Portfolios Strategic Tier includes investment prioritization, capacity planning, and executive 'What-If' scenario modeling.",
+        "Data Accuracy: Portfolio health scores depend on the accuracy of underlying project metadata provided from connected systems via ClawdView Hub.",
+        "Strategic Alignment: Customer is responsible for defining the 'Strategic Drivers' and 'Themes' used in the prioritization engine."
     ],
     "hub": [
-        "Hub includes bidirectional integrations and field mapping configuration.",
-        "Customer will provide sandbox credentials for connected systems and approve mapping rules prior to production sync."
+        "ClawdView Hub Enterprise Gateway includes high-concurrency ETL workers and real-time webhook propagation.",
+        "Sandbox Access: Customer must provide ClawdView with persistent access to non-production versions of external CRM/ERP systems for mapping verification.",
+        "Mapping Governance: Hub mapping rules must be signed off by Customer's Data Architect prior to enabling 'Production Sync' mode."
     ],
     "ppm-pro": [
-        "PPM Pro includes project intake, resource planning, and time-phased financials.",
-        "Resource planning accuracy depends on timely updates by project managers and functional leads."
+        "PPM Pro Core includes project intake workflows, resource request management, and time-phased financial planning.",
+        "Resource Leveling: Automated resource leveling suggestions are based on 100% allocation defaults unless individual calendars are configured.",
+        "Financial Integration: CSV or API-based export of financial actuals follows the ClawdView Standard Financial Schema (v4.2)."
     ],
 }
+
+
+SLA_TIERS = [
+    ("Critical", "30 Minutes", "24/7", "Complete loss of service for all users"),
+    ("High", "2 Hours", "24/7", "Significant degradation of key product features"),
+    ("Medium", "8 Business Hours", "9am-5pm EST", "Minor functional issues / usability requests"),
+    ("Low", "24 Business Hours", "9am-5pm EST", "General questions or documentation requests")
+]
 
 
 def _product_key(name: str) -> str:
@@ -59,38 +84,59 @@ def _product_key(name: str) -> str:
         return "agileplace"
     if "portfolios" in n:
         return "portfolios"
-    if " hub" in n or n.endswith("hub"):
+    if "hub" in n:
         return "hub"
     if "ppm" in n:
         return "ppm-pro"
     return "generic"
 
 
+def _clean_text(text: str) -> str:
+    """Sanitize text for FPDF Helvetica (Latin-1)."""
+    if not text:
+        return ""
+    # Map common problematic characters to Latin-1 compatible ones
+    replacements = {
+        "\u2022": "-",  # Bullet
+        "\u2013": "-",  # En-dash
+        "\u2014": "--", # Em-dash
+        "\u2018": "'",  # Left single quote
+        "\u2019": "'",  # Right single quote
+        "\u201c": '"',  # Left double quote
+        "\u201d": '"',  # Right double quote
+        "\u2026": "...", # Ellipsis
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    # Encode to latin-1 and ignore what's left to avoid FPDF errors
+    return text.encode("latin-1", errors="ignore").decode("latin-1")
+
+
 def _add_title(pdf: FPDF, title: str, subtitle: str | None = None):
     pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 10, _clean_text(title), new_x="LMARGIN", new_y="NEXT", align="C")
     if subtitle:
         pdf.set_font("Helvetica", "", 11)
-        pdf.cell(0, 7, subtitle, new_x="LMARGIN", new_y="NEXT", align="C")
+        pdf.cell(0, 7, _clean_text(subtitle), new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(4)
 
 
 def _add_h2(pdf: FPDF, text: str):
     pdf.set_font("Helvetica", "B", 12)
-    pdf.multi_cell(0, 7, text=text, new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 7, text=_clean_text(text), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
 
 def _add_paragraph(pdf: FPDF, text: str):
     pdf.set_font("Helvetica", "", 10)
-    pdf.multi_cell(0, 5, text=text, new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 5, text=_clean_text(text), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
 
 def _add_bullets(pdf: FPDF, bullets: list[str]):
     pdf.set_font("Helvetica", "", 10)
     for b in bullets:
-        pdf.multi_cell(0, 5, text=f"• {b}", new_x="LMARGIN", new_y="NEXT")
+        pdf.multi_cell(0, 5, text=f"- {_clean_text(b)}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
 
@@ -125,13 +171,11 @@ def generate_pdf_contract(deal, out_file):
 
     pdf.add_page()
     _add_title(pdf, "Master Subscription Agreement (MSA)")
-    _add_h2(pdf, "Standard Terms & Conditions")
-    pdf.set_font("Helvetica", "", 10)
-    for line in CLAWDVIEW_TERMS:
-        if line:
-            _add_paragraph(pdf, line)
-        else:
-            pdf.ln(2)
+    _add_h2(pdf, "Confidentiality & Terms")
+    for section_title, bullets in CLAWDVIEW_MSA:
+        _add_h2(pdf, section_title)
+        _add_bullets(pdf, bullets)
+        pdf.ln(1)
 
     pdf.add_page()
     _add_title(pdf, "Exhibit A — Data Processing, Security & SLA Addendums")
@@ -161,6 +205,36 @@ def generate_pdf_contract(deal, out_file):
         _add_bullets(pdf, [
             "Customer requires secure handling of sensitive operational data and documented incident response process.",
             "Customer may require contractual commitments for data access logging and retention.",
+        ])
+    elif industry == "biotech":
+        _add_bullets(pdf, [
+            "Customer requires FDA-compliant data lineage and audit trails for all project metadata.",
+            "Adherence to GxP (Good Practice) guidelines for digital systems handling research data.",
+        ])
+    elif industry == "logistics":
+        _add_bullets(pdf, [
+            "ClawdView Hub will provide real-time status synchronization hooks for primary logistics hubs.",
+            "Customer requires 99.9% availability for the Hub integration layer during peak transit windows.",
+        ])
+    elif industry == "fintech":
+        _add_bullets(pdf, [
+            "Customer requires PCI-DSS-compliant data handling for any integrated financial metadata.",
+            "Enhanced encryption at rest for all strategic portfolio artifacts.",
+        ])
+    elif industry == "hospitality":
+        _add_bullets(pdf, [
+            "Multi-site regional access controls for property-specific project visibility.",
+            "Integration with legacy property management systems via ClawdView Hub.",
+        ])
+    elif industry == "e-commerce":
+        _add_bullets(pdf, [
+            "Quarterly strategic review of peak-season scalability requirements.",
+            "Data residency compliance for international consumer market operations.",
+        ])
+    elif industry == "construction":
+        _add_bullets(pdf, [
+            "On-site mobile access optimizations for field-based project team members.",
+            "Support for large-scale blueprint and site-survey metadata extraction.",
         ])
     else:
         _add_bullets(pdf, [
@@ -192,6 +266,43 @@ def generate_pdf_contract(deal, out_file):
         "Requires configuration of ClawdView Hub mappings for connected systems.",
         "Customer will provide sandbox access and approve mapping rules prior to production sync.",
         "Any custom integration development must be documented in a separate SOW.",
+    ])
+
+    pdf.add_page()
+    _add_title(pdf, "Exhibit C — Service Level Agreement (SLA)")
+    _add_h2(pdf, "1. Uptime Commitment")
+    _add_paragraph(pdf, "ClawdView will use commercially reasonable efforts to make the Services available with a System Availability of at least 99.9% during each calendar month.")
+    
+    _add_h2(pdf, "2. Support Response Times")
+    # Small manual table for SLA
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.cell(30, 7, "Severity", border=1, align="C")
+    pdf.cell(40, 7, "Target Response", border=1, align="C")
+    pdf.cell(40, 7, "Coverage", border=1, align="C")
+    pdf.cell(80, 7, "Description", border=1, align="C", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Helvetica", "", 8)
+    for sev, resp, cov, desc in SLA_TIERS:
+        pdf.cell(30, 7, sev, border=1)
+        pdf.cell(40, 7, resp, border=1)
+        pdf.cell(40, 7, cov, border=1)
+        pdf.multi_cell(80, 7, desc, border=1, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.add_page()
+    _add_title(pdf, "Exhibit D — Commercial Penalties & Termination")
+    _add_h2(pdf, "1. Service Credits")
+    _add_paragraph(pdf, "In the event of a failure to meet the 99.9% uptime commitment, Customer will be eligible to receive Service Credits as follow:")
+    _add_bullets(pdf, [
+        "99.0% - 99.9% uptime: 5% of monthly fees credited",
+        "95.0% - 99.0% uptime: 15% of monthly fees credited",
+        "Below 95.0% uptime: 25% of monthly fees credited"
+    ])
+    
+    _add_h2(pdf, "2. Late Payments & Penalties")
+    _add_bullets(pdf, [
+        "Late payments are subject to periodic interest at the rate of 1.5% per month.",
+        "Termination by Customer for convenience requires 90-day written notice and payment of 50% of remaining contract value as a liquidation fee.",
+        "Data export upon termination: ClawdView will provide a JSON/CSV data export for 30 days following termination; thereafter, data will be purged."
     ])
 
     pdf.add_page()
