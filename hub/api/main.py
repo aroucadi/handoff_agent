@@ -107,6 +107,26 @@ def create_tenant(req: CreateTenantRequest):
     return tenant
 
 
+# ── Job Observability ──────────────────────────────────────────
+
+@app.get("/api/jobs")
+def list_graph_jobs(limit: int = 20):
+    """List recent graph generation jobs from Firestore."""
+    jobs_ref = db.collection("graph_jobs")
+    query = jobs_ref.order_by("started_at", direction=firestore.Query.DESCENDING).limit(limit)
+    docs = query.stream()
+    return [doc.to_dict() for doc in docs]
+
+
+@app.get("/api/jobs/{job_id}")
+def get_graph_job(job_id: str):
+    """Get status and details of a specific graph job."""
+    doc = db.collection("graph_jobs").document(job_id).get()
+    if not doc.exists:
+        raise HTTPException(404, f"Job {job_id} not found")
+    return doc.to_dict()
+
+
 @app.get("/api/tenants/{tenant_id}", response_model=TenantConfig)
 def get_tenant(tenant_id: str):
     """Retrieve a tenant's full configuration."""

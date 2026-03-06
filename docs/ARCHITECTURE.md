@@ -174,6 +174,41 @@ graph TD
     FS --> VEC
 ```
 
+---
+
+## 🎙️ Multimodal Live Session Loop
+
+The Live Agent (Gemini 2.5 Flash) operates in an immersive, low-latency loop that combines real-time sensory inputs with grounded knowledge.
+
+```mermaid
+graph LR
+    subgraph Client ["Frontend (React)"]
+        MIC["Audio (PCM)"]
+        VSN["Vision (JPEG)"]
+        UI["React Flow Dashboard"]
+    end
+
+    subgraph Backend ["Synapse API (Live)"]
+        LIV["Gemini Live Session"]
+        GND["Grounding Logic"]
+        ADK["ADK Tools"]
+    end
+
+    subgraph Store ["Persistence"]
+        FS["Firestore (Knowledge)"]
+        GCS["GCS (Artifacts)"]
+    end
+
+    MIC -->|WSS| LIV
+    VSN -->|WSS| LIV
+    LIV <--> GND
+    GND <--> ADK
+    ADK <--> FS
+    LIV -->|Trigger| GCS
+    LIV -->|Audio Chunks| MIC
+    FS -->|Active Node| UI
+```
+
 ### Entity Types (Ontology)
 
 | Category | Types |

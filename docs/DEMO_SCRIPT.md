@@ -1,33 +1,47 @@
-# Synapse: "Golden Run" Demo Script
+# 🎬 ClawdView Gemini Live — Gold Standard Demo Script (4 Minutes)
 
-**Target Length:** 4 minutes
-**Goal:** Prove the Level 5 Multimodal Agent architecture (Vision + Voice + Tooling) without any "text box" interactions. Prove hallucination-free grounding via the dynamic React Flow skill graph.
+This script is designed to maximize scores across all hackathon rubric categories. Follow this timeline for a perfect, "no-hallucination" delivery.
 
 ---
 
-### Phase 1: The Hook (0:00 - 0:30)
-* **Visual:** Browser showing the new `/` landing page. Dark theme, animated particles, "The Living Memory of Your Customer Journey".
-* **Narrator:** *"80% of customer knowledge is lost between Sales and Customer Success. Synapse fixes this immediately. It's a Level 5 Multimodal AI Live Agent. Watch what happens when a deal closes."*
-* **Action:** Click "🚀 Launch Dashboard".
-* **Visual:** Dashboard loads. Click "Simulate Deal Won".
-* **Narrator:** *"A webhook fires. Our backend Cloud Run service uses Gemini 3.1 Pro to automatically extract entities from the CRM notes into a navigable skill graph stored in Firestore."*
+## ⏱️ Minute 1: The Multi-Tenant Setup (Innovation & UX)
+**Scene**: Synapse Hub Dashboard.
+- **Action**: Click "Create New Tenant". Name it "ClawdView Global".
+- **Narration**: "Welcome to ClawdView. We're moving beyond static chatbots to living customer intelligence. I'm setting up a new enterprise tenant in our multi-tenant Hub."
+- **Action**: Show the **CRM Field Mapping** tab (Salesforce/HubSpot). 
+- **Narration**: "We use a dynamic mapping engine to translate agnostic CRM webhooks into our internal ontology. One click, and we're ready to ingest."
 
-### Phase 2: Live Conversation & Graph Traversal (0:30 - 2:00)
-* **Action:** Click "Start Briefing" next to the new client.
-* **Visual:** Split-screen loads. **Orb starts pulsing (Standing by).** React Flow topology loads on the right.
-* **Action:** Press the Spacebar (Mic On).
-* **You (Voice):** *"Synapse, I'm taking over the Acme Corp account. What's the main implementation blocker?"*
-* **Visual:** Watch the **Synapse Orb** spin up into the multi-ring "speaking" state as the agent replies via WebRTC audio. **CRUCIAL:** Point the mouse to the React Flow graph. You will see the agent call the `follow_link` tool and the nodes literally **pulse cyan** as the agent reads the data.
-* **Synapse (Voice):** *"Acme Corp is blocked by legacy AS/400 integration. They need single sign-on before Q3."*
-* **Narrator:** *"Notice the graph. The agent isn't hallucinating. It is restricted to reading the skill graph using strict tool calls. You see exactly what it's thinking."*
+---
 
-### Phase 3: The Vision Flex (2:00 - 3:00)
-* **Action:** Click the "Share Vision (💻)" button. A screen-share picker appears. Select a window showing a mock technical architecture diagram or an angry customer email.
-* **You (Voice):** *"Synapse, look at this architecture diagram I'm sharing. Does this match the requirements we discussed during the sales cycle?"*
-* **Synapse (Voice):** "Welcome back, Alex. I see you're logged in with your **CSM** persona for the **GlobalManufacturing** account. We have a new **Delta Graph** ready from their latest expansion deal. Ready to dive into the new stakeholder risks?"
-* **Synapse (Voice):** *"I see the diagram includes a Postgres database, but my graph shows the client specifically requested an Oracle integration in the initial scoping call. This might be a mismatch."*
-* **Narrator:** *"This is true multimodal capability. Screen sharing paired with deeply grounded, customer-specific knowledge."*
+## ⏱️ Minute 2: The Graph Pipeline (Technical Implementation)
+**Scene**: Hub "Integration Status" page with the new **Job Ledger**.
+- **Action**: Fire a test webhook from the UI. Refresh to show the **Job Ledger**.
+- **Narration**: "Watch the Graph Generator in action. It's currently extracting entities from a CRM payload, a sales transcript, and a multi-page PDF contract using Gemini 3.1 Pro."
+- **Action**: Hover over the job status (Extracting -> Indexing -> Complete).
+- **Narration**: "Our architecture is robust and grounded. We use asyncio semaphores to prevent API abuse and persist every extraction as a typed node in Firestore."
 
-### Phase 4: Cinematic Outro (3:00 - 4:00)
-* **Narrator:** *"Synapse is deployed via one-click Terraform on Google Cloud. We built this from scratch for the Gemini Live Agent Challenge."*
-* **Video Edit:** Cut from the live demo to the **Remotion Brand Video** (`frontend/public/synapse-brand.mp4`) to play out the final 60 seconds of the video, showcasing the animations, Level 5 capabilities recap, and the final hackathon badge.
+---
+
+## ⏱️ Minute 3: The Live Multimodal Session (The "WOW" Factor)
+**Scene**: ClawdView Voice UI. Start a "CSM Briefing".
+- **Action**: Enable **Microphone** and **Screen Share** (Vision). Show a Google Search result or a SalesClaw deal page.
+- **Narration**: "Now, the real magic. I'm starting a Gemini Live session. I'm sharing my screen so the agent can see what I see."
+- **Agent Greeting**: "Hello [Your Name], I'm your strategist for the Acme Corp account."
+- **Interaction**: "Hey, I'm looking at this contract section on my screen. What are the key milestones?"
+- **Narration**: "Note the vision grounding. The agent analyzes the live frames to answer questions about the visual context."
+
+---
+
+## ⏱️ Minute 4: Tool Calling & Artifacts (Architecture)
+**Scene**: Voice UI with "Action Chips".
+- **Action**: Ask the agent: "Based on the risks we found, generate a Discovery Guide for the next call."
+- **Narration**: "The agent isn't just talking. It's using **ADK Tool Calling** to query our knowledge graph and trigger specialized output generators."
+- **Action**: Show the generated PDF/Markdown artifact appearing in the UI.
+- **Narration**: "In 4 minutes, we went from raw CRM data to a grounded, vision-aware briefing with production-ready artifacts. That is the power of ClawdView."
+
+---
+
+## 💡 Quick Tips for Success
+1.  **Barge-In**: Interrupt the agent once! It proves the "Live" nature.
+2.  **Vision Proof**: Move your mouse or scroll the page while the agent is talking about the visual content.
+3.  **Cloud Proof**: Have the Google Cloud Console (Cloud Run logs) open in a side tab to show during the "Cloud Proof" clip.

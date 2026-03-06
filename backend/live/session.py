@@ -267,6 +267,10 @@ class LiveSession:
 
         return (
             f"{role_prompt}\n\n"
+            f"## Multimodal Awareness (CRITICAL)\n"
+            f"- **VISUAL INPUT**: You are receiving a high-frequency live stream of the user's screen (Vision). \n"
+            f"- **GROUNDING**: If the user asks 'What do you see?' or refers to 'this' while showing a document/CRM page, analyze the visual frames to give a grounded answer.\n"
+            f"- **AUDIO INPUT**: You are in a real-time voice session. Speak naturally, be concise, and handle interruptions (barge-in) gracefully.\n\n"
             f"## Current Session Context\n"
             f"- Client ID: {self.client_id}\n"
             f"- User Name: {self.csm_name}\n"
@@ -276,8 +280,8 @@ class LiveSession:
             f"{deal_context}"
             f"{focus_hint}\n"
             f"IMPORTANT: When using tools, always pass client_id=\"{self.client_id}\".\n"
-            f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality). Do not just output text silently.\n"
-            f"Start by greeting the user naturally by their first name only. You are {role_config['greeting_style']}."
+            f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality).\n"
+            f"Start by greeting {self.csm_name} naturally (first name ONLY). You are {role_config['greeting_style']}."
         )
 
     async def connect(self):
