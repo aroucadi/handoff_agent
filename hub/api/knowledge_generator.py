@@ -15,7 +15,7 @@ from textwrap import dedent
 
 from google import genai
 from google.cloud import storage, firestore
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 from models import Product
 
@@ -23,7 +23,7 @@ log = logging.getLogger("hub.knowledge")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SKILL_GRAPHS_BUCKET = os.environ.get("SKILL_GRAPHS_BUCKET", "")
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.1-flash-lite-preview"
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 gcs = storage.Client()
@@ -96,6 +96,7 @@ async def generate_product_knowledge(
         config=GenerateContentConfig(
             temperature=0.4,
             max_output_tokens=4096,
+            thinking_config=ThinkingConfig(thinking_level="high"),
         ),
     )
 

@@ -11,7 +11,7 @@ import asyncio
 from datetime import date, datetime
 
 from google import genai
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 import os
 import sys
@@ -187,11 +187,14 @@ async def generate_client_nodes(
         from core.telemetry import record_trace
         start_gen_time = datetime.utcnow()
         
+        thinking_config = ThinkingConfig(thinking_level="high")
+        
         raw_text = await generate_content_with_fallback(
             contents=prompt,
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
         )
         end_gen_time = datetime.utcnow()
         
@@ -218,6 +221,7 @@ async def generate_client_nodes(
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
         )
         end_rev_time = datetime.utcnow()
         
@@ -346,11 +350,14 @@ async def generate_structured_entities(
         )
 
         start_time = datetime.utcnow()
+        thinking_config = ThinkingConfig(thinking_level="high")
+        
         raw_text = await generate_content_with_fallback(
             contents=prompt,
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
         )
         end_time = datetime.utcnow()
 
