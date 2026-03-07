@@ -52,13 +52,33 @@ export default function Dashboard() {
     const config = ROLE_CONFIG[roleId] || ROLE_CONFIG['csm'];
 
     const [deals, setDeals] = useState<Deal[]>([]);
+    const [tenantConfig, setTenantConfig] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [artifactCounts, setArtifactCounts] = useState<Record<string, Record<string, number>>>({});
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerClientId, setViewerClientId] = useState('');
 
+    const activeStageLabels = {
+        ...STAGE_LABELS,
+        ...(tenantConfig?.agent?.stage_display_config || {})
+    };
+
     useEffect(() => {
+        const fetchTenantConfig = async () => {
+            if (!tenantId) return;
+            try {
+                const baseUrl = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${baseUrl}/api/tenants/${tenantId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setTenantConfig(data);
+                }
+            } catch (err) {
+                console.error('Fetch tenant config error:', err);
+            }
+        };
+
         const fetchDeals = async () => {
             try {
                 const baseUrl = import.meta.env.VITE_API_URL || '';
@@ -84,14 +104,14 @@ export default function Dashboard() {
 
                 setDeals(mapped);
             } catch (err) {
-                console.error('Fetch error:', err);
+                console.error('Fetch deals error:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchDeals();
-    }, [roleId, config.stages]);
+        fetchTenantConfig().then(fetchDeals);
+    }, [roleId, config.stages, tenantId]);
 
     // Fetch artifact counts per client
     const fetchArtifactCounts = useCallback(async (clientIds: string[]) => {
@@ -219,7 +239,7 @@ export default function Dashboard() {
                                         <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">
                                             <Circle size={8} className="fill-primary-purple text-primary-purple" /> Nexus Stage
                                         </p>
-                                        <p className="text-md font-bold text-white/80">{STAGE_LABELS[deal.stage] || deal.stage}</p>
+                                        <p className="text-md font-bold text-white/80">{activeStageLabels[deal.stage] || deal.stage}</p>
                                     </div>
                                     <div className="space-y-2">
                                         <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">

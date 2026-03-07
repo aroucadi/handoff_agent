@@ -48,6 +48,7 @@ class KnowledgeSourceType(str, Enum):
     WEBSITE_CRAWL = "website_crawl"
     DOCUMENT_UPLOAD = "document_upload"
     ZENDESK_API = "zendesk_api"
+    CONFLUENCE_API = "confluence_api"
 
 
 class SyncStatus(str, Enum):
@@ -89,12 +90,24 @@ class CrmConnection(BaseModel):
         "sales_transcript": "sales_transcript",
         "contract_pdf_url": "contract_pdf_url",
     })
+    # Stage Normalization: source stage -> canonical Synapse stage
+    # Canonical stages: closed_won, prospecting, qualification, negotiation, implemented, closed_lost
+    stage_mapping: dict[str, str] = Field(default_factory=dict)
 
 
 class AgentConfig(BaseModel):
     roles: list[str] = Field(default_factory=lambda: ["csm", "sales", "support"])
     persona: str = ""
     brand_name: str = ""
+    # Stage Display: internal stage -> human-readable label
+    stage_display_config: dict[str, str] = Field(default_factory=lambda: {
+        "closed_won": "Won",
+        "prospecting": "Prospecting",
+        "qualification": "Qualifying",
+        "negotiation": "Negotiating",
+        "implemented": "Deployed",
+        "closed_lost": "Lost"
+    })
 
 
 class KnowledgeSource(BaseModel):
@@ -102,6 +115,7 @@ class KnowledgeSource(BaseModel):
     type: KnowledgeSourceType
     uri: str  # URL, GCS path, or API endpoint
     name: str = ""
+    config: dict = Field(default_factory=dict) # Connector-specific configuration
     status: SyncStatus = SyncStatus.PENDING
     last_synced_at: Optional[str] = None
 
@@ -116,6 +130,8 @@ class TenantConfig(BaseModel):
     products: list[Product] = Field(default_factory=list)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     knowledge_sources: list[KnowledgeSource] = Field(default_factory=list)
+    # Product Aliases: source CRM product name -> internal canonical slug
+    product_alias_map: dict[str, str] = Field(default_factory=dict)
     webhook_url: str = ""  # auto-provisioned: graph-generator ingest endpoint
     webhook_secret: str = Field(
         default_factory=lambda: secrets.token_hex(32)  # HMAC-SHA256 key
@@ -144,6 +160,7 @@ class UpdateTenantRequest(BaseModel):
     crm: Optional[CrmConnection] = None
     agent: Optional[AgentConfig] = None
     knowledge_sources: Optional[list[KnowledgeSource]] = None
+    product_alias_map: Optional[dict[str, str]] = None
     webhook_url: Optional[str] = None
     status: Optional[TenantStatus] = None
 

@@ -1,9 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CrmConfig from './CrmConfig.tsx';
+import MappingConfig from './MappingConfig.tsx';
+import KnowledgeSourcesConfig from './KnowledgeSourcesConfig.tsx';
 import ProductCatalog from './ProductCatalog.tsx';
 import AgentConfig from './AgentConfig.tsx';
 import TestPanel from './TestPanel.tsx';
+
+interface Product {
+    product_id: string;
+    name: string;
+    description: string;
+    knowledge_generated: boolean;
+    node_count: number;
+}
+
+interface KnowledgeSource {
+    source_id: string;
+    type: string;
+    uri: string;
+    name: string;
+    config: Record<string, any>;
+    status: string;
+}
+
+interface TenantConfig {
+    name: string;
+    brand_name: string;
+    crm: {
+        crm_type: string;
+        crm_url: string;
+        auth_method: string;
+        field_mapping: Record<string, string>;
+        stage_mapping: Record<string, string>;
+    };
+    product_alias_map: Record<string, string>;
+    knowledge_sources: KnowledgeSource[];
+    products: Product[];
+    agent: {
+        roles: string[];
+        persona: string;
+        brand_name: string;
+        stage_display_config: Record<string, string>;
+    };
+    webhook_url: string;
+    status: string;
+}
 
 const TenantWizard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -11,37 +53,31 @@ const TenantWizard: React.FC = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(id ? true : false);
 
-    const [config, setConfig] = useState<{
-        name: string;
-        brand_name: string;
-        crm: {
-            crm_type: string;
-            crm_url: string;
-            auth_method: string;
-            field_mapping: Record<string, string>;
-        };
-        products: { product_id: string; name: string; description: string; knowledge_generated: boolean; node_count: number }[];
-        agent: {
-            roles: string[];
-            persona: string;
-            brand_name: string;
-        };
-        webhook_url: string;
-        status: string;
-    }>({
+    const [config, setConfig] = useState<TenantConfig>({
         name: '',
         brand_name: '',
         crm: {
             crm_type: 'salesforce',
             crm_url: '',
             auth_method: 'api_key',
-            field_mapping: {}
+            field_mapping: {},
+            stage_mapping: {}
         },
+        product_alias_map: {},
+        knowledge_sources: [],
         products: [],
         agent: {
             roles: ['csm', 'sales', 'support'],
             persona: '',
-            brand_name: ''
+            brand_name: '',
+            stage_display_config: {
+                "closed_won": "Won",
+                "prospecting": "Prospecting",
+                "qualification": "Qualifying",
+                "negotiation": "Negotiating",
+                "implemented": "Deployed",
+                "closed_lost": "Lost"
+            }
         },
         webhook_url: '',
         status: 'configuring'
@@ -83,7 +119,8 @@ const TenantWizard: React.FC = () => {
 
     useEffect(() => {
         if (id) {
-            fetch(`/api/tenants/${id}`)
+            const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
+            fetch(`${baseUrl}/api/tenants/${id}`)
                 .then(res => res.json())
                 .then(data => {
                     setConfig(data);
@@ -98,7 +135,8 @@ const TenantWizard: React.FC = () => {
 
     const handleSave = async () => {
         const method = id ? 'PATCH' : 'POST';
-        const url = id ? `/api/tenants/${id}` : '/api/tenants';
+        const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
+        const url = id ? `${baseUrl}/api/tenants/${id}` : `${baseUrl}/api/tenants`;
 
         try {
             const resp = await fetch(url, {
@@ -115,9 +153,9 @@ const TenantWizard: React.FC = () => {
     };
 
     const addProduct = async (name: string, description: string) => {
+        const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         if (id) {
-            // If editing, save to backend immediately
-            const resp = await fetch(`/api/tenants/${id}/products`, {
+            const resp = await fetch(`${baseUrl}/api/tenants/${id}/products`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, description })
@@ -125,37 +163,35 @@ const TenantWizard: React.FC = () => {
             const newProduct = await resp.json();
             setConfig({ ...config, products: [...config.products, newProduct] });
         } else {
-            // Local state if creating new
             const newProduct = { product_id: Math.random().toString(36), name, description, knowledge_generated: false, node_count: 0 };
             setConfig({ ...config, products: [...config.products, newProduct] });
         }
     };
 
     const removeProduct = async (pid: string) => {
+        const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         if (id) {
-            await fetch(`/api/tenants/${id}/products/${pid}`, { method: 'DELETE' });
+            await fetch(`${baseUrl}/api/tenants/${id}/products/${pid}`, { method: 'DELETE' });
         }
         setConfig({ ...config, products: config.products.filter(p => p.product_id !== pid) });
     };
 
     const generateKnowledge = async () => {
+        const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         if (!id) {
-            // Must save tenant first to generate knowledge
-            const resp = await fetch('/api/tenants', {
+            const resp = await fetch(`${baseUrl}/api/tenants`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
             });
             const data = await resp.json();
             navigate(`/tenants/${data.tenant_id}`);
-            // Wait for redirect or just return. User will need to click again.
             return;
         }
 
-        const resp = await fetch(`/api/tenants/${id}/generate-knowledge`, { method: 'POST' });
+        const resp = await fetch(`${baseUrl}/api/tenants/${id}/generate-knowledge`, { method: 'POST' });
         if (resp.ok) {
-            // Refresh config
-            const updated = await fetch(`/api/tenants/${id}`).then(r => r.json());
+            const updated = await fetch(`${baseUrl}/api/tenants/${id}`).then(r => r.json());
             setConfig(updated);
         }
     };
@@ -164,9 +200,11 @@ const TenantWizard: React.FC = () => {
 
     const steps = [
         { n: 1, title: 'CRM Connection' },
-        { n: 2, title: 'Product Catalog' },
-        { n: 3, title: 'Agent Config' },
-        { n: 4, title: 'Review & Launch' }
+        { n: 2, title: 'Mapping & Taxonomy' },
+        { n: 3, title: 'Knowledge Sources' },
+        { n: 4, title: 'Product Catalog' },
+        { n: 5, title: 'Agent Config' },
+        { n: 6, title: 'Review & Launch' }
     ];
 
     return (
@@ -220,10 +258,27 @@ const TenantWizard: React.FC = () => {
                             onTest={handleTestConnection}
                             isTesting={isTesting}
                             testResult={testResult}
+                            tenantId={id}
                         />
                     )}
 
                     {step === 2 && (
+                        <MappingConfig
+                            crm={config.crm}
+                            product_alias_map={config.product_alias_map}
+                            onCrmChange={(updates) => setConfig({ ...config, crm: { ...config.crm, ...updates } })}
+                            onAliasChange={(product_alias_map) => setConfig({ ...config, product_alias_map })}
+                        />
+                    )}
+
+                    {step === 3 && (
+                        <KnowledgeSourcesConfig
+                            sources={config.knowledge_sources || []}
+                            onChange={(knowledge_sources) => setConfig({ ...config, knowledge_sources })}
+                        />
+                    )}
+
+                    {step === 4 && (
                         <ProductCatalog
                             products={config.products}
                             onAdd={addProduct}
@@ -232,7 +287,7 @@ const TenantWizard: React.FC = () => {
                         />
                     )}
 
-                    {step === 3 && (
+                    {step === 5 && (
                         <AgentConfig
                             agent={config.agent}
                             brandName={config.brand_name}
@@ -241,7 +296,7 @@ const TenantWizard: React.FC = () => {
                         />
                     )}
 
-                    {step === 4 && (
+                    {step === 6 && (
                         <TestPanel tenantId={id || ''} config={config} />
                     )}
                 </div>
@@ -254,7 +309,7 @@ const TenantWizard: React.FC = () => {
                         {step === 1 ? 'Abort Nexus' : '← Previous Protocol'}
                     </button>
 
-                    {step < 4 ? (
+                    {step < 6 ? (
                         <button className="btn btn-primary" onClick={() => setStep(step + 1)}>
                             Progress to {steps[step].title} →
                         </button>

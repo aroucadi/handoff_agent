@@ -15,24 +15,23 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from ontology import NODE_TYPES
+from core.normalization import slugify, generate_product_id, generate_client_id
 
 
-def extract_entities_from_crm(payload: dict) -> dict:
+def extract_entities_from_crm(payload: dict, stage_mapping: dict = None, product_alias_map: dict = None) -> dict:
     """Extract structured entities and relationships from a CRM webhook payload.
 
     Args:
         payload: Raw CRM webhook payload (already field-mapped by field_mapper.py).
+        stage_mapping: Optional dict mapping CRM stages to Synapse canonical stages.
+        product_alias_map: Optional dict mapping CRM product names to internal IDs.
 
     Returns:
         Dict with "nodes" (list of entity dicts) and "edges" (list of edge dicts).
-        Each node has: {"id": str, "type": str, "properties": dict}
-        Each edge has: {"type": str, "from_id": str, "to_id": str, "properties": dict}
     """
     tenant_id = payload.get("_tenant_id", "default")
     company_name = payload.get("company_name", "Unknown Company")
-    raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
-    client_id = f"{tenant_id}_{raw_client_id}"
+    client_id = generate_client_id(tenant_id, company_name)
 
     nodes: list[dict] = []
     edges: list[dict] = []
@@ -60,13 +59,23 @@ def extract_entities_from_crm(payload: dict) -> dict:
     if isinstance(products, str):
         products = [p.strip() for p in products.split(",")]
 
+    # Normalize Stage
+    raw_stage = payload.get("stage", "closed-won")
+    normalized_stage = raw_stage
+    if stage_mapping and raw_stage in stage_mapping:
+        normalized_stage = stage_mapping[raw_stage]
+    elif stage_mapping:
+        # Try case-insensitive fallback if direct match fails
+        stage_map_lower = {k.lower(): v for k, v in stage_mapping.items()}
+        normalized_stage = stage_map_lower.get(raw_stage.lower(), raw_stage)
+
     nodes.append({
         "id": deal_node_id,
         "type": "Deal",
         "properties": {
             "deal_id": deal_id_val,
             "value": payload.get("deal_value", 0),
-            "stage": payload.get("stage", "closed-won"),
+            "stage": normalized_stage,
             "close_date": payload.get("close_date", ""),
             "win_probability": payload.get("win_probability", 1.0),
             "contract_length_months": payload.get("contract_length_months", 12),
@@ -141,7 +150,17 @@ def extract_entities_from_crm(payload: dict) -> dict:
     # ── Products (Deal → Product edges) ─────────────────────
     for j, product_item in enumerate(products):
         product_name = product_item.get("name", "") if isinstance(product_item, dict) else product_item
-        p_id = f"product_{product_name.lower().replace(' ', '-')}"
+        
+        # Normalize Product ID using alias map or default slugify
+        if product_alias_map and product_name in product_alias_map:
+            p_id = product_alias_map[product_name]
+        elif product_alias_map:
+            # Case-insensitive fallback
+            alias_map_lower = {k.lower(): v for k, v in product_alias_map.items()}
+            p_id = alias_map_lower.get(product_name.lower(), generate_product_id(product_name))
+        else:
+            p_id = generate_product_id(product_name)
+
         # Don't create the Product node here — it comes from the Knowledge Center
         # Only create the edge linking the deal to the product
         edges.append({
@@ -212,10 +231,15 @@ def extract_entities_from_crm(payload: dict) -> dict:
 
 # ── Legacy compatibility ────────────────────────────────────────
 
-def extract_from_crm_payload(payload: dict) -> dict:
+def extract_from_crm_payload(payload: dict, stage_mapping: dict = None) -> dict:
     """Legacy API — returns flat dict for backward compatibility with the
     old node_generator prompt.  Will be removed once migration is complete.
     """
+    raw_stage = payload.get("stage", "closed-won")
+    normalized_stage = raw_stage
+    if stage_mapping and raw_stage in stage_mapping:
+        normalized_stage = stage_mapping[raw_stage]
+
     return {
         "company_name": payload.get("company_name", "Unknown"),
         "industry": payload.get("industry", "general"),
@@ -224,7 +248,7 @@ def extract_from_crm_payload(payload: dict) -> dict:
         "contacts": payload.get("contacts", []),
         "pain_points": payload.get("pain_points", []),
         "close_date": payload.get("close_date", "TBD"),
-        "stage": payload.get("stage", "closed-won"),
+        "stage": normalized_stage,
         "csm_id": payload.get("csm_id", ""),
         "deal_id": payload.get("deal_id", ""),
     }

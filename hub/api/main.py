@@ -29,6 +29,7 @@ from models import (
     TestConnectionRequest,
     TestConnectionResponse,
 )
+from core.normalization import slugify
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("hub")
@@ -57,12 +58,6 @@ db = firestore.Client()
 TENANTS_COLLECTION = "tenants"
 
 
-def _slugify(name: str) -> str:
-    """Convert a product name to a kebab-case node ID."""
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return slug
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -89,12 +84,14 @@ def create_tenant(req: CreateTenantRequest):
     """Create a new tenant with default configuration."""
     from crm_templates import get_template_for_crm
 
+    template = get_template_for_crm(req.crm_type.value)
     tenant = TenantConfig(
         name=req.name,
         brand_name=req.brand_name or req.name,
         crm=CrmConnection(
             crm_type=req.crm_type,
-            field_mapping=get_template_for_crm(req.crm_type.value),
+            field_mapping=template.get("field_mapping", {}),
+            stage_mapping=template.get("stage_mapping", {}),
         ),
     )
     # Set agent brand_name to match
@@ -220,7 +217,7 @@ def add_product(tenant_id: str, req: AddProductRequest):
     product = Product(
         name=req.name,
         description=req.description,
-        node_id=_slugify(req.name),
+        node_id=slugify(req.name),
     )
 
     tenant = TenantConfig(**doc.to_dict())

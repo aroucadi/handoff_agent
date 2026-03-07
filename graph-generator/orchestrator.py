@@ -49,21 +49,38 @@ async def _run_generation(job_id: str, payload: dict):
         # Common: identifiers
         tenant_id = payload.get("_tenant_id", "default")
         company_name = payload.get("company_name", "Unknown Company")
-        raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
-        client_id = f"{tenant_id}_{raw_client_id}"
         industry = payload.get("industry", "general")
 
         # Step 1: CRM Extraction
         mode_label = "structured" if use_structured else "legacy"
         print(f"[JOB {job_id}] Step 1: Extracting CRM data ({mode_label})...")
+        
+        # Fetch tenant normalization config from Firestore (Hub data)
+        db = get_firestore_client()
+        tenant_doc = db.collection("tenants").document(tenant_id).get()
+        stage_mapping = {}
+        product_alias_map = {}
+        if tenant_doc.exists:
+            t_data = tenant_doc.to_dict()
+            stage_mapping = t_data.get("crm", {}).get("stage_mapping", {})
+            product_alias_map = t_data.get("product_alias_map", {})
+            print(f"[JOB {job_id}] Applied {len(stage_mapping)} stage mappings, {len(product_alias_map)} product aliases")
+
+        from core.normalization import generate_client_id
+        client_id = generate_client_id(tenant_id, company_name)
+
         if use_structured:
-            crm_entities = extract_entities_from_crm(payload)
+            crm_entities = extract_entities_from_crm(
+                payload, 
+                stage_mapping=stage_mapping, 
+                product_alias_map=product_alias_map
+            )
             # Circular import risk again? select_subgraph is in main.py? 
             # No, it was in main.py. I should move it here or to a helper.
             from orchestrator_helpers import merge_tenant_knowledge_into_crm_entities
             crm_entities = merge_tenant_knowledge_into_crm_entities(crm_entities, tenant_id)
         else:
-            crm_data = extract_from_crm_payload(payload)
+            crm_data = extract_from_crm_payload(payload, stage_mapping=stage_mapping)
 
         # Step 2: Parallel AI Extractions
         print(f"[JOB {job_id}] Step 2: Running parallel AI extractions...")
