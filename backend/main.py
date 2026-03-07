@@ -172,58 +172,43 @@ async def get_tenant_for_voice_ui(tenant_id: str):
 # —— CRM Deal Proxy (for role-based dashboard) ————————————————————
 
 @app.get("/api/crm/deals")
-async def proxy_crm_deals(tenant_id: str = None):
-    """Serve deals from Firestore (tenant-aware) or CRM simulator (fallback).
-
-    In real-life mode, deals are populated by the Graph Generator's ingest
-    endpoint when CRM webhooks fire. The Voice UI dashboard reads from here.
+async def proxy_crm_deals(tenant_id: str):
+    """Serve deals from Firestore (tenant-aware).
+    
+    Enforces strict tenant isolation.
     """
     db = get_firestore_client()
 
-    # ── Tenant-aware mode: read from Firestore ──
-    if tenant_id:
-        try:
-            deals_ref = db.collection("deals").document(tenant_id).collection("items")
-            docs = deals_ref.stream()
-            deals = []
-            for doc in docs:
-                deal = doc.to_dict()
-                # Enrich with graph readiness from skill_graphs collection
-                client_id = deal.get("client_id", "")
-                if client_id:
-                    graph_doc = db.collection("skill_graphs").document(client_id).get()
-                    deal["graph_ready"] = (
-                        graph_doc.exists
-                        and graph_doc.to_dict().get("status") == "ready"
-                    ) if graph_doc.exists else False
-                    deal["node_count"] = graph_doc.to_dict().get("node_count", 0) if graph_doc.exists else 0
-                deals.append(deal)
-            return {"deals": deals, "count": len(deals), "source": "firestore"}
-        except Exception as e:
-            print(f"[CRM_PROXY] Firestore deals query failed: {e}")
-            return {"deals": [], "count": 0, "error": str(e)}
-
-    # ── Fallback: read from CRM simulator (backward compatible) ──
-    crm_url = config.crm_simulator_url.rstrip("/") + "/api/deals"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(crm_url)
-            crm_data = response.json()
+        deals_ref = db.collection("deals").document(tenant_id).collection("items")
+        docs = deals_ref.stream()
+        deals = []
+        for doc in docs:
+            deal = doc.to_dict()
+            # Enrich with graph readiness from skill_graphs collection
+            client_id = deal.get("client_id", "")
+            if client_id:
+                graph_doc = db.collection("skill_graphs").document(client_id).get()
+                if graph_doc.exists:
+                    data = graph_doc.to_dict()
+                    # Strict tenant check on graph data
+                    if data.get("tenant_id") == tenant_id:
+                        deal["graph_ready"] = data.get("status") == "ready"
+                        deal["node_count"] = data.get("node_count", 0)
+                    else:
+                        deal["graph_ready"] = False
+                        deal["node_count"] = 0
+                else:
+                    deal["graph_ready"] = False
+                    deal["node_count"] = 0
+            deals.append(deal)
+        return {"deals": deals, "count": len(deals), "source": "firestore"}
     except Exception as e:
-        print(f"[CRM_PROXY] Failed to fetch deals: {e}")
+        print(f"[CRM_PROXY] Firestore deals query failed: {e}")
         return {"deals": [], "count": 0, "error": str(e)}
 
-    # Enrich each deal with graph readiness
-    deals = crm_data.get("deals", [])
-    for deal in deals:
-        company_name = deal.get("company_name", "")
-        client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
-        doc = db.collection("skill_graphs").document(client_id).get()
-        deal["client_id"] = client_id
-        deal["graph_ready"] = doc.exists and doc.to_dict().get("status") == "ready" if doc.exists else False
-        deal["node_count"] = doc.to_dict().get("node_count", 0) if doc.exists else 0
-
-    return {"deals": deals, "count": len(deals), "source": "simulator"}
+    # Fallback to CRM simulator removed for strict production fidelity
+    # return {"deals": [], "count": 0, "error": "tenant_id required"}
 
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ Session Management Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -461,18 +446,16 @@ async def text_conversation(req: TextMessage):
 # Ã¢â€â‚¬Ã¢â€â‚¬ Client & Graph Status Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 @app.get("/api/clients")
-async def list_clients(tenant_id: str = None):
-    """List all client accounts with graph status, optionally filtered by tenant."""
+async def list_clients(tenant_id: str):
+    """List all client accounts for a specific tenant.
+    
+    Enforces strict tenant isolation.
+    """
     db = get_firestore_client()
 
     clients = []
-    # If tenant_id provided, filter the skill_graphs
-    if tenant_id:
-        # Use simple string prefix match or dedicated field
-        # Since we added tenant_id field to skill_graphs doc, use that
-        docs = db.collection("skill_graphs").where("tenant_id", "==", tenant_id).stream()
-    else:
-        docs = db.collection("skill_graphs").stream()
+    # Strictly require tenant_id for isolation
+    docs = db.collection("skill_graphs").where("tenant_id", "==", tenant_id).stream()
 
     for doc in docs:
         data = doc.to_dict()

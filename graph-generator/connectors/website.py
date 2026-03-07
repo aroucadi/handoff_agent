@@ -18,6 +18,22 @@ class WebsiteConnector(BaseConnector):
         start_path_boundary = parsed_start.path.rsplit('/', 1)[0] + '/' if '/' in parsed_start.path else '/'
 
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            # 1. Attempt to find and parse sitemap.xml at the domain root
+            sitemap_url = f"{parsed_start.scheme}://{start_domain}/sitemap.xml"
+            try:
+                s_resp = await client.get(sitemap_url)
+                if s_resp.status_code == 200:
+                    s_soup = BeautifulSoup(s_resp.content, "xml")
+                    for loc in s_soup.find_all("loc"):
+                        loc_url = loc.get_text(strip=True)
+                        p_loc = urlparse(loc_url)
+                        if p_loc.netloc == start_domain and p_loc.path.startswith(start_path_boundary):
+                            if loc_url not in visited and loc_url not in queue:
+                                queue.append(loc_url)
+            except Exception:
+                pass # Non-critical if sitemap fails
+
+            # 2. BFS Crawl
             while queue and len(pages) < max_pages:
                 current_uri = queue.pop(0)
                 if current_uri in visited:
