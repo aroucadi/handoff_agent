@@ -260,7 +260,7 @@ export default function Dashboard() {
                                         <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">
                                             <Clock size={10} className="text-white/40" /> Last Won
                                         </p>
-                                        <p className="text-md font-bold text-white/80">{new Date(deal.close_date).toLocaleDateString()}</p>
+                                        <p className="text-md font-bold text-white/80">{deal.close_date ? new Date(deal.close_date).toLocaleDateString() : 'TBD'}</p>
                                     </div>
                                 </div>
 
