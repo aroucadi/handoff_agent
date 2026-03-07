@@ -57,7 +57,7 @@ export default function BriefingSession() {
         const fetchClientDetails = async () => {
             try {
                 const url = import.meta.env.VITE_API_URL || "";
-                const res = await fetch(`${url} /api/clients`);
+                const res = await fetch(`${url}/api/clients`);
                 const data = await res.json();
                 const client = data.clients?.find((c: ClientDetails) => c.client_id === clientId);
                 if (client) setClientDetails(client);
@@ -73,7 +73,7 @@ export default function BriefingSession() {
             try {
                 const url = import.meta.env.VITE_API_URL || "";
                 // Call /api/sessions/start to get a real session ID from the backend nexus
-                const res = await fetch(`${url} /api/sessions / start`, {
+                const res = await fetch(`${url}/api/sessions/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -194,8 +194,8 @@ export default function BriefingSession() {
                             {/* Live Status Indicator */}
                             <div className="flex items-center gap-6 bg-black/40 px-6 py-3 rounded-2xl border border-white/5 shadow-inner">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w - 2.5 h - 2.5 rounded - full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500 shadow-[0_0_15px_#f43f5e]'} shadow - current`} />
-                                    <span className={`text - [11px] font - black tracking - [0.2em] uppercase ${isConnected ? 'text-emerald-400' : 'text-rose-500'} `}>
+                                    <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500 shadow-[0_0_15px_#f43f5e]'} shadow-current`} />
+                                    <span className={`text-[11px] font-black tracking-[0.2em] uppercase ${isConnected ? 'text-emerald-400' : 'text-rose-500'} `}>
                                         {isConnected ? 'Nexus Connected' : 'Nexus Severed'}
                                     </span>
                                 </div>
