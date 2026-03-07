@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 
 interface TestPanelProps {
     tenantId: string;
-    config: any;
+    config: {
+        name: string;
+        brand_name: string;
+        crm: { crm_type: string };
+        agent: { roles: string[] };
+    };
 }
 
 const TestPanel: React.FC<TestPanelProps> = ({ tenantId, config }) => {
-    const [status, setStatus] = useState<any[]>([]);
+    const [status, setStatus] = useState<{ step: string; status: string; timestamp?: string }[]>([]);
     const [testing, setTesting] = useState(false);
 
     const runTest = async () => {
@@ -19,7 +24,7 @@ const TestPanel: React.FC<TestPanelProps> = ({ tenantId, config }) => {
             });
             const data = await res.json();
             setStatus(data.steps || [{ step: 'Failed to trigger test', status: 'error' }]);
-        } catch (err) {
+        } catch (_err) {
             setStatus([{ step: 'Network error', status: 'error' }]);
         } finally {
             setTesting(false);

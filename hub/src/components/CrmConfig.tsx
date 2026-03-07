@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
 
 interface CrmConfigProps {
-    crm: any;
-    onChange: (updates: any) => void;
+    crm: {
+        crm_type: string;
+        crm_url?: string;
+        auth_method: string;
+    };
+    onChange: (updates: { crm_type?: string; crm_url?: string; auth_method?: string }) => void;
     onTest: () => void;
     tenantId?: string;
 }
@@ -32,7 +36,7 @@ const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId }
 
     useEffect(() => {
         if (tenantId) {
-            const baseUrl = (import.meta as any).env?.VITE_HUB_API_URL || '';
+            const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
             fetch(`${baseUrl}/api/tenants/${tenantId}/integration-guide`)
                 .then(res => res.json())
                 .then(data => setGuide(data))

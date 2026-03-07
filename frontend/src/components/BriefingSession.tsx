@@ -3,8 +3,9 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { useVoiceSession } from '../useVoiceSession';
 import ConversationPanel from './ConversationPanel';
 import GraphPanel from './GraphPanel';
-import { Hash, MessageSquare, ShieldCheck, Activity, Users, Loader2 } from 'lucide-react';
+import { Hash, MessageSquare, ShieldCheck, Activity, Users, Loader2, FileBox } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
+import ArtifactViewer from './ArtifactViewer';
 
 interface ClientDetails {
     client_id: string;
@@ -27,6 +28,7 @@ export default function BriefingSession() {
     // session_id is now managed by a local state after calling /api/sessions/start
     const [realSessionId, setRealSessionId] = useState<string | null>(null);
     const [initializing, setInitializing] = useState(true);
+    const [isArtifactsOpen, setIsArtifactsOpen] = useState(false);
 
     const {
         isConnected,
@@ -55,7 +57,7 @@ export default function BriefingSession() {
         const fetchClientDetails = async () => {
             try {
                 const url = import.meta.env.VITE_API_URL || "";
-                const res = await fetch(`${url}/api/clients`);
+                const res = await fetch(`${url} /api/clients`);
                 const data = await res.json();
                 const client = data.clients?.find((c: ClientDetails) => c.client_id === clientId);
                 if (client) setClientDetails(client);
@@ -71,7 +73,7 @@ export default function BriefingSession() {
             try {
                 const url = import.meta.env.VITE_API_URL || "";
                 // Call /api/sessions/start to get a real session ID from the backend nexus
-                const res = await fetch(`${url}/api/sessions/start`, {
+                const res = await fetch(`${url} /api/sessions / start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -180,11 +182,20 @@ export default function BriefingSession() {
                         </div>
 
                         <div className="flex items-center gap-8">
+                            {/* Materials / Artifacts Button */}
+                            <button
+                                onClick={() => setIsArtifactsOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all group"
+                            >
+                                <FileBox size={16} className="text-primary-purple group-hover:scale-110 transition-transform" />
+                                <span className="text-[11px] font-black uppercase tracking-widest text-white/70">Materials</span>
+                            </button>
+
                             {/* Live Status Indicator */}
                             <div className="flex items-center gap-6 bg-black/40 px-6 py-3 rounded-2xl border border-white/5 shadow-inner">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500 shadow-[0_0_15px_#f43f5e]'} shadow-current`} />
-                                    <span className={`text-[11px] font-black tracking-[0.2em] uppercase ${isConnected ? 'text-emerald-400' : 'text-rose-500'}`}>
+                                    <div className={`w - 2.5 h - 2.5 rounded - full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500 shadow-[0_0_15px_#f43f5e]'} shadow - current`} />
+                                    <span className={`text - [11px] font - black tracking - [0.2em] uppercase ${isConnected ? 'text-emerald-400' : 'text-rose-500'} `}>
                                         {isConnected ? 'Nexus Connected' : 'Nexus Severed'}
                                     </span>
                                 </div>
@@ -211,6 +222,7 @@ export default function BriefingSession() {
                                 onToggleScreenShare={toggleScreenShare}
                                 onSendText={sendText}
                                 onEndBriefing={handleEnd}
+                                onViewArtifacts={() => setIsArtifactsOpen(true)}
                             />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -223,6 +235,13 @@ export default function BriefingSession() {
                     </div>
                 </div>
             )}
+
+            {/* Artifact Viewer Modal */}
+            <ArtifactViewer
+                clientId={clientId || ''}
+                isOpen={isArtifactsOpen}
+                onClose={() => setIsArtifactsOpen(false)}
+            />
         </div>
     );
 }

@@ -49,6 +49,7 @@ interface ConversationPanelProps {
     onToggleScreenShare: () => void;
     onSendText: (text: string) => void;
     onEndBriefing: () => void;
+    onViewArtifacts?: () => void;
 }
 
 export default function ConversationPanel({
@@ -62,6 +63,7 @@ export default function ConversationPanel({
     onToggleScreenShare,
     onSendText,
     onEndBriefing,
+    onViewArtifacts,
 }: ConversationPanelProps) {
     const [textInput, setTextInput] = useState('');
     const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -120,6 +122,15 @@ export default function ConversationPanel({
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
                 <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Intelligence Transcript</span>
+                    {onViewArtifacts && (
+                        <button
+                            onClick={onViewArtifacts}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-primary-purple/20 hover:border-primary-purple/30 text-white/40 hover:text-primary-purple transition-all group scale-90"
+                        >
+                            <FileText size={10} />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Access Materials</span>
+                        </button>
+                    )}
                     <span className="text-[10px] font-mono text-white/15">SESS: {sessionId.slice(-8).toUpperCase()}</span>
                 </div>
 

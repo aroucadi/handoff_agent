@@ -199,7 +199,7 @@ def tool_search_graph(client_id: str, query: str) -> str:
 
 # ── Output Generation Tools ──────────────────────────────────────
 
-def tool_generate_briefing(client_id: str, csm_name: str = "CSM") -> str:
+async def tool_generate_briefing(client_id: str, csm_name: str = "CSM") -> str:
     """Generate a pre-meeting briefing summary from the knowledge graph.
 
     Use this when the CSM asks for a briefing, summary, or preparation document.
@@ -213,13 +213,12 @@ def tool_generate_briefing(client_id: str, csm_name: str = "CSM") -> str:
     Returns:
         Generated briefing document in Markdown format.
     """
-    import asyncio
     from graph.outputs import generate_briefing
-    result = asyncio.get_event_loop().run_until_complete(generate_briefing(client_id, csm_name))
+    result = await generate_briefing(client_id, csm_name)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
-def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
+async def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
     """Generate a post-session action plan based on graph data.
 
     Use this when the CSM asks for next steps, action items, or a follow-up plan.
@@ -232,13 +231,12 @@ def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
     Returns:
         Generated action plan document in Markdown format.
     """
-    import asyncio
     from graph.outputs import generate_action_plan
-    result = asyncio.get_event_loop().run_until_complete(generate_action_plan(client_id, meeting_notes))
+    result = await generate_action_plan(client_id, meeting_notes)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
-def tool_generate_transcript(
+async def tool_generate_transcript(
     client_id: str,
     transcript_type: str = "sales_script",
     user_role: str = None,
@@ -265,11 +263,8 @@ def tool_generate_transcript(
     Returns:
         Generated transcript/script document in Markdown format.
     """
-    import asyncio
     from graph.outputs import generate_transcript
-    result = asyncio.get_event_loop().run_until_complete(
-        generate_transcript(client_id, transcript_type, user_role, additional_context)
-    )
+    result = await generate_transcript(client_id, transcript_type, user_role, additional_context)
     if "error" in result:
         return json.dumps(result, indent=2)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)

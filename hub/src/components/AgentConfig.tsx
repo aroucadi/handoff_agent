@@ -1,9 +1,13 @@
 import React from 'react';
 
 interface AgentConfigProps {
-    agent: any;
+    agent: {
+        roles: string[];
+        persona: string;
+        brand_name: string;
+    };
     brandName: string;
-    onChange: (updates: any) => void;
+    onChange: (updates: { roles: string[]; persona: string; brand_name: string }) => void;
     onBrandChange: (val: string) => void;
 }
 
@@ -44,7 +48,7 @@ const AgentConfig: React.FC<AgentConfigProps> = ({ agent, brandName, onChange, o
                                 onChange={e => {
                                     const nextRoles = e.target.checked
                                         ? [...agent.roles, role]
-                                        : agent.roles.filter((r: string) => r !== role);
+                                        : agent.roles.filter(r => r !== role);
                                     onChange({ ...agent, roles: nextRoles });
                                 }}
                             />

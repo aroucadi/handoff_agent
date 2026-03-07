@@ -11,7 +11,24 @@ const TenantWizard: React.FC = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(id ? true : false);
 
-    const [config, setConfig] = useState<any>({
+    const [config, setConfig] = useState<{
+        name: string;
+        brand_name: string;
+        crm: {
+            crm_type: string;
+            crm_url: string;
+            auth_method: string;
+            field_mapping: Record<string, string>;
+        };
+        products: { product_id: string; name: string; description: string; knowledge_generated: boolean; node_count: number }[];
+        agent: {
+            roles: string[];
+            persona: string;
+            brand_name: string;
+        };
+        webhook_url: string;
+        status: string;
+    }>({
         name: '',
         brand_name: '',
         crm: {
@@ -84,7 +101,7 @@ const TenantWizard: React.FC = () => {
         if (id) {
             await fetch(`/api/tenants/${id}/products/${pid}`, { method: 'DELETE' });
         }
-        setConfig({ ...config, products: config.products.filter((p: any) => p.product_id !== pid) });
+        setConfig({ ...config, products: config.products.filter(p => p.product_id !== pid) });
     };
 
     const generateKnowledge = async () => {
@@ -165,7 +182,7 @@ const TenantWizard: React.FC = () => {
                     {step === 1 && (
                         <CrmConfig
                             crm={config.crm}
-                            onChange={(crm) => setConfig({ ...config, crm })}
+                            onChange={(updates) => setConfig({ ...config, crm: { ...config.crm, ...updates } })}
                             onTest={() => { }} // TODO: trigger test
                         />
                     )}
@@ -183,7 +200,7 @@ const TenantWizard: React.FC = () => {
                         <AgentConfig
                             agent={config.agent}
                             brandName={config.brand_name}
-                            onChange={(agent) => setConfig({ ...config, agent })}
+                            onChange={(updates) => setConfig({ ...config, agent: { ...config.agent, ...updates } })}
                             onBrandChange={(brand_name) => setConfig({ ...config, brand_name, agent: { ...config.agent, brand_name } })}
                         />
                     )}

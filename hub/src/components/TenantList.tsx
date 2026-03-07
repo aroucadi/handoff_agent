@@ -6,7 +6,7 @@ interface Tenant {
     name: string;
     brand_name: string;
     status: 'configuring' | 'ready' | 'active';
-    products: any[];
+    products: { product_id: string; name: string; description: string; knowledge_generated: boolean; node_count: number }[];
     agent: { roles: string[] };
     updated_at: string;
 }
@@ -102,7 +102,7 @@ const TenantList: React.FC = () => {
                                 </span>
                                 <div className="flex items-center gap-6">
                                     <a
-                                        href={`${(import.meta as any).env?.VITE_VOICE_UI_URL || 'http://localhost:5173'}/tenants?auto=${tenant.tenant_id}`}
+                                        href={`${(import.meta as unknown as { env: Record<string, string> }).env?.VITE_VOICE_UI_URL || 'http://localhost:5173'}/tenants?auto=${tenant.tenant_id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-emerald-400 font-black text-[10px] uppercase tracking-widest hover:text-emerald-300 transition-colors flex items-center gap-1.5"

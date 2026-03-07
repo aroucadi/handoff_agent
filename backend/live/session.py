@@ -488,7 +488,11 @@ class LiveSession:
                                 # Execute the tool
                                 tool_fn = TOOL_FUNCTIONS.get(fn_name)
                                 if tool_fn:
-                                    result = tool_fn(**fn_args)
+                                    # Handle both async and sync tools in the live loop
+                                    if asyncio.iscoroutinefunction(tool_fn):
+                                        result = await tool_fn(**fn_args)
+                                    else:
+                                        result = tool_fn(**fn_args)
                                     # Track visited nodes
                                     try:
                                         result_data = json.loads(result)
