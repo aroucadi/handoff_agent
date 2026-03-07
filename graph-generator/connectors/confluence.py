@@ -1,5 +1,5 @@
 from __future__ import annotations
-import requests
+import httpx
 from .base import BaseConnector
 
 class ConfluenceConnector(BaseConnector):
@@ -20,15 +20,15 @@ class ConfluenceConnector(BaseConnector):
         
         pages = []
         try:
-            # We assume basic auth or token if provided in config, otherwise public access
             headers = {}
             auth_token = (config or {}).get("auth_token")
             if auth_token:
                 headers["Authorization"] = f"Bearer {auth_token}"
                 
-            resp = requests.get(api_url, headers=headers, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.get(api_url, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
             
             for item in data.get("results", []):
                 pages.append({
@@ -38,7 +38,6 @@ class ConfluenceConnector(BaseConnector):
                     "text_content": item.get("body", {}).get("storage", {}).get("value", "") # In HTML
                 })
                 
-            # Strip HTML
             from bs4 import BeautifulSoup
             for p in pages:
                 soup = BeautifulSoup(p["text_content"], "html.parser")

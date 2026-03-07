@@ -160,8 +160,10 @@ async def get_tenant_for_voice_ui(tenant_id: str):
         "tenant_id": data.get("tenant_id", tenant_id),
         "name": data.get("name", "Unnamed"),
         "brand_name": data.get("brand_name", ""),
-        "crm_type": data.get("crm", {}).get("crm_type", "custom"),
+        "crm": data.get("crm", {}),
         "integration_status": data.get("integration_status", "not_configured"),
+        "terminology_overrides": data.get("terminology_overrides", {}),
+        "agent": data.get("agent", {}),
         "roles": data.get("agent", {}).get("roles", ["csm", "sales", "support"]),
         "products": [{"name": p.get("name"), "id": p.get("product_id")} for p in data.get("products", [])],
     }

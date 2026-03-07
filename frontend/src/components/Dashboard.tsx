@@ -107,13 +107,13 @@ export default function Dashboard() {
                     activeRole.stages.includes(d.stage)
                 );
 
-                const mapped = filtered.map((d: { deal_id?: string; id: string; client_id: string; account_name?: string; company_name: string; stage: string; amount?: number; deal_value: number; graph_ready?: boolean }) => ({
+                const mapped = filtered.map((d: { deal_id?: string; id: string; client_id: string; account_name?: string; company_name: string; stage: string; amount?: number; deal_value: number; graph_ready?: boolean; close_date?: string }) => ({
                     id: d.deal_id || d.id,
                     client_id: d.client_id,
                     account_name: d.account_name || d.company_name,
                     stage: d.stage,
                     amount: d.amount || d.deal_value,
-                    close_date: new Date().toISOString(), // Mock close date if missing
+                    close_date: d.close_date || new Date().toISOString(),
                     graph_status: d.graph_ready ? 'ready' : 'generating'
                 }));
 

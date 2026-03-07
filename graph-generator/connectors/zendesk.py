@@ -1,5 +1,5 @@
 from __future__ import annotations
-import requests
+import httpx
 from .base import BaseConnector
 
 class ZendeskConnector(BaseConnector):
@@ -14,12 +14,10 @@ class ZendeskConnector(BaseConnector):
         
         pages = []
         try:
-            # Note: Enterprise use usually requires API keys, but public help centers 
-            # often allow unauthenticated list if configured to do so.
-            # We'll support basic fetch for now.
-            resp = requests.get(articles_url, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.get(articles_url)
+                resp.raise_for_status()
+                data = resp.json()
             
             for article in data.get("articles", []):
                 if article.get("draft"):
@@ -29,10 +27,9 @@ class ZendeskConnector(BaseConnector):
                     "url": article.get("html_url"),
                     "title": article.get("title"),
                     "category": "zendesk",
-                    "text_content": article.get("body", "") # Note: body contains HTML
+                    "text_content": article.get("body", "")
                 })
                 
-            # Handle HTML in body if needed (strip tags)
             from bs4 import BeautifulSoup
             for p in pages:
                 soup = BeautifulSoup(p["text_content"], "html.parser")
