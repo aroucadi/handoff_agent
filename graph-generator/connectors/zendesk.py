@@ -10,7 +10,8 @@ class ZendeskConnector(BaseConnector):
         URI should be the base domain, e.g., https://subdomain.zendesk.com
         """
         base_url = uri.rstrip('/')
-        articles_url = f"{base_url}/api/v2/help_center/en-us/articles.json"
+        locale = (config or {}).get("locale", "en-us")
+        articles_url = f"{base_url}/api/v2/help_center/{locale}/articles.json"
         
         pages = []
         try:

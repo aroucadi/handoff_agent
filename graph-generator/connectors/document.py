@@ -1,5 +1,5 @@
 from __future__ import annotations
-import requests
+import httpx
 import io
 import PyPDF2
 from .base import BaseConnector
@@ -15,23 +15,25 @@ class DocumentConnector(BaseConnector):
         return []
 
     async def _fetch_pdf(self, uri: str) -> list[dict]:
-        resp = requests.get(uri, timeout=15)
-        resp.raise_for_status()
-        reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
-        text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-        return [{
-            "url": uri,
-            "title": uri.split("/")[-1],
-            "category": "document",
-            "text_content": text
-        }]
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(uri)
+            resp.raise_for_status()
+            reader = PyPDF2.PdfReader(io.BytesIO(resp.content))
+            text = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+            return [{
+                "url": uri,
+                "title": uri.split("/")[-1],
+                "category": "document",
+                "text_content": text
+            }]
 
     async def _fetch_md(self, uri: str) -> list[dict]:
-        resp = requests.get(uri, timeout=15)
-        resp.raise_for_status()
-        return [{
-            "url": uri,
-            "title": uri.split("/")[-1],
-            "category": "document",
-            "text_content": resp.text
-        }]
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(uri)
+            resp.raise_for_status()
+            return [{
+                "url": uri,
+                "title": uri.split("/")[-1],
+                "category": "document",
+                "text_content": resp.text
+            }]
