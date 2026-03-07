@@ -113,7 +113,7 @@ export default function Dashboard() {
                     account_name: d.account_name || d.company_name,
                     stage: d.stage,
                     amount: d.amount || d.deal_value,
-                    close_date: d.close_date || new Date().toISOString(),
+                    close_date: d.close_date || '',
                     graph_status: d.graph_ready ? 'ready' : 'generating'
                 }));
 
