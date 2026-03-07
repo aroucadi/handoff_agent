@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from core.normalization import slugify, generate_product_id, generate_client_id
+from core.normalization import slugify, generate_product_id, generate_client_id, normalize_stage, normalize_product_id
 
 
 def extract_entities_from_crm(payload: dict, stage_mapping: dict = None, product_alias_map: dict = None) -> dict:
@@ -59,15 +59,9 @@ def extract_entities_from_crm(payload: dict, stage_mapping: dict = None, product
     if isinstance(products, str):
         products = [p.strip() for p in products.split(",")]
 
-    # Normalize Stage
+    # Normalize Stage using core utility
     raw_stage = payload.get("stage", "closed-won")
-    normalized_stage = raw_stage
-    if stage_mapping and raw_stage in stage_mapping:
-        normalized_stage = stage_mapping[raw_stage]
-    elif stage_mapping:
-        # Try case-insensitive fallback if direct match fails
-        stage_map_lower = {k.lower(): v for k, v in stage_mapping.items()}
-        normalized_stage = stage_map_lower.get(raw_stage.lower(), raw_stage)
+    normalized_stage = normalize_stage(raw_stage, stage_mapping)
 
     nodes.append({
         "id": deal_node_id,
@@ -151,15 +145,8 @@ def extract_entities_from_crm(payload: dict, stage_mapping: dict = None, product
     for j, product_item in enumerate(products):
         product_name = product_item.get("name", "") if isinstance(product_item, dict) else product_item
         
-        # Normalize Product ID using alias map or default slugify
-        if product_alias_map and product_name in product_alias_map:
-            p_id = product_alias_map[product_name]
-        elif product_alias_map:
-            # Case-insensitive fallback
-            alias_map_lower = {k.lower(): v for k, v in product_alias_map.items()}
-            p_id = alias_map_lower.get(product_name.lower(), generate_product_id(product_name))
-        else:
-            p_id = generate_product_id(product_name)
+        # Normalize Product ID using core utility
+        p_id = normalize_product_id(product_name, product_alias_map)
 
         # Don't create the Product node here — it comes from the Knowledge Center
         # Only create the edge linking the deal to the product
@@ -236,9 +223,7 @@ def extract_from_crm_payload(payload: dict, stage_mapping: dict = None) -> dict:
     old node_generator prompt.  Will be removed once migration is complete.
     """
     raw_stage = payload.get("stage", "closed-won")
-    normalized_stage = raw_stage
-    if stage_mapping and raw_stage in stage_mapping:
-        normalized_stage = stage_mapping[raw_stage]
+    normalized_stage = normalize_stage(raw_stage, stage_mapping)
 
     return {
         "company_name": payload.get("company_name", "Unknown"),

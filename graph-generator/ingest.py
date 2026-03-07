@@ -16,7 +16,7 @@ from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from core.db import get_firestore_client
-from field_mapper import apply_field_mapping, validate_mapping_result
+from core.normalization import apply_field_mapping, validate_mapping_result, normalize_stage, generate_client_id
 from orchestrator import _run_generation
 
 log = logging.getLogger("graph-generator.ingest")
@@ -98,8 +98,12 @@ async def ingest_webhook(
     # 5. Write deal summary to Firestore
     deal_id = normalized.get("deal_id", f"deal-{tenant_id[:8]}")
     company_name = normalized.get("company_name", "Unknown Company")
-    raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
-    client_id = f"{tenant_id}_{raw_client_id}"
+    client_id = generate_client_id(tenant_id, company_name)
+
+    # Normalize stage at ingest point to ensure Dashboard/Graph synchronization
+    stage_mapping = tenant.get("crm", {}).get("stage_mapping", {})
+    raw_stage = normalized.get("stage", "")
+    normalized_stage = normalize_stage(raw_stage, stage_mapping)
 
     deal_summary = {
         "deal_id": deal_id,
@@ -109,7 +113,7 @@ async def ingest_webhook(
         "deal_value": normalized.get("deal_value", 0),
         "close_date": normalized.get("close_date", ""),
         "industry": normalized.get("industry", ""),
-        "stage": normalized.get("stage", ""),
+        "stage": normalized_stage,
         "products": normalized.get("products", []),
         "contacts": normalized.get("contacts", []),
         "graph_ready": False,
