@@ -26,6 +26,8 @@ from models import (
     TenantListResponse,
     TenantStatus,
     CrmConnection,
+    TestConnectionRequest,
+    TestConnectionResponse,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -389,6 +391,53 @@ async def test_webhook(tenant_id: str):
     except Exception as e:
         steps.append({"step": "Error", "status": "failed", "error": str(e), "timestamp": _now()})
         return {"success": False, "steps": steps}
+
+
+
+# ── CRM Connection Test ──────────────────────────────────────────
+
+@app.post("/api/test-connection", response_model=TestConnectionResponse)
+async def test_connection(req: TestConnectionRequest):
+    """Verify CRM connectivity (handshake test)."""
+    log.info(f"Testing connection to {req.crm_type} at {req.crm_url}")
+
+    if not req.crm_url or not req.crm_url.startswith("http"):
+        return TestConnectionResponse(
+            success=False,
+            message="Invalid CRM URL protocol. Must be http/https."
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # We use a simple HEAD or GET request to check reachability
+            # For most CRMs, we expect a 401/403 or 200 depending on the endpoint
+            resp = await client.get(req.crm_url)
+            
+        return TestConnectionResponse(
+            success=True,
+            message="CRM Handshake Successful",
+            details={
+                "status_code": resp.status_code,
+                "reachable": True,
+                "url": req.crm_url
+            }
+        )
+    except httpx.ConnectError:
+        return TestConnectionResponse(
+            success=False,
+            message="Connection failed: URL unreachable or DNS resolution error."
+        )
+    except httpx.TimeoutException:
+        return TestConnectionResponse(
+            success=False,
+            message="Connection timed out. The server is not responding."
+        )
+    except Exception as e:
+        log.error(f"CRM Handshake Error: {e}")
+        return TestConnectionResponse(
+            success=False,
+            message=f"Handshake failed: {str(e)}"
+        )
 
 
 # ── Serve Frontend (SPA) ────────────────────────────────────────

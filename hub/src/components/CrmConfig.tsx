@@ -9,6 +9,8 @@ interface CrmConfigProps {
     onChange: (updates: { crm_type?: string; crm_url?: string; auth_method?: string }) => void;
     onTest: () => void;
     tenantId?: string;
+    isTesting?: boolean;
+    testResult?: { success: boolean; message: string } | null;
 }
 
 interface IntegrationGuide {
@@ -29,7 +31,7 @@ const STATUS_BADGES: Record<string, { label: string; color: string; pulse: boole
     error: { label: 'Connection Error', color: 'red', pulse: true },
 };
 
-const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId }) => {
+const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId, isTesting, testResult }) => {
     const [guide, setGuide] = useState<IntegrationGuide | null>(null);
     const [copied, setCopied] = useState(false);
     const [secretVisible, setSecretVisible] = useState(false);
@@ -212,16 +214,36 @@ const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId }
                 </div>
 
                 <button
-                    className="btn btn-secondary w-full justify-center py-4 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/5 hover:border-cyan-500/50 relative overflow-hidden group"
+                    className={`
+                        btn w-full justify-center py-4 relative overflow-hidden group
+                        ${isTesting ? 'opacity-70 cursor-wait' : 'btn-secondary border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/5 hover:border-cyan-500/50'}
+                    `}
                     onClick={onTest}
+                    disabled={isTesting}
                 >
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/5 to-transparent -translate-x-full group-hover:animate-shimmer" />
                     <span className="relative flex h-2 w-2 mr-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isTesting ? 'bg-cyan-400' : 'bg-cyan-500'}`}></span>
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${isTesting ? 'bg-cyan-400' : 'bg-cyan-500'}`}></span>
                     </span>
-                    <span className="relative z-10">Initialize CRM Handshake</span>
+                    <span className="relative z-10">
+                        {isTesting ? 'Analyzing Connection...' : 'Initialize CRM Handshake'}
+                    </span>
                 </button>
+
+                {testResult && (
+                    <div className={`
+                        glass-card p-4 flex items-center gap-4 border-l-2 text-[11px] font-medium animate-in fade-in slide-in-from-top-4 duration-500
+                        ${testResult.success ? 'border-l-emerald-500 bg-emerald-500/5' : 'border-l-rose-500 bg-rose-500/5'}
+                    `}>
+                        <div className="text-lg">
+                            {testResult.success ? '✅' : '❌'}
+                        </div>
+                        <div className={`flex-1 tracking-tight ${testResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {testResult.message}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

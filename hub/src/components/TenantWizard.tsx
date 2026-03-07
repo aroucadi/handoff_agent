@@ -47,6 +47,40 @@ const TenantWizard: React.FC = () => {
         status: 'configuring'
     });
 
+    const [isTesting, setIsTesting] = useState(false);
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+    const handleTestConnection = async () => {
+        setIsTesting(true);
+        setTestResult(null);
+
+        try {
+            const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
+            const resp = await fetch(`${baseUrl}/api/test-connection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crm_type: config.crm.crm_type,
+                    crm_url: config.crm.crm_url || '',
+                    auth_method: config.crm.auth_method
+                })
+            });
+            const data = await resp.json();
+            setTestResult({
+                success: data.success,
+                message: data.message
+            });
+        } catch (err) {
+            console.error("Test handshake failed", err);
+            setTestResult({
+                success: false,
+                message: "Neural handshake failed: Network error or Hub API unreachable."
+            });
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
     useEffect(() => {
         if (id) {
             fetch(`/api/tenants/${id}`)
@@ -183,7 +217,9 @@ const TenantWizard: React.FC = () => {
                         <CrmConfig
                             crm={config.crm}
                             onChange={(updates) => setConfig({ ...config, crm: { ...config.crm, ...updates } })}
-                            onTest={() => { }} // TODO: trigger test
+                            onTest={handleTestConnection}
+                            isTesting={isTesting}
+                            testResult={testResult}
                         />
                     )}
 

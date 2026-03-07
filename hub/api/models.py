@@ -153,6 +153,19 @@ class AddProductRequest(BaseModel):
     description: str = ""
 
 
+
 class TenantListResponse(BaseModel):
     tenants: list[TenantConfig]
     total: int
+
+
+class TestConnectionRequest(BaseModel):
+    crm_type: CrmType
+    crm_url: str
+    auth_method: AuthMethod
+
+
+class TestConnectionResponse(BaseModel):
+    success: bool
+    message: str
+    details: Optional[dict] = None
