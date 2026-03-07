@@ -123,15 +123,44 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
     await _patch_json(
         f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}",
         {
+            "knowledge_sources": [
+                {"type": "website_crawl", "uri": kc_uri, "name": "ClawdView Knowledge Center"}
+            ],
+            "terminology_overrides": {
+                "account": "Account",
+                "case": "Case"
+            },
             "crm": {
                 "crm_type": "custom",
                 "crm_url": urls.crm.rstrip("/"),
                 "connected": True,
                 "auth_method": "api_key",
+                "stage_mapping": {
+                    "won": "closed_won",
+                    "prospecting": "prospecting",
+                    "qualifying": "qualification",
+                    "negotiating": "negotiation",
+                    "deployed": "implemented",
+                    "lost": "closed_lost"
+                }
             },
-            "knowledge_sources": [
-                {"type": "website_crawl", "uri": kc_uri, "name": "ClawdView Knowledge Center"}
-            ],
+            "agent": {
+                "roles": ["csm", "sales", "support", "strategy"],
+                "role_views": {
+                    "csm": {"display_name": "Success Dashboard", "stage_filter": ["closed_won"], "icon": "LayoutDashboard"},
+                    "sales": {"display_name": "Pipeline Intelligence", "stage_filter": ["prospecting", "qualification", "negotiation"], "icon": "Zap"},
+                    "support": {"display_name": "Deployment Hub", "stage_filter": ["implemented"], "icon": "Database"},
+                    "strategy": {"display_name": "Win-Back Suite", "stage_filter": ["closed_lost"], "icon": "Briefcase"}
+                },
+                "stage_display_config": {
+                    "closed_won": "Won",
+                    "prospecting": "Prospecting",
+                    "qualification": "Qualifying",
+                    "negotiation": "Negotiating",
+                    "implemented": "Deployed",
+                    "closed_lost": "Lost"
+                }
+            },
             "status": "active",
         },
         timeout=30.0,

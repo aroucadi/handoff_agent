@@ -95,10 +95,23 @@ class CrmConnection(BaseModel):
     stage_mapping: dict[str, str] = Field(default_factory=dict)
 
 
+class RoleViewConfig(BaseModel):
+    display_name: str
+    stage_filter: list[str] = Field(default_factory=list)
+    icon: str = "LayoutDashboard"
+
+
 class AgentConfig(BaseModel):
     roles: list[str] = Field(default_factory=lambda: ["csm", "sales", "support"])
     persona: str = ""
     brand_name: str = ""
+    # Role Views: role_id -> view config (filter, label)
+    role_views: dict[str, RoleViewConfig] = Field(default_factory=lambda: {
+        "csm": RoleViewConfig(display_name="Success Dashboard", stage_filter=["closed_won"], icon="LayoutDashboard"),
+        "sales": RoleViewConfig(display_name="Pipeline Intelligence", stage_filter=["prospecting", "qualification", "negotiation"], icon="Zap"),
+        "support": RoleViewConfig(display_name="Deployment Hub", stage_filter=["implemented"], icon="Database"),
+        "strategy": RoleViewConfig(display_name="Win-Back Suite", stage_filter=["closed_lost"], icon="Briefcase")
+    })
     # Stage Display: internal stage -> human-readable label
     stage_display_config: dict[str, str] = Field(default_factory=lambda: {
         "closed_won": "Won",
@@ -132,6 +145,11 @@ class TenantConfig(BaseModel):
     knowledge_sources: list[KnowledgeSource] = Field(default_factory=list)
     # Product Aliases: source CRM product name -> internal canonical slug
     product_alias_map: dict[str, str] = Field(default_factory=dict)
+    # Terminology Overrides: generic key -> tenant label (e.g., {"account": "Client", "case": "Opportunity"})
+    terminology_overrides: dict[str, str] = Field(default_factory=lambda: {
+        "account": "Client",
+        "case": "Deal"
+    })
     webhook_url: str = ""  # auto-provisioned: graph-generator ingest endpoint
     webhook_secret: str = Field(
         default_factory=lambda: secrets.token_hex(32)  # HMAC-SHA256 key

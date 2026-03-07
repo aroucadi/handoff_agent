@@ -24,7 +24,7 @@ const TestPanel: React.FC<TestPanelProps> = ({ tenantId, config }) => {
             });
             const data = await res.json();
             setStatus(data.steps || [{ step: 'Failed to trigger test', status: 'error' }]);
-        } catch (_err) {
+        } catch {
             setStatus([{ step: 'Network error', status: 'error' }]);
         } finally {
             setTesting(false);

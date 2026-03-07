@@ -5,8 +5,11 @@ interface MappingConfigProps {
         stage_mapping: Record<string, string>;
     };
     product_alias_map: Record<string, string>;
+    terminology_overrides: Record<string, string>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onCrmChange: (updates: any) => void;
     onAliasChange: (updates: Record<string, string>) => void;
+    onTerminologyChange: (updates: Record<string, string>) => void;
 }
 
 const CANONICAL_STAGES = [
@@ -18,7 +21,7 @@ const CANONICAL_STAGES = [
     { id: 'closed_lost', label: 'Closed Lost' }
 ];
 
-const MappingConfig: React.FC<MappingConfigProps> = ({ crm, product_alias_map, onCrmChange, onAliasChange }) => {
+const MappingConfig: React.FC<MappingConfigProps> = ({ crm, product_alias_map, terminology_overrides, onCrmChange, onAliasChange, onTerminologyChange }) => {
     const handleAddStageMapping = () => {
         onCrmChange({
             ...crm,
@@ -60,8 +63,38 @@ const MappingConfig: React.FC<MappingConfigProps> = ({ crm, product_alias_map, o
         <div className="mapping-config">
             <h2 className="text-2xl font-bold mb-6">Taxonomy & Mapping</h2>
             <p className="text-slate-400 mb-8">
-                Align your CRM's specific terminology with Synapse's canonical graph structure.
+                Align your business terminology with Synapse's configuration-driven architecture.
             </p>
+
+            <section className="mb-12">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 className="text-lg font-bold text-white">Business Terminology</h3>
+                        <p className="text-xs text-white/30">Customize how generic entities are labeled in the UI</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="glass-card p-4 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/20">Account Label</label>
+                        <input
+                            className="input w-full !py-2 !text-xs"
+                            placeholder="e.g. Client, Company, Account"
+                            value={terminology_overrides.account || ''}
+                            onChange={(e) => onTerminologyChange({ ...terminology_overrides, account: e.target.value })}
+                        />
+                    </div>
+                    <div className="glass-card p-4 space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/20">Case Label</label>
+                        <input
+                            className="input w-full !py-2 !text-xs"
+                            placeholder="e.g. Deal, Opportunity, Project, Ticket"
+                            value={terminology_overrides.case || ''}
+                            onChange={(e) => onTerminologyChange({ ...terminology_overrides, case: e.target.value })}
+                        />
+                    </div>
+                </div>
+            </section>
 
             <section className="mb-12">
                 <div className="flex justify-between items-center mb-6">

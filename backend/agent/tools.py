@@ -19,71 +19,71 @@ from graph.search import search_entities
 
 # ── Tool Functions ────────────────────────────────────────────────
 
-def tool_graph_overview(client_id: str) -> str:
-    """Get a high-level overview of the client's knowledge graph.
+def tool_graph_overview(account_id: str) -> str:
+    """Get a high-level overview of the account's knowledge graph.
 
     Use this tool FIRST when starting a briefing to understand what knowledge
     is available, how many entities and edges exist, and which format the
     graph uses (structured or markdown).
 
     Args:
-        client_id: The client identifier (e.g., "demo_tenant_acme-corp")
+        account_id: The account identifier (e.g., "demo_tenant_acme-corp")
 
     Returns:
         Graph statistics, entity type breakdown, and key entities.
     """
-    result = get_graph_overview(client_id)
+    result = get_graph_overview(account_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_get_entity(client_id: str, entity_id: str) -> str:
+def tool_get_entity(account_id: str, entity_id: str) -> str:
     """Retrieve a specific entity and its connections from the knowledge graph.
 
     Use this when you know the entity_id (from search or traversal results)
     and need full details including all connected edges.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         entity_id: The entity ID to retrieve (e.g., "demo_tenant_acme-corp_org")
 
     Returns:
         Entity properties, outgoing edges, and incoming edges.
     """
-    result = get_entity(client_id, entity_id)
+    result = get_entity(account_id, entity_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_get_entities_by_type(client_id: str, entity_type: str) -> str:
-    """Get all entities of a specific type for a client.
+def tool_get_entities_by_type(account_id: str, entity_type: str) -> str:
+    """Get all entities of a specific type for an account.
 
     Use this to get all risks, contacts, products, or any other entity type.
-    Valid types: Organization, Deal, Contact, Activity, Contract, Renewal,
+    Valid types: Organization, Case, Contact, Activity, Contract, Renewal,
     Product, Feature, UseCase, KBArticle, Limitation, Integration,
     Risk, DeriskingStrategy, SuccessMetric, Milestone, Objection,
     Commitment, CompetitorMention.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         entity_type: The entity type name (e.g., "Risk", "Contact", "Product")
 
     Returns:
         List of entities matching the type with their properties.
     """
-    result = get_entities_by_type(client_id, entity_type)
+    result = get_entities_by_type(account_id, entity_type)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_traverse_graph(client_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1) -> str:
+def tool_traverse_graph(account_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1) -> str:
     """Multi-hop graph traversal starting from a given entity.
 
     Follows outgoing edges from the starting entity, discovering connected
     entities up to max_hops levels deep. Optionally filter by edge type.
 
-    Example: traverse from an Organization with edge_type="HAS_DEAL" to find
-    all deals, then from a Deal with "HAS_RISK" to find risks.
+    Example: traverse from an Organization with edge_type="HAS_CASE" to find
+    all cases, then from a Case with "HAS_RISK" to find risks.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         entity_id: Starting entity ID
         edge_type: Optional edge type filter (e.g., "HAS_RISK", "INCLUDES", "CHAMPIONS")
         max_hops: Traversal depth, 1-3 (default: 1)
@@ -91,25 +91,25 @@ def tool_traverse_graph(client_id: str, entity_id: str, edge_type: str = None, m
     Returns:
         Discovered entities and edges in the subgraph.
     """
-    result = traverse_from(client_id, entity_id, edge_type, max_hops)
+    result = traverse_from(account_id, entity_id, edge_type, max_hops)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_search_entities(client_id: str, query: str, entity_type: str = None) -> str:
-    """Semantic search across the client's knowledge graph entities.
+def tool_search_entities(account_id: str, query: str, entity_type: str = None) -> str:
+    """Semantic search across the account's knowledge graph entities.
 
     Use this when you need to find entities related to a topic but don't
     know their IDs. Optionally filter by entity type for targeted results.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         query: Natural language search query
         entity_type: Optional entity type filter (e.g., "Risk", "Feature")
 
     Returns:
         Ranked list of relevant entities with properties.
     """
-    results = search_entities(client_id, query, entity_type)
+    results = search_entities(account_id, query, entity_type)
     return json.dumps({
         "query": query,
         "entity_type_filter": entity_type,
@@ -119,81 +119,81 @@ def tool_search_entities(client_id: str, query: str, entity_type: str = None) ->
     }, indent=2, default=str)
 
 
-def tool_risk_profile(client_id: str) -> str:
-    """Get a comprehensive risk profile for a client's deal.
+def tool_risk_profile(account_id: str) -> str:
+    """Get a comprehensive risk profile for an account's case.
 
     Returns all identified risks with severity breakdown and associated
     derisking strategies. Use this for risk-focused briefing sections.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
 
     Returns:
         All risks, severity breakdown, and available derisking strategies.
     """
-    result = get_risk_profile(client_id)
+    result = get_risk_profile(account_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_product_knowledge(client_id: str) -> str:
-    """Get product knowledge relevant to a client's deal.
+def tool_product_knowledge(account_id: str) -> str:
+    """Get product knowledge relevant to an account's case.
 
-    Returns all products in the deal with their features, known limitations,
+    Returns all products in the case with their features, known limitations,
     and related KB articles. Use this for product-focused discussion or
     to answer questions about capabilities and constraints.
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
 
     Returns:
         Products with features, limitations, and documentation links.
     """
-    result = get_product_knowledge(client_id)
+    result = get_product_knowledge(account_id)
     return json.dumps(result, indent=2, default=str)
 
 
 # ── Legacy Tools (kept for backward compat) ──────────────────────
 
-def read_index(client_id: str, layer: str = "client") -> str:
+def read_index(account_id: str, layer: str = "account") -> str:
     """Read the index/table-of-contents node for a skill graph layer (legacy markdown mode).
 
     Args:
-        client_id: The client identifier
-        layer: Which layer to read. Options: "client", "product", "industry"
+        account_id: The account identifier
+        layer: Which layer to read. Options: "account", "product", "industry"
 
     Returns:
         The index node content with available links to follow.
     """
-    result = get_index(client_id, layer)
+    result = get_index(account_id, layer)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_follow_link(client_id: str, node_id: str, sections_only: bool = False) -> str:
+def tool_follow_link(account_id: str, node_id: str, sections_only: bool = False) -> str:
     """Navigate to a specific node by following a wikilink (legacy markdown mode).
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         node_id: The node_id to navigate to
         sections_only: If True, returns only the section headers
 
     Returns:
         The node content with metadata and outgoing links.
     """
-    result = follow_link(client_id, node_id, sections_only)
+    result = follow_link(account_id, node_id, sections_only)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_search_graph(client_id: str, query: str) -> str:
-    """Semantic search across the client's skill graph (legacy markdown mode).
+def tool_search_graph(account_id: str, query: str) -> str:
+    """Semantic search across the account's skill graph (legacy markdown mode).
 
     Args:
-        client_id: The client identifier
+        account_id: The account identifier
         query: Natural language search query
 
     Returns:
         Ranked list of relevant nodes.
     """
-    result = search_graph(client_id, query)
+    result = search_graph(account_id, query)
     return json.dumps(result, indent=2, default=str)
 
 
@@ -281,9 +281,9 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
     {
@@ -292,10 +292,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_id": {"type": "string", "description": "Entity ID to retrieve"},
             },
-            "required": ["client_id", "entity_id"],
+            "required": ["account_id", "entity_id"],
         },
     },
     {
@@ -304,13 +304,13 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_type": {
                     "type": "string",
-                    "description": "Entity type name (e.g., Risk, Contact, Product, Feature)",
+                    "description": "Entity type name (e.g. Risk, Contact, Product, Feature)",
                 },
             },
-            "required": ["client_id", "entity_type"],
+            "required": ["account_id", "entity_type"],
         },
     },
     {
@@ -319,12 +319,12 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_id": {"type": "string", "description": "Starting entity ID"},
-                "edge_type": {"type": "string", "description": "Optional edge type filter (e.g., HAS_RISK, INCLUDES)"},
+                "edge_type": {"type": "string", "description": "Optional edge type filter (e.g. HAS_RISK, INCLUDES)"},
                 "max_hops": {"type": "integer", "description": "Traversal depth 1-3 (default: 1)"},
             },
-            "required": ["client_id", "entity_id"],
+            "required": ["account_id", "entity_id"],
         },
     },
     {
@@ -333,11 +333,11 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "query": {"type": "string", "description": "Natural language search query"},
-                "entity_type": {"type": "string", "description": "Optional type filter (e.g., Risk, Feature)"},
+                "entity_type": {"type": "string", "description": "Optional type filter (e.g. Risk, Feature)"},
             },
-            "required": ["client_id", "query"],
+            "required": ["account_id", "query"],
         },
     },
     {
@@ -346,9 +346,9 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
     {
@@ -357,9 +357,9 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
     # ── Legacy Tools ──
@@ -369,14 +369,14 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "layer": {
                     "type": "string",
-                    "enum": ["client", "product", "industry"],
+                    "enum": ["account", "product", "industry"],
                     "description": "Which knowledge layer to read the index for",
                 },
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
     {
@@ -385,11 +385,11 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "node_id": {"type": "string", "description": "The node_id to navigate to"},
                 "sections_only": {"type": "boolean", "description": "If true, returns only section headers"},
             },
-            "required": ["client_id", "node_id"],
+            "required": ["account_id", "node_id"],
         },
     },
     {
@@ -398,10 +398,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "query": {"type": "string", "description": "Natural language search query"},
             },
-            "required": ["client_id", "query"],
+            "required": ["account_id", "query"],
         },
     },
     # ── Output Generation Tools ──
@@ -411,10 +411,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "csm_name": {"type": "string", "description": "CSM name for personalization"},
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
     {
@@ -423,10 +423,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "client_id": {"type": "string", "description": "The client identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
                 "meeting_notes": {"type": "string", "description": "Optional notes from the session"},
             },
-            "required": ["client_id"],
+            "required": ["account_id"],
         },
     },
 ]

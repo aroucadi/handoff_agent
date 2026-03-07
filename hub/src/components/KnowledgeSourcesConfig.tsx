@@ -5,6 +5,7 @@ interface KnowledgeSource {
     type: string;
     uri: string;
     name: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     config: Record<string, any>;
     status: string;
 }
@@ -35,7 +36,7 @@ const KnowledgeSourcesConfig: React.FC<KnowledgeSourcesConfigProps> = ({ sources
         onChange(sources.filter(s => s.source_id !== id));
     };
 
-    const handleConfigChange = (id: string, key: string, value: any) => {
+    const handleConfigChange = (id: string, key: string, value: string | number | boolean) => {
         onChange(sources.map(s => s.source_id === id ? { ...s, config: { ...s.config, [key]: value } } : s));
     };
 

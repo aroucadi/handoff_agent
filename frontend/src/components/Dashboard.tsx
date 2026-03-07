@@ -12,7 +12,10 @@ import {
     Briefcase,
     Circle,
     Activity,
-    FileText
+    FileText,
+    Settings,
+    Shield,
+    Users
 } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
 import ArtifactViewer from './ArtifactViewer';
@@ -28,30 +31,25 @@ interface Deal {
     account_details?: Record<string, unknown>;
 }
 
-const STAGE_LABELS: Record<string, string> = {
-    'closed_won': 'Won',
-    'prospecting': 'Prospecting',
-    'qualification': 'Qualifying',
-    'negotiation': 'Negotiating',
-    'implemented': 'Deployed',
-    'closed_lost': 'Lost'
+const ICON_MAP: Record<string, React.ElementType> = {
+    'LayoutDashboard': LayoutDashboard,
+    'Zap': Zap,
+    'Database': Database,
+    'Briefcase': Briefcase,
+    'Settings': Settings,
+    'Shield': Shield,
+    'Users': Users
 };
 
-const ROLE_CONFIG: Record<string, { title: string; subtitle: string; stages: string[]; icon: React.ElementType }> = {
-    'csm': { title: 'Success Dashboard', subtitle: 'Onboarding & ImplementationBriefings', stages: ['closed_won'], icon: LayoutDashboard },
-    'sales': { title: 'Pipeline Intelligence', subtitle: 'Grounded Deal Strategy', stages: ['prospecting', 'qualification', 'negotiation'], icon: Zap },
-    'support': { title: 'Deployment Hub', subtitle: 'Technical Knowledge Base', stages: ['implemented'], icon: Database },
-    'strategy': { title: 'Win-Back Suite', subtitle: 'Competitive Loss Analysis', stages: ['closed_lost'], icon: Briefcase },
-};
+const DEFAULT_ROLE_CONFIG = { title: 'Success Dashboard', subtitle: 'Onboarding & Implementation Briefings', stages: ['closed_won'], icon: LayoutDashboard };
 
 export default function Dashboard() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const roleId = searchParams.get('role') || 'csm';
     const tenantId = searchParams.get('tenant_id');
-    const config = ROLE_CONFIG[roleId] || ROLE_CONFIG['csm'];
-
     const [deals, setDeals] = useState<Deal[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [tenantConfig, setTenantConfig] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -59,9 +57,26 @@ export default function Dashboard() {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerClientId, setViewerClientId] = useState('');
 
-    const activeStageLabels = {
-        ...STAGE_LABELS,
-        ...(tenantConfig?.agent?.stage_display_config || {})
+    const roleConfig = tenantConfig?.agent?.role_views?.[roleId] || null;
+    const activeRole = roleConfig ? {
+        title: roleConfig.display_name,
+        subtitle: `Workflow: ${roleConfig.display_name}`,
+        stages: roleConfig.stage_filter || [],
+        icon: ICON_MAP[roleConfig.icon] || LayoutDashboard
+    } : DEFAULT_ROLE_CONFIG;
+
+    const terms = {
+        account: tenantConfig?.terminology_overrides?.account || 'Account',
+        case: tenantConfig?.terminology_overrides?.case || 'Case'
+    };
+
+    const activeStageLabels = tenantConfig?.agent?.stage_display_config || {
+        'closed_won': 'Won',
+        'prospecting': 'Prospecting',
+        'qualification': 'Qualifying',
+        'negotiation': 'Negotiating',
+        'implemented': 'Deployed',
+        'closed_lost': 'Lost'
     };
 
     useEffect(() => {
@@ -89,7 +104,7 @@ export default function Dashboard() {
                 const data = await res.json();
 
                 const filtered = (data.deals || []).filter((d: { stage: string }) =>
-                    config.stages.includes(d.stage)
+                    activeRole.stages.includes(d.stage)
                 );
 
                 const mapped = filtered.map((d: { deal_id?: string; id: string; client_id: string; account_name?: string; company_name: string; stage: string; amount?: number; deal_value: number; graph_ready?: boolean }) => ({
@@ -111,7 +126,7 @@ export default function Dashboard() {
         };
 
         fetchTenantConfig().then(fetchDeals);
-    }, [roleId, config.stages, tenantId]);
+    }, [roleId, activeRole.stages, tenantId]);
 
     // Fetch artifact counts per client
     const fetchArtifactCounts = useCallback(async (clientIds: string[]) => {
@@ -164,8 +179,8 @@ export default function Dashboard() {
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary-purple">Synapse Engine Live</span>
                         </div>
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-medium font-inter tracking-tight mb-2 text-gradient">{config.title}</h1>
-                            <p className="text-[#f6f7f9] opacity-50 font-medium">{config.subtitle}</p>
+                            <h1 className="text-4xl md:text-5xl font-medium font-inter tracking-tight mb-2 text-gradient">{activeRole.title}</h1>
+                            <p className="text-[#f6f7f9] opacity-50 font-medium">{activeRole.subtitle}</p>
                         </div>
                     </div>
 
@@ -174,7 +189,7 @@ export default function Dashboard() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search by account or ID..."
+                                placeholder={`Search by ${terms.account.toLowerCase()} or ID...`}
                                 className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-6 text-sm focus:outline-none focus:border-primary-purple/50 focus:ring-4 focus:ring-primary-purple/5 transition-all placeholder:text-white/20"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -200,7 +215,7 @@ export default function Dashboard() {
                         <div className="w-20 h-20 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/5">
                             <Search className="text-white/10" size={32} />
                         </div>
-                        <h3 className="text-white/30 font-inter text-xl mb-6 font-bold">No accounts found in this nexus.</h3>
+                        <h3 className="text-white/30 font-inter text-xl mb-6 font-bold">No {terms.account.toLowerCase()}s found in this nexus.</h3>
                         <button
                             className="px-8 py-3 bg-white text-black text-sm font-bold rounded-xl transition-all hover:scale-105 active:scale-95"
                             onClick={() => setSearchTerm('')}
@@ -237,7 +252,7 @@ export default function Dashboard() {
                                 <div className="relative z-10 grid grid-cols-2 gap-6 py-8 border-y border-white/5">
                                     <div className="space-y-2">
                                         <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-white/20 font-black">
-                                            <Circle size={8} className="fill-primary-purple text-primary-purple" /> Nexus Stage
+                                            <Circle size={8} className="fill-primary-purple text-primary-purple" /> {terms.case} Stage
                                         </p>
                                         <p className="text-md font-bold text-white/80">{activeStageLabels[deal.stage] || deal.stage}</p>
                                     </div>
