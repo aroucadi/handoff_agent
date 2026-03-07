@@ -33,7 +33,7 @@ To set up a fresh environment from scratch, follow this exact sequence:
 | `journey_runner.py` | All | Simulates a user onboarding a new tenant and closing deals. Supports `--lite` mode. |
 | `generate_contracts.py`| All | Generates realistic, multi-page industry-specific PDFs (MSA, SLA). |
 | `seed_rag.py` | All | Scrapes the Knowledge Center and builds the product-knowledge vector base. |
-| `seed_hub.py` | All | Initializes a default tenant and CRM mapping in the Hub API. |
+| `seed_hub.py` | All | Initializes a default tenant with generic terminology (Account/Case) and CRM mapping. |
 
 ### 🔍 Maintenance & Testing
 | Script | OS | Description |

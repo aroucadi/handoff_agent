@@ -11,7 +11,7 @@ Synapse relies on a suite of **specialized, purpose-driven AI Agents** powered b
 
 When CRM data arrives (via webhook or Hub sync), the Graph Generator builds a structured knowledge graph using a formal ontology with 20+ entity types and typed relationships:
 
-**Entity Types:** `Client`, `Deal`, `Contact`, `Risk`, `Product`, `Feature`, `Limitation`, `SuccessMetric`, `Competitor`, `Integration`, `Timeline`, `KBArticle`, and more.
+**Entity Types:** `Account`, `Case`, `Contact`, `Risk`, `Product`, `Feature`, `Limitation`, `SuccessMetric`, `Competitor`, `Integration`, `Timeline`, `KBArticle`, and more.
 
 **Edge Types:** `HAS_RISK`, `INCLUDES`, `CHAMPIONS`, `USES_PRODUCT`, `MITIGATED_BY`, `DEPENDS_ON`, `COMPETES_WITH`, etc.
 
@@ -20,7 +20,7 @@ When CRM data arrives (via webhook or Hub sync), the Graph Generator builds a st
 - **Knowledge Center Extractor**: Crawls the static ClawdView Knowledge Center site to extract product docs, features, limitations, and KB articles.
 
 ### Phase B: Generator + Reviewer
-1. **Generator**: Takes extracted entities and generates delta knowledge graph nodes. Account-oriented: pulls historical deals to generate only new/changed content.
+1. **Generator**: Takes extracted entities and generates delta knowledge graph nodes. Account-oriented: pulls historical cases to generate only new/changed content.
 2. **Reviewer**: QA agent that validates entity types match the ontology, edges are correctly typed, and cross-references resolve.
 
 ---
@@ -31,12 +31,12 @@ When CRM data arrives (via webhook or Hub sync), the Graph Generator builds a st
 Every entity in the knowledge graph is embedded and stored in **Firestore** with typed metadata. Supports:
 - **Type-filtered search**: Search only `Risk` entities, or only `Product` entities
 - **Multi-hop traversal**: Follow typed edges across entities (e.g., Deal → Risk → Mitigation Strategy)
-- **Cross-layer linking**: Client entities link to Product features and KB articles
+- **Cross-layer linking**: Account entities link to Product features and KB articles
 
 ---
 
 ## 3. The Multimodal Live Agent (Real-Time Voice + Vision)
-**Model:** `gemini-2.5-flash-native-audio-preview`
+**Model:** `gemini-live-2.5-flash-native-audio`
 
 ### 13 ADK Tools
 
@@ -72,12 +72,12 @@ The agent has access to 13 function-calling tools organized into three categorie
 The Live agent has access to **Google Search** as a supplementary information source:
 
 - **When**: Industry trends, competitor context, market data not in the knowledge graph
-- **When NOT**: Client deal data, internal CRM info, pricing (always from the graph)
+- **When NOT**: Account case data, internal CRM info, pricing (always from the graph)
 - **Guardrails**: Prompt policy limits searches to 1-2 per conversation, requires the agent to cite when using external data
 
-### Multi-Role Support
+### Multi-Role Support (Zero Adaptation)
 
-The system prompt dynamically adapts based on the user's role:
+The system prompt dynamically adapts based on the tenant's brand name and the user's mapped role persona. Available roles can be completely customized via the Hub:
 
 | Role | Focus | Vocabulary |
 |---|---|---|
@@ -89,7 +89,7 @@ The system prompt dynamically adapts based on the user's role:
 ---
 
 ## 4. The Document Generator (On-Demand)
-**Model:** `gemini-3.1-pro`
+**Model:** `gemini-3.1-pro` / `gemini-3.1-flash-lite` (Thinking)
 
 ### 7 Output Types
 
@@ -123,7 +123,7 @@ Each type has a tailored Gemini system persona:
 All generated artifacts are versioned in Firestore:
 - Each type maintains a version counter
 - Previous versions remain accessible via the ArtifactViewer
-- Dashboard shows artifact badges per client with latest counts
+- Dashboard shows artifact badges per account with latest counts
 
 ---
 
@@ -134,6 +134,8 @@ The Hub is the multi-tenant configuration portal that makes Synapse CRM-agnostic
 
 - **Tenant Management**: Create/configure tenants with custom branding
 - **CRM Field Mapping**: Map any CRM's data schema to Synapse's ontology
-- **Role Configuration**: Enable/disable roles per tenant
-- **Webhook Registration**: Auto-register webhooks for deal events
+- **Role Persona Mapping**: Map team roles to specific stages, filters, and icons
+- **Taxonomy Normalization**: Map CRM stages and product names to Synapse canonical taxonomy
+- **Terminology Overrides**: Change software-wide labels (e.g. "Account" -> "Client")
+- **Webhook Registration**: Auto-register webhooks for case events
 - **Launch Agent**: Direct link to the Voice UI with tenant context

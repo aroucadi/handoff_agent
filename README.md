@@ -10,7 +10,8 @@ Our Google Cloud Platform project is currently in **Recovery Mode** following a 
 **Progress:** 
 - [x] Phase 11: Anti-Abuse Hardening (Rate-limiting, Semaphores, Crawler Boundaries)
 - [x] Phase 12: Codebase Verification (Zero-surprise build audit)
-- [x] Phase 13: Documentation Overhaul (Currently In Progress)
+- [x] Phase 22: Zero Adaptation (Generic Terminology & Role Mapping)
+- [x] Phase 23: Closing the Normalization Gap (End-to-End Taxonomy Sync)
 
 ---
 
@@ -22,18 +23,18 @@ ClawdView is a **CRM-agnostic AI briefing platform** for B2B SaaS teams. It conn
 
 | Feature | Description |
 |---|---|
-| **🧠 Knowledge Graph** | 20+ entity types (Risks, Milestones, Products) extracted with Gemini 3.1 Pro. |
-| **🎙️ Live Briefings** | Real-time voice sessions using **Gemini 2.5 Flash Native Audio**. |
-| **🎭 Role-Awareness** | Switch between **Sales**, **CSM**, **Support**, and **Strategy** personas. |
+| **🧠 Knowledge Graph** | 20+ entity types (Risks, Milestones, Products) extracted with **Gemini 3.1 Pro**. |
+| **🎙️ Live Briefings** | Low-latency voice sessions using **Gemini Live 2.5 Flash**. |
+| **🎭 Zero Adaptation** | Workflow-agnostic architecture: override terminology (**Account**, **Case**) and mapped roles. |
 | **🌍 Search Grounding** | Real-time industry enrichment via Google Search. |
-| **📄 Smart Artifacts** | Generate MSAs, SLAs, and Discovery Guides directly from terminal dialogue. |
-| **🔌 Hub Portal** | Multi-tenant integration portal for CRM field mapping and white-labeling. |
+| **📄 Smart Artifacts** | Generate MSAs, SLAs, and Discovery Guides with **Thinking-enabled** reasoning (3.1 Flash Lite). |
+| **🔌 Hub Portal** | Multi-tenant integration portal for CRM field mapping, stage normalization, and brand mapping. |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **AI Engine**: Gemini 1.5 Pro (Extraction), Gemini 1.5 Flash (Voice), Embedding 001.
+- **AI Engine**: Gemini 3.1 Pro (Extraction), Gemini 3.1 Flash Lite (Thinking/Artifacts), Gemini 2.5 Flash (Voice).
 - **Frontend**: React 19, Vite 6, Tailwind CSS, Lucide icons.
 - **Backend**: Python 3.11, FastAPI, WebSockets.
 - **Infrastructure**: Terraform, GCP (Cloud Run, GCS, Firestore).

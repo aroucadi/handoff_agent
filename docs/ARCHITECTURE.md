@@ -23,8 +23,8 @@ graph LR
 
     subgraph AI ["Gemini Models"]
         PRO["Gemini 3.1 Pro"]
-        EMB["Embedding 001"]
-        LIVE["2.5 Flash Native Audio"]
+        LITE["Gemini 3.1 Flash Lite"]
+        LIVE["Gemini Live 2.5 Flash"]
     end
 
     subgraph Storage ["Google Cloud"]
@@ -209,11 +209,13 @@ graph LR
     FS -->|Active Node| UI
 ```
 
-### Entity Types (Ontology)
+### Entity Types (Ontology & Terminology)
+
+The system is terminology-agnostic. While the internal ontology uses these defaults, the Hub allows mapping "Account" to "Client", "Case" to "Deal", etc.
 
 | Category | Types |
 |---|---|
-| **Core** | Client, Deal, Contact, Account |
+| **Core** | Account (Organization), Case (Deal), Contact |
 | **Product** | Product, Feature, Limitation, Integration |
 | **Risk** | Risk, CompetitorThreat, ChurnSignal |
 | **Strategy** | SuccessMetric, Milestone, Timeline |
@@ -237,10 +239,10 @@ graph LR
 
 | Model | Purpose | Where Used |
 |---|---|---|
-| `gemini-3.1-pro-preview` | Entity extraction, node generation, document generation | Graph Generator, Output Generators |
-| `gemini-embedding-001` | 768d vector embeddings for semantic search | Graph Generator, Backend |
-| `gemini-2.5-flash-native-audio-preview` | Real-time voice (Multimodal Live API) | Backend Live Sessions |
-| Google Search Grounding | Industry context, competitor data, market trends | Live Sessions (supplementary) |
+| `gemini-3.1-pro-preview` | Entity extraction, high-fidelity node generation | Graph Generator |
+| `gemini-3.1-flash-lite-preview` | Thinking-enabled reasoning, document generation, agent summarization | Hub, Output Generators, ADK |
+| `gemini-live-2.5-flash-native-audio` | Real-time voice (Multimodal Live API) | Backend Live Sessions |
+| Google Search Grounding | Industry context, competitor data, market trends | Live Sessions |
 
 ---
 
@@ -292,7 +294,10 @@ synapse/
 │       ├── ConversationPanel.tsx # Smart action chips + transcript
 │       ├── ArtifactViewer.tsx   # Version history + preview
 │       └── GraphPanel.tsx       # Typed entity visualization
-├── core/                       # Shared Config + DB
+├── core/                       # Shared Config, Database access, and Normalization bridge
+│   ├── config.py               # Global settings & model strategy
+│   ├── db.py                   # Firestore/GCS handle management
+│   └── normalization.py        # Centralized Stage & Product ID normalization logic (Phase 23)
 ├── infra/                      # Terraform (4 modules)
 └── scripts/                    # Maintenance & Seeding Scripts
     ├── deploy.ps1              # Full Infra + App deployment

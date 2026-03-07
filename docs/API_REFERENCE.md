@@ -18,9 +18,9 @@ Initialize a new Gemini Live voice session.
 **Request:**
 ```json
 {
-    "client_id": "precisionmetal-ltd",
+    "account_id": "precisionmetal-ltd",
     "tenant_id": "T001",
-    "deal_id": "WON-2025-CS01",
+    "case_id": "WON-2025-CS01",
     "role": "csm"
 }
 ```
@@ -36,10 +36,10 @@ Bidirectional audio streaming. Message types:
 
 ### Knowledge Graph
 
-#### `GET /api/clients/{client_id}/graph/status`
+#### `GET /api/clients/{account_id}/graph/status`
 Graph readiness check. Returns `{ "status": "ready|generating|not_found", "entity_count": 42 }`
 
-#### `GET /api/clients/{client_id}/graph/entities`
+#### `GET /api/clients/{account_id}/graph/entities`
 Full typed entity list for React Flow visualization.
 
 **Response:**
@@ -62,22 +62,22 @@ Full typed entity list for React Flow visualization.
 
 ### Generative Outputs
 
-#### `POST /api/clients/{client_id}/outputs/briefing`
+#### `POST /api/clients/{account_id}/outputs/briefing`
 Generate an AI briefing document. **Request:** `{ "user_role": "csm" }`
 
-#### `POST /api/clients/{client_id}/outputs/action-plan`
+#### `POST /api/clients/{account_id}/outputs/action-plan`
 Generate a prioritized action plan. **Request:** `{ "user_role": "csm" }`
 
-#### `POST /api/clients/{client_id}/outputs/risk-report`
+#### `POST /api/clients/{account_id}/outputs/risk-report`
 Generate a risk assessment report.
 
-#### `POST /api/clients/{client_id}/outputs/recommendations`
+#### `POST /api/clients/{account_id}/outputs/recommendations`
 Generate strategic recommendations. **Request:** `{ "recommendation_type": "general|upsell|retention|expansion" }`
 
-#### `POST /api/clients/{client_id}/outputs/handoff`
+#### `POST /api/clients/{account_id}/outputs/handoff`
 Generate a team transition document. **Request:** `{ "from_team": "sales", "to_team": "cs" }`
 
-#### `POST /api/clients/{client_id}/outputs/transcript`
+#### `POST /api/clients/{account_id}/outputs/transcript`
 Generate a role-based script. **Request:**
 ```json
 {
@@ -87,13 +87,13 @@ Generate a role-based script. **Request:**
 }
 ```
 
-#### `GET /api/clients/{client_id}/outputs/transcript-types`
+#### `GET /api/clients/{account_id}/outputs/transcript-types`
 List available transcript types with descriptions.
 
-#### `GET /api/clients/{client_id}/outputs`
+#### `GET /api/clients/{account_id}/outputs`
 List all generated artifacts (versioned). Returns `{ "outputs": [{ "id", "type", "subtype", "title", "version", "is_latest", "generated_at" }] }`
 
-#### `GET /api/clients/{client_id}/outputs/{output_id}`
+#### `GET /api/clients/{account_id}/outputs/{output_id}`
 Retrieve a specific artifact with full content. Returns `{ "id", "type", "title", "content", "version", "generated_at" }`
 
 ### Deals & Clients
@@ -101,7 +101,7 @@ Retrieve a specific artifact with full content. Returns `{ "id", "type", "title"
 #### `GET /api/deals?tenant_id=T001&stages=closed_won,prospecting`
 List deals filtered by tenant and stages.
 
-#### `GET /api/clients/{client_id}`
+#### `GET /api/clients/{account_id}`
 Get client account details.
 
 ---
@@ -136,7 +136,7 @@ Trigger ontology-driven graph generation from CRM webhook data.
 ```json
 {
     "tenant_id": "T001",
-    "client_id": "precisionmetal-ltd",
+    "account_id": "precisionmetal-ltd",
     "crm_data": { "account": {...}, "deals": [...], "contacts": [...] }
 }
 ```
@@ -152,7 +152,7 @@ Health check. Returns `{ "status": "healthy", "model": "gemini-3.1-pro" }`
 #### `GET /api/deals`
 List all simulated deals.
 
-#### `PATCH /api/deals/{deal_id}/flag`
+#### `PATCH /api/deals/{case_id}/flag`
 Flag a deal as "at risk" — invoked by the Live Agent's tool when churn risk is detected.
 
 ```json

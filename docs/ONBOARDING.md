@@ -1,6 +1,6 @@
 # 🚀 ClawdView (Synapse) Developer Onboarding Guide
 
-Welcome to the **ClawdView** monorepo! This repository houses a Level 5 AI Voice Agent for Customer Success — a CRM-agnostic, multi-tenant briefing system powered by the **Synapse Core Engine (Gemini 3.1 Pro + 2.5 Flash)**.
+welcome to the **ClawdView** monorepo! This repository houses a Level 5 AI Voice Agent for Customer Success — a CRM-agnostic, multi-tenant briefing system powered by the **Synapse Core Engine (Gemini 3.1 Pro + 2.5 Flash)**.
 
 ---
 
@@ -12,13 +12,13 @@ synapse/
 ├── backend/                # (Microservice) Core Voice API — 13 ADK tools, Live sessions
 │   ├── agent/              # Agent engine: prompts, tools, system instructions
 │   ├── graph/              # Knowledge graph: ontology, traversal, search, output generators
-│   └── live/               # Gemini Live session handler (voice + Google Search)
+│   ├── live/               # Gemini Live session handler (voice + Google Search)
 ├── graph-generator/        # (Microservice) Ontology-driven graph pipeline
 │   └── extractors/         # CRM extractor + Knowledge Center extractor
 ├── crm-simulator/          # (Microservice) SalesClaw mock CRM
 ├── frontend/               # (UI) Multi-role Voice UI (Dashboard, Briefing, ArtifactViewer)
 ├── knowledge-center/       # (Static) ClawdView product knowledge site
-├── core/                   # (Shared) Config, DB, models
+├── core/                   # (Shared) Config, DB, schemas, and Normalization Bridge
 ├── infra/                  # (IaC) GCP Terraform modules (4 modules)
 ├── scripts/                # One-click automation (deploy, teardown, start-local)
 └── synapse.yaml            # Global Monorepo Manifest
@@ -34,10 +34,10 @@ synapse/
 |---|---|---|
 | **Hub** | React + FastAPI | Multi-tenant config: CRM field mapping, branding, role config |
 | **Backend** | FastAPI + WebSockets | Voice sessions, 13 ADK tools, 7 output generators, REST API |
-| **Graph Generator** | FastAPI + Gemini 3.1 Pro | Ontology-driven entity extraction (20+ types, typed edges) |
+| **Graph Generator** | FastAPI + Gemini 3.1 Pro | Ontology-driven entity extraction (20+ types, stage normalization) |
 | **Knowledge Center** | Static HTML/CSS | ClawdView product docs — crawled by graph generator for KB enrichment |
 | **Frontend** | React 19 + React Flow | Dashboard, voice briefing, smart action chips, artifact viewer |
-| **CRM Simulator** | FastAPI + React | Mock CRM for demos (replaceable via Hub with real CRM) |
+| **CRM Simulator** | FastAPI + React | Mock CRM for demos (replaceable via Hub with any CRM) |
 
 ---
 

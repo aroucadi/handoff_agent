@@ -3,11 +3,11 @@
 **Version**: 3.0 | **Date**: February 2026 | **Status**: Hackathon Final Candidate
 
 > [!IMPORTANT]
-> **v3.0 Enhancements (Level 5 Agentic AI)**: Upgraded the core interaction model to **Gemini 2.0 Flash Exp** to unlock purely Multimodal (Vision + Voice) WebRTC capabilities. Added asynchronous `core/telemetry` for agent observability. Replaced static local indexes with a production-grade **Firestore Native Vector Search**. Added complete `infra/` **Terraform IaC** for one-click GCP deployment.
+> **v3.1 Enhancements (Zero Adaptation & Thinking AI)**: Upgraded the core interaction model to **Gemini 3.1 Flash Lite** to unlock "thinking-step" reasoning for artifact generation. Implemented a workflow-agnostic **Zero Adaptation** framework that allows tenants to override internal terminology (e.g. "Account" instead of "Client") and map role personas with zero code changes.
 
 ---
 
-> **TL;DR**: This PRD describes "Synapse" — a Level 5 Multimodal Agent that automatically generates a traversable skill graph when a B2B SaaS deal closes. It enables Customer Success Managers to get real-time, grounded voice and vision briefings before client kickoff calls. Using screen-sharing, the agent can "see" the CRM and discuss it aloud without hallucinating, thanks to underlying Graph Grounding logic.
+> **TL;DR**: This PRD describes "Synapse" — a Level 5 Multimodal Agent that automatically generates a traversable knowledge graph when a customer **Case** reaches a terminal stage. It enables Customer Success Managers to get real-time, grounded voice and vision briefings. Using screen-sharing, the agent can "see" the CRM and discuss it aloud without hallucinating, thanks to underlying Graph Grounding logic.
 
 ---
 
@@ -188,7 +188,7 @@ Layer 3 — Account Knowledge Graph (Delta-based, evolving per deal)
 ---
 title: "Stakeholder Map — GlobalManufacturing Co."
 node_id: "gmc-stakeholder-map"
-client_id: "global-manufacturing-co"
+account_id: "global-manufacturing-co"
 layer: "client"                          # product | industry | client
 stage: ["onboarding"]                    # sales | onboarding | implementation | support | renewal
 domain: "manufacturing"
@@ -292,7 +292,7 @@ Manufacturing conglomerate, 500 employees, midwest US. Closed $2M VeloSaaS CPQ +
 
 **Tool 1: `read_index`**
 ```python
-def read_index(client_id: str, layer: str = "all") -> dict:
+def read_index(account_id: str, layer: str = "all") -> dict:
     """
     Reads the index/MOC node for a client's skill graph.
     Returns node titles, descriptions, and link structure.
@@ -302,7 +302,7 @@ def read_index(client_id: str, layer: str = "all") -> dict:
 
 **Tool 2: `follow_link`**
 ```python
-def follow_link(client_id: str, node_id: str, sections_only: bool = False) -> dict:
+def follow_link(account_id: str, node_id: str, sections_only: bool = False) -> dict:
     """
     Reads a specific skill graph node by node_id.
     If sections_only=True, returns only H2 headers for progressive disclosure.
@@ -312,7 +312,7 @@ def follow_link(client_id: str, node_id: str, sections_only: bool = False) -> di
 
 **Tool 3: `search_graph`**
 ```python
-def search_graph(client_id: str, query: str, layers: list = ["client", "industry", "product"]) -> list:
+def search_graph(account_id: str, query: str, layers: list = ["client", "industry", "product"]) -> list:
     """
     Semantic search across all graph nodes using Firestore + embeddings.
     Returns ranked list of relevant node_ids and their descriptions.
@@ -403,11 +403,11 @@ Your Traversal Protocol:
 
 | System Role | Model ID | Why This Model | Fallback |
 |---|---|---|---|
-| **Graph Generator** (entity extraction, PDF parsing, node generation) | `gemini-3.1-pro-preview` | Best reasoning model available (77.1% ARC-AGI-2). 1M token context handles full sales transcripts + contracts in a single pass. Multimodal PDF understanding eliminates need for separate PDF parser. | `gemini-3.0-flash` (faster, slightly less accurate) |
-| **Graph Generator — Custom Tools** (structured output, node validation) | `gemini-3.1-pro-preview-customtools` | Optimized endpoint for agentic workflows with custom tool schemas. Ideal for structured YAML frontmatter generation and graph validation. | `gemini-3.1-pro-preview` (standard endpoint) |
-| **Live Voice Agent** (real-time bidirectional conversation) | `gemini-2.5-flash-native-audio-preview` | **Only model family supporting the Gemini Live API** for real-time voice streaming. Native audio reasoning — processes raw audio without separate ASR/TTS pipeline. Sub-second latency. | None — Live API requires this model family |
-| **Semantic Search** (graph embeddings for `search_graph` tool) | `gemini-embedding-001` | MTEB Multilingual #1. Matryoshka Representation Learning allows tuning dimensions (3072 → 768) for cost/quality tradeoff. 100+ languages. Replaces deprecated `text-embedding-004`. | N/A |
-| **Quick Summarization** (node preview, breadcrumb labels) | `gemini-3.0-flash` | Frontier-speed model for on-the-fly summaries during graph traversal. Low latency critical for voice conversation flow. | `gemini-2.5-flash` |
+| **Graph Generator** | `gemini-3.1-pro-preview` | Best reasoning model available (77.1% ARC-AGI-2). 1M token context handles full sales transcripts + contracts in a single pass. | `gemini-3-flash-preview` |
+| **Document Generator** | `gemini-3.1-flash-lite-preview` | **Thinking-enabled** reasoning allows step-by-step drafting of complex legal and strategic artifacts (MSA, SLA). | `gemini-3.1-pro` |
+| **Live Voice Agent** | `gemini-live-2.5-flash-native-audio` | Real-time voice streaming with native audio reasoning. Sub-second latency. | None |
+| **Semantic Search** | `gemini-embedding-001` | MTEB Multilingual #1. 768d vector embeddings. | N/A |
+| **Quick Summarization** | `gemini-3.1-flash-lite-preview` | Fast, high-quality summaries for on-the-fly node introspection. | `gemini-3-flash` |
 
 ### Critical Model Constraints
 
@@ -469,7 +469,7 @@ LIVE_AGENT_MODEL = "gemini-2.5-flash-native-audio-preview"
 EMBEDDING_MODEL = "gemini-embedding-001"  # 3072 dims default, MRL-scalable
 
 # Quick summarization during traversal
-SUMMARY_MODEL = "gemini-3.0-flash"  # frontier speed
+SUMMARY_MODEL = "gemini-3.1-flash-lite-preview"
 ```
 
 ### Embedding Configuration
@@ -493,10 +493,10 @@ EMBEDDING_DIMS = 768  # hackathon setting: fast + good enough
 |---|---|---|
 | Agent framework | Google ADK (Agent Development Kit) | Hackathon requirement, designed for Gemini |
 | Voice API | Gemini Multimodal Live API | Hackathon requirement, real-time bidirectional native audio |
-| Graph generation | Gemini 3.1 Pro (`gemini-3.1-pro-preview`) | Best reasoning for entity extraction + PDF parsing. 1M token context. |
-| Live conversation | Gemini 2.5 Flash Native Audio (`gemini-2.5-flash-native-audio-preview`) | Only model supporting Live API for real-time voice |
-| Semantic search | Gemini Embedding (`gemini-embedding-001`) | MTEB #1, MRL-scalable dimensions, replaces deprecated text-embedding-004 |
-| Quick summarization | Gemini 3 Flash (`gemini-3.0-flash`) | Frontier speed for on-the-fly node summaries |
+| Graph generation | Gemini 3.1 Pro (`gemini-3.1-pro-preview`) | Best reasoning for entity extraction + PDF parsing. |
+| Live conversation | Gemini Live 2.5 Flash (`gemini-live-2.5-flash-native-audio`) | Multimodal Live API for real-time voice |
+| Semantic search | Gemini Embedding (`gemini-embedding-001`) | MTEB #1, 768d scalable dimensions. |
+| Artifact Generation | Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite-preview`) | Thinking-mode reasoning for drafted artifacts |
 | API server | Python FastAPI | Lightweight, async, ADK-compatible |
 | WebSocket | FastAPI WebSockets | For Gemini Live streaming |
 
@@ -739,18 +739,18 @@ echo "API: $(gcloud run services describe synapse-api --region=$REGION --format=
 
 ```
 POST /api/webhooks/crm/deal-closed
-  Body: { deal_id, company_name, deal_value, products, sla_days, csm_id, contract_url, transcript }
+  Body: { case_id, company_name, deal_value, products, sla_days, csm_id, contract_url, transcript }
   → Triggers graph generation job
   → Returns: { job_id, estimated_completion_seconds }
 
 GET /api/clients
   → Returns list of accounts assigned to authenticated CSM
 
-GET /api/clients/{client_id}/graph/status
+GET /api/clients/{account_id}/graph/status
   → Returns: { status: "generating|ready|incomplete", node_count, coverage_score }
 
 POST /api/sessions/start
-  Body: { client_id, csm_id }
+  Body: { account_id, csm_id }
   → Returns: { session_id, websocket_url }
 
 WebSocket /ws/sessions/{session_id}
@@ -759,7 +759,7 @@ WebSocket /ws/sessions/{session_id}
   → Server events: { type: "graph_traversal", nodes_read: [...], current_node }
   → Client sends: raw audio bytes (PCM 16kHz)
 
-GET /api/clients/{client_id}/graph/nodes
+GET /api/clients/{account_id}/graph/nodes
   → Returns all node metadata for visualization
 ```
 
@@ -770,7 +770,7 @@ A simple mock Salesforce-like API that the hackathon demo uses to simulate deal 
 ```python
 # mock_crm/data.py
 DEMO_DEAL = {
-    "deal_id": "OPP-2026-GM001",
+    "case_id": "OPP-2026-GM001",
     "company_name": "GlobalManufacturing Co.",
     "deal_value": 2000000,
     "products": ["VeloSaaS CPQ", "Revenue Cloud"],
@@ -970,7 +970,7 @@ Build production-ready Google ADK agents that integrate with Gemini Live API and
 
 2. **Tool pattern**: Each tool must be a Python function with type hints and a comprehensive docstring — ADK uses the docstring as the tool description for the model.
    ```python
-   def follow_link(client_id: str, node_id: str) -> dict:
+   def follow_link(account_id: str, node_id: str) -> dict:
        """
        Reads a specific skill graph node. Returns the full markdown content
        and a list of linked node IDs. Use this when you have a clear
@@ -1019,7 +1019,7 @@ Create well-structured skill graph nodes that follow the Synapse YAML schema and
 ---
 title: "Human-readable title"
 node_id: "kebab-case-unique-id"
-client_id: "client-slug-or-null-for-static"
+account_id: "client-slug-or-null-for-static"
 layer: "product | industry | client"
 stage: ["onboarding"]   # array: sales|onboarding|implementation|support|renewal
 domain: "manufacturing | financial-services | product"

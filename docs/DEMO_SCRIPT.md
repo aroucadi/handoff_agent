@@ -9,7 +9,7 @@ This script is designed to maximize scores across all hackathon rubric categorie
 - **Action**: Click "Create New Tenant". Name it "ClawdView Global".
 - **Narration**: "Welcome to ClawdView. We're moving beyond static chatbots to living customer intelligence. I'm setting up a new enterprise tenant in our multi-tenant Hub."
 - **Action**: Show the **CRM Field Mapping** tab (Salesforce/HubSpot). 
-- **Narration**: "We use a dynamic mapping engine to translate agnostic CRM webhooks into our internal ontology. One click, and we're ready to ingest."
+- **Narration**: "We use a dynamic mapping engine to translate agnostic CRM webhooks into our internal ontology. Our system is completely terminology-agnostic—we can map 'Client' to 'Account', 'Deal' to 'Case', or any other workflow with zero code changes."
 
 ---
 
@@ -26,7 +26,7 @@ This script is designed to maximize scores across all hackathon rubric categorie
 **Scene**: ClawdView Voice UI. Start a "CSM Briefing".
 - **Action**: Enable **Microphone** and **Screen Share** (Vision). Show a Google Search result or a SalesClaw deal page.
 - **Narration**: "Now, the real magic. I'm starting a Gemini Live session. I'm sharing my screen so the agent can see what I see."
-- **Agent Greeting**: "Hello [Your Name], I'm your strategist for the Acme Corp account."
+- **Agent Greeting**: "Hello [Your Name], I'm your strategist for the Acme Corp account. I've analyzed the recent activity on this case."
 - **Interaction**: "Hey, I'm looking at this contract section on my screen. What are the key milestones?"
 - **Narration**: "Note the vision grounding. The agent analyzes the live frames to answer questions about the visual context."
 
