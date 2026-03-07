@@ -41,7 +41,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
     'Users': Users
 };
 
-const DEFAULT_ROLE_CONFIG = { title: 'Success Dashboard', subtitle: 'Onboarding & Implementation Briefings', stages: ['closed_won'], icon: LayoutDashboard };
+const DEFAULT_ROLE_CONFIG = { title: 'Nexus Overview', subtitle: 'High-fidelity workflow monitoring', stages: ['closed_won'], icon: LayoutDashboard };
 
 export default function Dashboard() {
     const [searchParams] = useSearchParams();
@@ -63,7 +63,11 @@ export default function Dashboard() {
         subtitle: `Workflow: ${roleConfig.display_name}`,
         stages: roleConfig.stage_filter || [],
         icon: ICON_MAP[roleConfig.icon] || LayoutDashboard
-    } : DEFAULT_ROLE_CONFIG;
+    } : {
+        ...DEFAULT_ROLE_CONFIG,
+        title: `${roleId.toUpperCase()} Overview`,
+        subtitle: `Operational monitoring for ${roleId.toUpperCase()}`
+    };
 
     const terms = {
         account: tenantConfig?.terminology_overrides?.account || 'Account',
