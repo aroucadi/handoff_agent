@@ -128,7 +128,7 @@ def list_tenants(request: Request):
         tid = data.get("tenant_id")
         if tid:
             # Oracle is now CLOSED. Discovery only.
-            data["signed_token"] = None 
+            data["synapse_tenant_token"] = None 
             tenants.append(TenantConfig(**data))
     return TenantListResponse(tenants=tenants, total=len(tenants))
 
@@ -144,9 +144,9 @@ def resolve_tenant(slug: str):
     data = doc.to_dict()
     # Auto-login if public demo is enabled
     if data.get("allow_public_demo", True):
-        data["signed_token"] = sign_tenant_context(data["tenant_id"])
+        data["synapse_tenant_token"] = sign_tenant_context(data["tenant_id"])
     else:
-        data["signed_token"] = None
+        data["synapse_tenant_token"] = None
 
     return TenantConfig(**data)
 
@@ -203,7 +203,7 @@ def create_tenant(req: CreateTenantRequest, request: Request):
     tenant.webhook_url = f"{GRAPH_GENERATOR_URL}/ingest/{tenant.tenant_id}"
 
     # Sign token for immediate use by creator (seeding script / UI)
-    tenant.signed_token = sign_tenant_context(tenant.tenant_id)
+    tenant.synapse_tenant_token = sign_tenant_context(tenant.tenant_id)
 
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant.tenant_id)
     doc_ref.set(tenant.model_dump())
