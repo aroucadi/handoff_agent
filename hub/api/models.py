@@ -165,7 +165,7 @@ class TenantConfig(BaseModel):
     # Access Control: Allow public discovery and auto-login for demo purposes
     allow_public_demo: bool = True
     # Metadata for frontend demo 'login' flow
-    signed_token: Optional[str] = None
+    synapse_tenant_token: Optional[str] = None
 
 
 # ── API Request/Response Models ──────────────────────────────────

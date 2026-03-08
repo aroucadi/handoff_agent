@@ -27,7 +27,7 @@ sequenceDiagram
     
     alt is_public_demo == True
         BE-->>BE: Sign HMAC Token (Zero-Auth)
-        BE-->>FE: 200 OK (Config + signed_token)
+        BE-->>FE: 200 OK (Config + synapse_tenant_token)
         FE-->>User: Load Workspace (Auto-Login)
     else is_public_demo == False
         BE-->>FE: 200 OK (Config + NO token)
@@ -39,7 +39,7 @@ sequenceDiagram
 Security is enforced via **Signed Context Tokens** (similar to JWTs).
 
 1.  **Tag Early**: Context is established during resolution.
-2.  **Carry Everywhere**: The `signed_token` is included in every API request (`Authorization: Bearer <token>`).
+2.  **Carry Everywhere**: The `synapse_tenant_token` is included in every API request (`Authorization: Bearer <token>`).
 3.  **Enforce Everywhere**: FastAPI middleware validates the signature and timestamp. If the token is missing or forged, access is denied (401/403).
 
 ## 4. Operational Gating: Nexus Admin
