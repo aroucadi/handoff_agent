@@ -183,6 +183,10 @@ async def list_tenants_for_voice_ui(request: Request):
         tid = data.get("tenant_id", doc.id)
         
         # Oracle CLOSED. Tokens must be obtained via explicit login.
+        # Only list public demo tenants for the picker
+        if data.get("allow_public_demo") is not True:
+            continue
+            
         tenants.append({
             "tenant_id": tid,
             "name": data.get("name", "Unnamed"),
@@ -204,6 +208,7 @@ async def login_tenant_for_voice_ui(tenant_id: str):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Tenant not found")
     
+    data = doc.to_dict()
     if data.get("allow_public_demo") is not True:
         raise HTTPException(status_code=403, detail="Public demo access disabled")
         
@@ -407,7 +412,7 @@ async def get_session_history(session_id: str, request: Request):
 
 
 @app.get("/api/sessions")
-async def list_sessions():
+async def list_sessions(request: Request):
     """List all sessions from Firestore (active and completed)."""
     from google.cloud import firestore
     db = get_firestore_client()
@@ -423,6 +428,7 @@ async def list_sessions():
         "started_at", direction=firestore.Query.DESCENDING
     ).limit(50).stream()
 
+    sessions_list = []
     for doc in docs:
         data = doc.to_dict()
         sessions_list.append({
