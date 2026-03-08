@@ -43,6 +43,12 @@ npm install
 npm run build
 Pop-Location
 
+Write-Host '--> Building Synapse Admin Portal Frontend'
+Push-Location -Path admin-portal
+npm install
+npm run build
+Pop-Location
+
 Write-Host "--> Submitting Remote Build to Google Cloud Build with tag $DeployTag"
 gcloud builds submit --config cloudbuild.yaml . --project $ProjectId --substitutions "_REGION=$Region,_TAG=$DeployTag"
 if ($LASTEXITCODE -ne 0) { throw "Cloud Build failed with exit code $LASTEXITCODE" }
@@ -56,17 +62,22 @@ terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region"
 Write-Host "---> Exporting Terraform Outputs..." -ForegroundColor Yellow
 $apiUrl = terraform output -raw api_url
 $hubUrl = terraform output -raw hub_url
+$adminUrl = terraform output -raw admin_url
 $wsUrl = $apiUrl -replace "^https://", "wss://"
 
 # Voice UI is hosted on Firebase Hosting — resolve URL from project ID
 $voiceUiUrl = "https://${FirebaseProject}.web.app"
 
-$envContent = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl`nVITE_HUB_URL=$hubUrl"
-Set-Content -Path ../frontend/.env.production -Value $envContent
+$liveAgentEnv = "VITE_API_URL=$apiUrl`nVITE_WS_URL=$wsUrl`nVITE_HUB_URL=$hubUrl"
+Set-Content -Path ../live-agent/.env.production -Value $liveAgentEnv
 
-# Hub needs its own API URL + the Voice UI URL for 'Launch Agent' button
+# Hub needs its own API URL + the Live Agent URL for 'Launch Agent' button
 $hubEnv = "VITE_API_URL=$hubUrl`nVITE_VOICE_UI_URL=$voiceUiUrl"
 Set-Content -Path ../hub/.env.production -Value $hubEnv
+
+# Admin Portal env
+$adminEnv = "VITE_API_URL=$adminUrl`nVITE_HUB_URL=$hubUrl"
+Set-Content -Path ../admin-portal/.env.production -Value $adminEnv
 
 Set-Location -Path ..
 
@@ -75,6 +86,7 @@ gcloud run deploy synapse-api --image ${Region}-docker.pkg.dev/${ProjectId}/syna
 gcloud run deploy synapse-graph-generator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/graph-generator:${DeployTag} --region $Region --project $ProjectId --quiet
 gcloud run deploy synapse-crm-simulator --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/crm-simulator:${DeployTag} --region $Region --project $ProjectId --quiet
 gcloud run deploy synapse-hub --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/hub:${DeployTag} --region $Region --project $ProjectId --quiet
+gcloud run deploy synapse-admin --image ${Region}-docker.pkg.dev/${ProjectId}/synapse/admin:${DeployTag} --region $Region --project $ProjectId --quiet
 
 # 4. Deploy ClawdView Knowledge Center to GCS Static Site
 Write-Host "`n[4/5] Syncing ClawdView Knowledge Center to GCS..." -ForegroundColor Yellow
@@ -86,9 +98,9 @@ gcloud storage rsync knowledge-center/ "gs://${kcBucket}" --recursive --delete-u
 $kcUrl = "https://storage.googleapis.com/${kcBucket}/index.html"
 Write-Host "---> Knowledge Center deployed at: $kcUrl" -ForegroundColor Green
 
-# 5. Deploy Frontend
-Write-Host "`n[5/5] Deploying React Voice UI to Firebase..." -ForegroundColor Yellow
-Set-Location -Path ./frontend
+# 5. Deploy Live Agent
+Write-Host "`n[5/5] Deploying React Live Agent to Firebase..." -ForegroundColor Yellow
+Set-Location -Path ./live-agent
 npm install
 npm run build
 
@@ -100,8 +112,10 @@ if (Get-Command firebase -ErrorAction SilentlyContinue) {
 }
 Set-Location -Path ..
 
-Write-Host -Object 'Deployment Complete! The Voice Agent is now LIVE.' -ForegroundColor Green
-Write-Host -Object "Workspace URL: ${voiceUiUrl}/t/gemini-live-hackathon/voice" -ForegroundColor Green
+Write-Host -Object 'Deployment Complete! The Synapse Suite is now LIVE.' -ForegroundColor Green
+Write-Host -Object "Admin Portal URL: $adminUrl" -ForegroundColor Green
+Write-Host -Object "Hub URL: $hubUrl" -ForegroundColor Green
+Write-Host -Object "Live Agent URL: ${voiceUiUrl}/t/gemini-live-hackathon/voice" -ForegroundColor Green
 Write-Host -Object 'Check output variables from Terraform for URLs.' -ForegroundColor Green
 
 # 6. Run Integrated System Test

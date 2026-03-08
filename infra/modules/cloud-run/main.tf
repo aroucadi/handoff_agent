@@ -317,7 +317,7 @@ resource "google_cloud_run_v2_service" "hub" {
       }
       env {
         name  = "SYNAPSE_ADMIN_KEY"
-        value = "nexus-admin-2026"
+        value = "synapse-admin-demo-key-2026"
       }
 
       resources {
@@ -344,6 +344,65 @@ resource "google_cloud_run_v2_service_iam_member" "hub_public" {
   member   = "allUsers"
 }
 
+# ── Cloud Run: Synapse Admin Portal ──────────────────────────
+
+resource "google_cloud_run_v2_service" "admin" {
+  name     = "synapse-admin"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = google_service_account.synapse_runner.email
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 1
+    }
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/admin:latest"
+
+      ports {
+        container_port = 8004
+      }
+
+      env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
+        name  = "SYNAPSE_ADMIN_KEY"
+        value = "synapse-admin-demo-key-2026"
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "1Gi"
+        }
+      }
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+}
+
+# Public access for Admin Portal
+resource "google_cloud_run_v2_service_iam_member" "admin_public" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.admin.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # ── Outputs ──────────────────────────────────────────────────────
 
 output "api_url" {
@@ -360,6 +419,10 @@ output "crm_simulator_url" {
 
 output "hub_url" {
   value = google_cloud_run_v2_service.hub.uri
+}
+
+output "admin_url" {
+  value = google_cloud_run_v2_service.admin.uri
 }
 
 output "artifact_registry" {

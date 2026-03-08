@@ -1,10 +1,8 @@
-import { useNavigate } from 'react-router-dom';
 import { Play, Star } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
 import Navbar from './Navbar';
 
 export default function LandingPage() {
-    const navigate = useNavigate();
 
     return (
         <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
@@ -43,20 +41,20 @@ export default function LandingPage() {
 
                 {/* Subtitle Spec: Manrope max-width 613px, 18px size, 26px line-height */}
                 <p className="text-[18px] leading-[26px] text-[#f6f7f9] opacity-90 max-w-[613px] mb-12 font-regular">
-                    Synapse handles deal context extraction and knowledge grounding, so your CSMs can walk into every kickoff fully informed.
+                    Synapse handles deal context extraction and knowledge grounding, so your teams can walk into every briefing fully informed with our Live Agent.
                 </p>
 
                 {/* CTA Buttons Spec: 22px gap, vertically centered */}
                 <div className="flex flex-col sm:flex-row items-center gap-[22px] mb-20 animate-fade-in-up">
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-primary-purple text-white rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-primary-purple-hover transition-all hover:scale-105 shadow-xl shadow-primary-purple/20 flex items-center justify-center gap-2"
-                        onClick={() => navigate('/tenants')}
+                        onClick={() => window.open('https://docs.synapse.com', '_blank')}
                     >
-                        Get Started Free
+                        Explore Documentation
                     </button>
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-[#2b2344] text-[#f6f7f9] rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-[#352b54] transition-all hover:scale-105 border border-white/5 flex items-center justify-center gap-2 group"
-                        onClick={() => navigate('/tenants')}
+                        onClick={() => window.open('https://demo.synapse.com', '_blank')}
                     >
                         <Play size={16} className="fill-current group-hover:scale-110 transition-transform" />
                         Watch 2min Demo
@@ -66,7 +64,7 @@ export default function LandingPage() {
                 {/* Dashboard Showcase Spec: 1163px wide, 24px radius, glassmorphic */}
                 <div className="w-full max-w-[1163px] md:w-[1163px] md:max-w-[90vw] mt-20 relative p-[22.5px] rounded-[24px] border-[1.5px] border-white/10 bg-white/5 backdrop-blur-[10px] animate-fade-in">
                     <div className="absolute top-8 left-1/2 -translate-x-1/2 px-12 py-3 bg-black/40 border border-white/10 rounded-full text-white/40 text-[11px] font-black uppercase tracking-[0.4em] backdrop-blur-3xl z-20">
-                        Synapse Dashboard
+                        Synapse Live Agent
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-br from-primary-purple/10 to-transparent rounded-[24px] pointer-events-none" />
                     <img

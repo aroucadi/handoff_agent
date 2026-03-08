@@ -10,6 +10,11 @@ graph LR
         GS["Google Search"]
     end
 
+    subgraph Admin ["Synapse Admin Portal"]
+        AdminUI["Admin React UI"]
+        AdminAPI["Admin FastAPI"]
+    end
+
     subgraph Hub ["Synapse Hub"]
         HubUI["Hub React UI"]
         HubAPI["Hub FastAPI"]
@@ -32,7 +37,7 @@ graph LR
         GCS["Cloud Storage"]
     end
 
-    subgraph Frontend ["Voice UI"]
+    subgraph Frontend ["Live Agent"]
         DASH["Dashboard"]
         BRIEF["Briefing Session"]
         AV["Artifact Viewer"]
@@ -62,10 +67,11 @@ graph LR
 
     CU -->|Reset| FS
     CU -->|Reset| GCS
-    JR -->|Onboard| HubAPI
+    JR -->|Onboard| AdminAPI
     JR -->|Seed| CRMSIM
     TP -->|Test| HubAPI
     TP -->|Verify| FS
+    AdminAPI -->|Provision| HubAPI
 ```
 
 ---
@@ -75,7 +81,7 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User as User (CSM/Sales/Support/Strategy)
-    participant React as Voice UI
+    participant React as Live Agent UI
     participant API as Synapse API
     participant Hub as Hub API
     participant Gemini as Gemini Live API
@@ -251,8 +257,10 @@ The system is terminology-agnostic. While the internal ontology uses these defau
 | Layer | Technology |
 |---|---|
 | **Frontend** | React 19, Vite 6, TypeScript 5, React Flow |
+| **Live Agent** | React 19 + Gemini Live Agent |
+| **Admin Portal** | React + FastAPI (Global oversight) |
+| **Hub** | React + FastAPI (Tenant config portal) |
 | **Backend API** | Python 3.11, FastAPI, WebSockets |
-| **Hub** | React + FastAPI (multi-tenant config portal) |
 | **Graph Generator** | Python 3.11, FastAPI, Google GenAI SDK |
 | **Knowledge Center** | Static HTML/CSS (ClawdView product docs) |
 | **Infrastructure** | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |

@@ -42,3 +42,8 @@ output "hub_url" {
   description = "Hub Tenant Config Portal URL"
   value       = module.cloud_run.hub_url
 }
+
+output "admin_url" {
+  description = "Synapse Admin Portal URL"
+  value       = module.cloud_run.admin_url
+}

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   Synapse Hub — Tenant Configuration Portal
-   Synapse High-Fidelity Design System
+   Synapse Admin Portal — Registry Oversight & Provisioning
+   Synapse High-Fidelity Design System (Admin Variant)
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -60,8 +60,8 @@ h6 {
   letter-spacing: -0.025em;
 }
 
-/* Main App Layout for Synapse Hub */
-.hub-app {
+/* Main App Layout for Admin Portal */
+.admin-app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;

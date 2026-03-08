@@ -7,6 +7,7 @@ interface Tenant {
     name: string;
     brand_name: string;
     crm_type: string;
+    signed_token?: string;
 }
 
 const TenantSelector: React.FC = () => {

@@ -84,8 +84,9 @@ $env:GEMINI_API_KEY = "your_key"
 ### 3. Access
 | Portal | URL |
 |---|---|
+| **Synapse Admin** | [http://localhost:5177](http://localhost:5177) |
 | **Synapse Hub** | [http://localhost:5176](http://localhost:5176) |
-| **ClawdView Voice UI** | [http://localhost:5174](http://localhost:5174) |
+| **Live Agent UI** | [http://localhost:5174](http://localhost:5174) |
 | **CRM Simulator** | [http://localhost:5173](http://localhost:5173) |
 
 ---
@@ -94,10 +95,11 @@ $env:GEMINI_API_KEY = "your_key"
 
 ```text
 synapse/
-├── hub/             # Multi-Tenant Config Portal (React + FastAPI)
+├── admin-portal/    # Global Registry & Provisioning (React + FastAPI)
+├── hub/             # Tenant Config Portal (React + FastAPI)
+├── live-agent/      # Synapse Live Agent UI (React + WebRTC)
 ├── backend/         # Core Voice API & ADK Agent Engine
 ├── graph-generator/ # Extraction Pipeline (CRM + Knowledge Center)
-├── frontend/        # ClawdView Voice UI (React + WebRTC)
 ├── crm-simulator/   # Mock Enterprise CRM (SalesClaw)
 ├── infra/           # Terraform IaC Modules
 └── scripts/         # Deployment & Seeding Automation

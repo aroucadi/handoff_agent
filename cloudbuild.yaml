@@ -15,12 +15,18 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
 
+  # 5. Admin Portal API
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest', '-f', 'admin-portal/Dockerfile.api', '.']
+
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest'
 
 substitutions:
   _REGION: us-central1

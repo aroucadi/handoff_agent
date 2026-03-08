@@ -38,6 +38,7 @@ from core.config import config
 DEFAULT_API_URL = "https://synapse-api-uicugotuta-uc.a.run.app"
 DEFAULT_CRM_URL = "https://synapse-crm-simulator-uicugotuta-uc.a.run.app"
 DEFAULT_HUB_URL = "https://synapse-hub-uicugotuta-uc.a.run.app"
+DEFAULT_ADMIN_URL = "https://synapse-admin-uicugotuta-uc.a.run.app"
 DEFAULT_GRAPH_URL = "https://synapse-graph-generator-uicugotuta-uc.a.run.app"
 
 
@@ -132,13 +133,13 @@ def step_contracts():
 
 
 # ── Step 3: CONFIGURE HUB TENANT (via API) ─────────────────────
-async def step_hub(hub_url: str, crm_url: str, graph_url: str, forced_tenant_id: str = None):
-    """Create/configure the tenant via Hub API — simulates wizard UI."""
-    banner(3, 7, "HUB — Configuring Tenant via API")
+async def step_hub(admin_url: str, hub_url: str, crm_url: str, graph_url: str, forced_tenant_id: str = None):
+    """Create/configure the tenant via Synapse Admin API — simulates owner flow."""
+    banner(3, 7, "ADMIN — Provisioning Tenant via Synapse Admin API")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Step 3a: Create tenant
-        print(f"  Creating tenant via POST /api/tenants ...")
+        # Step 3a: Create tenant via Admin API
+        print(f"  Provisioning tenant via POST {admin_url}/api/tenants ...")
         payload = {
             "name": "Gemini Live Hackathon",
             "brand_name": "Synapse",
@@ -147,27 +148,22 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str, forced_tenant_id:
         if forced_tenant_id:
             payload["tenant_id"] = forced_tenant_id
 
-        # POST /api/tenants now requires the Nexus Admin Key
-        admin_headers = {"X-Synapse-Admin-Key": "nexus-admin-2026"}
-        resp = await client.post(f"{hub_url}/api/tenants", json=payload, headers=admin_headers)
+        # POST /api/tenants now requires the Master Admin Key
+        admin_headers = {"X-Synapse-Admin-Key": "synapse-admin-demo-key-2026"}
+        resp = await client.post(f"{admin_url}/api/tenants", json=payload, headers=admin_headers)
         
         if resp.status_code == 201:
             tenant = resp.json()
             tenant_id = tenant["tenant_id"]
             slug = tenant.get("slug")
-            token = tenant.get("signed_token")
-            print(f"  ✅ Tenant created: {tenant_id} (slug: {slug})")
-            if token:
-                print(f"  🔑 Captured demo token")
+            print(f"  ✅ Tenant provisioned: {tenant_id} (slug: {slug})")
         else:
-            print(f"  ⚠️ Tenant creation returned {resp.status_code}: {resp.text[:200]}")
+            print(f"  ⚠️ Tenant provisioning returned {resp.status_code}: {resp.text[:200]}")
             tenant_id = forced_tenant_id or "default-tenant"
-            token = None
             
-        # Headers for subsequent authenticated calls
+        # Headers for subsequent configuration via Hub API
+        # Note: Hub API might still use its own resolution logic
         headers = {"X-Tenant-Id": tenant_id}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
         
         # The rest of step_hub uses the resolved tenant_id and headers
         graph_webhook = f"{graph_url.rstrip('/')}/ingest/{tenant_id}"
@@ -409,6 +405,7 @@ async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str, tenant_
     print(f"  API:   {api_url}")
     print(f"  CRM:   {crm_url}")
     print(f"  Hub:   {hub_url}")
+    print(f"  Admin: {admin_url}")
     print(f"  Graph: {graph_url}")
     print(f"  Project: {config.project_id}")
 
@@ -418,8 +415,8 @@ async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str, tenant_
     # 2. Generate & upload contracts
     step_contracts()
 
-    # 3. Configure Hub tenant via API
-    tenant_id = await step_hub(hub_url, crm_url, graph_url, forced_tenant_id=tenant_id)
+    # 3. Provision Hub tenant via Admin API
+    tenant_id = await step_hub(admin_url, hub_url, crm_url, graph_url, forced_tenant_id=tenant_id)
 
     # 4. Reset CRM deals
     await step_crm_reset(crm_url)
@@ -447,8 +444,9 @@ if __name__ == "__main__":
     parser.add_argument("--api_url", default=DEFAULT_API_URL)
     parser.add_argument("--crm_url", default=DEFAULT_CRM_URL)
     parser.add_argument("--hub_url", default=DEFAULT_HUB_URL)
+    parser.add_argument("--admin_url", default=DEFAULT_ADMIN_URL)
     parser.add_argument("--graph_url", default=DEFAULT_GRAPH_URL)
     parser.add_argument("--tenant_id", help="Explicit tenant_id to use")
     args = parser.parse_args()
 
-    asyncio.run(main(args.api_url, args.crm_url, args.hub_url, args.graph_url, tenant_id=args.tenant_id))
+    asyncio.run(main(args.api_url, args.crm_url, args.hub_url, args.admin_url, args.graph_url, tenant_id=args.tenant_id))

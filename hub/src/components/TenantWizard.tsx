@@ -67,12 +67,15 @@ const STEPS = [
     'Review & Launch'
 ];
 
-const TenantWizard: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+const TenantWizard: React.FC<{ step?: number }> = ({ step: initialStep }) => {
+    const { id: legacyId, slug } = useParams<{ id: string; slug: string }>();
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(id ? true : false);
+    const [step, setStep] = useState(initialStep || 1);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+
+    // Resolve effective ID from context or URL
+    const id = legacyId || localStorage.getItem('tenant_id');
 
     const [config, setConfig] = useState<TenantConfig>({
         name: '',
@@ -191,7 +194,7 @@ const TenantWizard: React.FC = () => {
                 body: JSON.stringify(config)
             });
             if (resp.ok) {
-                navigate('/');
+                navigate(`/t/${slug}/hub`);
             }
         } catch (err) {
             console.error("Save failed", err);
@@ -336,7 +339,7 @@ const TenantWizard: React.FC = () => {
                             onTest={handleTestConnection}
                             isTesting={isTesting}
                             testResult={testResult}
-                            tenantId={id}
+                            tenantId={id || undefined}
                         />
                     )}
 

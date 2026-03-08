@@ -35,22 +35,27 @@ $PIDs += Start-SynapseProcess "Hub API (:8003)" "$ROOT_DIR\hub\api" "uvicorn" "m
 # 5. CRM Frontend
 $PIDs += Start-SynapseProcess "CRM Frontend (:5173)" "$ROOT_DIR\crm-simulator\frontend" "npm" "run dev"
 
-# 6. Synapse Voice UI
-$PIDs += Start-SynapseProcess "Voice UI (:5174)" "$ROOT_DIR\frontend" "npm" "run dev"
+# 6. Synapse Live Agent UI
+$PIDs += Start-SynapseProcess "Live Agent UI (:5174)" "$ROOT_DIR\live-agent" "npm" "run dev"
 
 # 7. Synapse Hub UI
 $PIDs += Start-SynapseProcess "Hub UI (:5176)" "$ROOT_DIR\hub" "npm" "run dev -- --port 5176"
+
+# 8. Synapse Admin Portal UI
+$PIDs += Start-SynapseProcess "Admin UI (:5177)" "$ROOT_DIR\admin-portal" "npm" "run dev -- --port 5177"
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════" -ForegroundColor Green
 Write-Host "  All services started!"
 Write-Host ""
 Write-Host "  🏢 CRM Simulator:   http://localhost:5173"
-Write-Host "  🎙️ Synapse Voice:    http://localhost:5174"
+Write-Host "  🎙️ Synapse Live:    http://localhost:5174"
 Write-Host "  🌉 Synapse Hub:      http://localhost:5176"
+Write-Host "  👑 Synapse Admin:    http://localhost:5177"
 Write-Host "  📡 Backend API:      http://localhost:8000/health"
 Write-Host "  ⚙️  Graph Generator:  http://localhost:8002/health"
 Write-Host "  🛠️  Hub API:         http://localhost:8003/docs"
+Write-Host "  🛡️  Admin API:       http://localhost:8004/docs"
 Write-Host ""
 Write-Host "  Press Ctrl+C to stop all services (Wait for cleanup)"
 Write-Host "═══════════════════════════════════════════════"
