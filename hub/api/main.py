@@ -164,7 +164,7 @@ def login_tenant(tenant_id: str):
         raise HTTPException(403, "Public demo access disabled for this tenant")
     
     token = sign_tenant_context(tenant_id)
-    return {"signed_token": token, "tenant_id": tenant_id}
+    return {"synapse_tenant_token": token, "tenant_id": tenant_id}
 
 
 @app.post("/api/tenants", response_model=TenantConfig, status_code=201)

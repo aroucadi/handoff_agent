@@ -16,8 +16,8 @@ const TenantLayout: React.FC = () => {
 
                 // Store context
                 localStorage.setItem('tenant_id', tenant.tenant_id);
-                if (tenant.signed_token) {
-                    localStorage.setItem('synapse_tenant_token', tenant.signed_token);
+                if (tenant.synapse_tenant_token) {
+                    localStorage.setItem('synapse_tenant_token', tenant.synapse_tenant_token);
                 }
                 setLoading(false);
             } catch (err) {

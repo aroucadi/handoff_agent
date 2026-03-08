@@ -70,7 +70,11 @@ export default function RoleSelection() {
             try {
                 // Fetch tenant info if tenant_id is provided
                 if (tenantId) {
-                    const tenantRes = await fetch(`${baseUrl}/api/tenants/${tenantId}`);
+                    const token = localStorage.getItem('synapse_tenant_token');
+                    const headers: Record<string, string> = {};
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                    const tenantRes = await fetch(`${baseUrl}/api/tenants/${tenantId}`, { headers });
                     if (tenantRes.ok) {
                         const data = await tenantRes.json();
                         setTenantInfo(data);
@@ -78,10 +82,14 @@ export default function RoleSelection() {
                 }
 
                 // Fetch deal counts (tenant-scoped if available)
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const dealsUrl = tenantId
                     ? `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`
                     : `${baseUrl}/api/crm/deals`;
-                const dealsRes = await fetch(dealsUrl);
+                const dealsRes = await fetch(dealsUrl, { headers });
                 const dealsData = await dealsRes.json();
 
                 const counts: Record<string, number> = {};

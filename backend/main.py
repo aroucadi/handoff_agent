@@ -55,9 +55,17 @@ async def tenant_context_middleware(request: Request, call_next):
     2. Fallback to 'X-Tenant-Id' header (for backward compatibility/internal)
     3. Attach to request.state.tenant_id
     """
-    # Bypass context check for health, discovery, and webhooks
+    # Oracle CLOSED logic: only base discovery is bypassed.
+    # Individual lookups like /api/tenants/{id} or /api/resolve-tenant MUST be context-aware
+    # (except for resolve-tenant which is the bootstrap point itself)
     bypass_paths = ["/health", "/api/tenants", "/api/resolve-tenant", "/api/webhooks", "/docs", "/openapi.json"]
-    is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
+    
+    # Restrict /api/tenants bypass to ONLY the base GET listing (Picker)
+    is_bypassed = (request.url.path == "/health") or \
+                  (request.url.path == "/api/tenants" and request.method == "GET") or \
+                  (request.url.path == "/api/resolve-tenant") or \
+                  (request.url.path.startswith("/api/webhooks")) or \
+                  (request.url.path in ["/docs", "/openapi.json"])
     
     tenant_id = None
     auth_header = request.headers.get("Authorization")
@@ -196,12 +204,11 @@ async def login_tenant_for_voice_ui(tenant_id: str):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Tenant not found")
     
-    data = doc.to_dict()
-    if not data.get("allow_public_demo", True):
+    if data.get("allow_public_demo") is not True:
         raise HTTPException(status_code=403, detail="Public demo access disabled")
         
     token = sign_tenant_context(tenant_id)
-    return {"signed_token": token, "tenant_id": tenant_id}
+    return {"synapse_tenant_token": token, "tenant_id": tenant_id}
 
 
 @app.get("/api/resolve-tenant")
@@ -216,16 +223,16 @@ async def resolve_tenant_for_voice_ui(slug: str):
     data = doc.to_dict()
     tid = data.get("tenant_id", doc.id)
     
-    # Auto-issue token for public demo
+    # Auto-issue token for public demo (only if enabled)
     token = None
-    if data.get("allow_public_demo", True):
+    if data.get("allow_public_demo") is True:
         token = sign_tenant_context(tid)
 
     return {
         "tenant_id": tid,
         "name": data.get("name"),
         "brand_name": data.get("brand_name"),
-        "signed_token": token,
+        "synapse_tenant_token": token,
         "agent": data.get("agent"),
         "terminology_overrides": data.get("terminology_overrides")
     }
@@ -375,7 +382,10 @@ async def get_session_history(session_id: str, request: Request):
     Checks active in-memory sessions first.
     """
     ctx_tenant_id = request.state.tenant_id
-    
+    # Ironclad Oracle: Metadata isolation
+    if not ctx_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required for history"})
+        
     # Try active in-memory session
     session = active_sessions.get(session_id)
     if session:
@@ -402,8 +412,14 @@ async def list_sessions():
     from google.cloud import firestore
     db = get_firestore_client()
 
-    sessions_list = []
-    docs = db.collection("sessions").order_by(
+    # Only show sessions for the current tenant context
+    ctx_tenant_id = request.state.tenant_id
+    query = db.collection("sessions")
+    
+    if ctx_tenant_id:
+        query = query.where("tenant_id", "==", ctx_tenant_id)
+        
+    docs = query.order_by(
         "started_at", direction=firestore.Query.DESCENDING
     ).limit(50).stream()
 

@@ -11,7 +11,7 @@ interface TenantSummary {
     integration_status: string;
     roles: string[];
     product_count: number;
-    signed_token?: string; // New: context-isolated demo token
+    synapse_tenant_token?: string; // New: context-isolated demo token
 }
 
 const CRM_ICONS: Record<string, string> = {
@@ -93,8 +93,8 @@ export default function TenantPicker() {
                                     key={tenant.tenant_id}
                                     onClick={() => {
                                         // Store signed token for authoritative context
-                                        if (tenant.signed_token) {
-                                            localStorage.setItem('synapse_tenant_token', tenant.signed_token);
+                                        if (tenant.synapse_tenant_token) {
+                                            localStorage.setItem('synapse_tenant_token', tenant.synapse_tenant_token);
                                         }
                                         localStorage.setItem('synapse_tenant_id', tenant.tenant_id);
                                         navigate(`/roles?tenant_id=${tenant.tenant_id}`);

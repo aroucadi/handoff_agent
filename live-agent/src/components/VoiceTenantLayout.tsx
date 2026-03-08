@@ -20,8 +20,8 @@ const VoiceTenantLayout: React.FC = () => {
 
                 // Store context for the Voice UI components
                 localStorage.setItem('tenant_id', tenant.tenant_id);
-                if (tenant.signed_token) {
-                    localStorage.setItem('synapse_tenant_token', tenant.signed_token);
+                if (tenant.synapse_tenant_token) {
+                    localStorage.setItem('synapse_tenant_token', tenant.synapse_tenant_token);
                 }
 
                 // Also store agent config for initial branding if needed

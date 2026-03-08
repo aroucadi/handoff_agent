@@ -7,7 +7,7 @@ interface Tenant {
     name: string;
     brand_name: string;
     crm_type: string;
-    signed_token?: string;
+    synapse_tenant_token?: string;
 }
 
 const TenantSelector: React.FC = () => {
@@ -81,8 +81,8 @@ const TenantSelector: React.FC = () => {
                             <div
                                 key={tenant.tenant_id}
                                 onClick={() => {
-                                    if (tenant.signed_token) {
-                                        localStorage.setItem('synapse_tenant_token', tenant.signed_token);
+                                    if (tenant.synapse_tenant_token) {
+                                        localStorage.setItem('synapse_tenant_token', tenant.synapse_tenant_token);
                                     }
                                     navigate(`/tenants/${tenant.tenant_id}`);
                                 }}
