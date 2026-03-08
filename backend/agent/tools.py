@@ -19,96 +19,80 @@ from graph.search import search_entities
 
 # ── Tool Functions ────────────────────────────────────────────────
 
-def tool_graph_overview(account_id: str) -> str:
+def tool_graph_overview(tenant_id: str, account_id: str, **kwargs) -> str:
     """Get a high-level overview of the account's knowledge graph.
 
-    Use this tool FIRST when starting a briefing to understand what knowledge
-    is available, how many entities and edges exist, and which format the
-    graph uses (structured or markdown).
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier (e.g., "demo_tenant_acme-corp")
 
     Returns:
         Graph statistics, entity type breakdown, and key entities.
     """
-    result = get_graph_overview(account_id)
+    result = get_graph_overview(tenant_id, account_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_get_entity(account_id: str, entity_id: str) -> str:
+def tool_get_entity(tenant_id: str, account_id: str, entity_id: str, **kwargs) -> str:
     """Retrieve a specific entity and its connections from the knowledge graph.
 
-    Use this when you know the entity_id (from search or traversal results)
-    and need full details including all connected edges.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
-        entity_id: The entity ID to retrieve (e.g., "demo_tenant_acme-corp_org")
+        entity_id: The entity ID to retrieve
 
     Returns:
         Entity properties, outgoing edges, and incoming edges.
     """
-    result = get_entity(account_id, entity_id)
+    result = get_entity(tenant_id, account_id, entity_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_get_entities_by_type(account_id: str, entity_type: str) -> str:
+def tool_get_entities_by_type(tenant_id: str, account_id: str, entity_type: str, **kwargs) -> str:
     """Get all entities of a specific type for an account.
 
-    Use this to get all risks, contacts, products, or any other entity type.
-    Valid types: Organization, Case, Contact, Activity, Contract, Renewal,
-    Product, Feature, UseCase, KBArticle, Limitation, Integration,
-    Risk, DeriskingStrategy, SuccessMetric, Milestone, Objection,
-    Commitment, CompetitorMention.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         entity_type: The entity type name (e.g., "Risk", "Contact", "Product")
 
     Returns:
         List of entities matching the type with their properties.
     """
-    result = get_entities_by_type(account_id, entity_type)
+    result = get_entities_by_type(tenant_id, account_id, entity_type)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_traverse_graph(account_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1) -> str:
+def tool_traverse_graph(tenant_id: str, account_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1, **kwargs) -> str:
     """Multi-hop graph traversal starting from a given entity.
 
-    Follows outgoing edges from the starting entity, discovering connected
-    entities up to max_hops levels deep. Optionally filter by edge type.
-
-    Example: traverse from an Organization with edge_type="HAS_CASE" to find
-    all cases, then from a Case with "HAS_RISK" to find risks.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         entity_id: Starting entity ID
-        edge_type: Optional edge type filter (e.g., "HAS_RISK", "INCLUDES", "CHAMPIONS")
+        edge_type: Optional edge type filter
         max_hops: Traversal depth, 1-3 (default: 1)
 
     Returns:
         Discovered entities and edges in the subgraph.
     """
-    result = traverse_from(account_id, entity_id, edge_type, max_hops)
+    result = traverse_from(tenant_id, account_id, entity_id, edge_type, max_hops)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_search_entities(account_id: str, query: str, entity_type: str = None) -> str:
+def tool_search_entities(tenant_id: str, account_id: str, query: str, entity_type: str = None, **kwargs) -> str:
     """Semantic search across the account's knowledge graph entities.
 
-    Use this when you need to find entities related to a topic but don't
-    know their IDs. Optionally filter by entity type for targeted results.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         query: Natural language search query
-        entity_type: Optional entity type filter (e.g., "Risk", "Feature")
+        entity_type: Optional entity type filter
 
     Returns:
         Ranked list of relevant entities with properties.
     """
+    # Note: search_entities in graph/search.py might need tenant_id too if it has a shared index
     results = search_entities(account_id, query, entity_type)
     return json.dumps({
         "query": query,
@@ -119,59 +103,56 @@ def tool_search_entities(account_id: str, query: str, entity_type: str = None) -
     }, indent=2, default=str)
 
 
-def tool_risk_profile(account_id: str) -> str:
+def tool_risk_profile(tenant_id: str, account_id: str, **kwargs) -> str:
     """Get a comprehensive risk profile for an account's case.
 
-    Returns all identified risks with severity breakdown and associated
-    derisking strategies. Use this for risk-focused briefing sections.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
 
     Returns:
         All risks, severity breakdown, and available derisking strategies.
     """
-    result = get_risk_profile(account_id)
+    result = get_risk_profile(tenant_id, account_id)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_product_knowledge(account_id: str) -> str:
+def tool_product_knowledge(tenant_id: str, account_id: str, **kwargs) -> str:
     """Get product knowledge relevant to an account's case.
 
-    Returns all products in the case with their features, known limitations,
-    and related KB articles. Use this for product-focused discussion or
-    to answer questions about capabilities and constraints.
-
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
 
     Returns:
         Products with features, limitations, and documentation links.
     """
-    result = get_product_knowledge(account_id)
+    result = get_product_knowledge(tenant_id, account_id)
     return json.dumps(result, indent=2, default=str)
 
 
 # ── Legacy Tools (kept for backward compat) ──────────────────────
 
-def read_index(account_id: str, layer: str = "account") -> str:
+def read_index(tenant_id: str, account_id: str, layer: str = "account", **kwargs) -> str:
     """Read the index/table-of-contents node for a skill graph layer (legacy markdown mode).
 
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         layer: Which layer to read. Options: "account", "product", "industry"
 
     Returns:
         The index node content with available links to follow.
     """
-    result = get_index(account_id, layer)
+    result = get_index(tenant_id, account_id, layer)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_follow_link(account_id: str, node_id: str, sections_only: bool = False) -> str:
+def tool_follow_link(tenant_id: str, account_id: str, node_id: str, sections_only: bool = False, **kwargs) -> str:
     """Navigate to a specific node by following a wikilink (legacy markdown mode).
 
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         node_id: The node_id to navigate to
         sections_only: If True, returns only the section headers
@@ -179,92 +160,81 @@ def tool_follow_link(account_id: str, node_id: str, sections_only: bool = False)
     Returns:
         The node content with metadata and outgoing links.
     """
-    result = follow_link(account_id, node_id, sections_only)
+    result = follow_link(tenant_id, account_id, node_id, sections_only)
     return json.dumps(result, indent=2, default=str)
 
 
-def tool_search_graph(account_id: str, query: str) -> str:
+def tool_search_graph(tenant_id: str, account_id: str, query: str, **kwargs) -> str:
     """Semantic search across the account's skill graph (legacy markdown mode).
 
     Args:
+        tenant_id: The tenant identifier
         account_id: The account identifier
         query: Natural language search query
 
     Returns:
         Ranked list of relevant nodes.
     """
-    result = search_graph(account_id, query)
+    result = search_graph(tenant_id, account_id, query)
     return json.dumps(result, indent=2, default=str)
 
 
 # ── Output Generation Tools ──────────────────────────────────────
 
-async def tool_generate_briefing(client_id: str, csm_name: str = "CSM") -> str:
+async def tool_generate_briefing(tenant_id: str, account_id: str, csm_name: str = "CSM", **kwargs) -> str:
     """Generate a pre-meeting briefing summary from the knowledge graph.
 
-    Use this when the CSM asks for a briefing, summary, or preparation document.
-    Reads the full knowledge graph and produces a professional Markdown briefing
-    covering stakeholders, risks, products, success metrics, and talking points.
-
     Args:
-        client_id: The client identifier
+        tenant_id: The tenant identifier
+        account_id: The client/account identifier
         csm_name: CSM name for personalization (optional)
 
     Returns:
         Generated briefing document in Markdown format.
     """
     from graph.outputs import generate_briefing
-    result = await generate_briefing(client_id, csm_name)
+    result = await generate_briefing(tenant_id, account_id, csm_name)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
-async def tool_generate_action_plan(client_id: str, meeting_notes: str = None) -> str:
+async def tool_generate_action_plan(tenant_id: str, account_id: str, meeting_notes: str = None, **kwargs) -> str:
     """Generate a post-session action plan based on graph data.
 
-    Use this when the CSM asks for next steps, action items, or a follow-up plan.
-    Produces a prioritized action plan grouped by urgency with owners and deadlines.
-
     Args:
-        client_id: The client identifier
+        tenant_id: The tenant identifier
+        account_id: The client/account identifier
         meeting_notes: Optional notes or context from the session
 
     Returns:
         Generated action plan document in Markdown format.
     """
     from graph.outputs import generate_action_plan
-    result = await generate_action_plan(client_id, meeting_notes)
+    result = await generate_action_plan(tenant_id, account_id, meeting_notes)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
 async def tool_generate_transcript(
-    client_id: str,
+    tenant_id: str,
+    account_id: str,
     transcript_type: str = "sales_script",
     user_role: str = None,
     additional_context: str = None,
+    **kwargs
 ) -> str:
     """Generate a role-based transcript or conversation script from the knowledge graph.
 
-    Use this when a user asks for a script, talking points, or preparation
-    material for a specific type of customer interaction. Available types:
-
-    - "sales_script": Sales call script with objection handling and value props
-    - "support_script": De-escalation script for frustrated customer interactions
-    - "qbr_prep": Quarterly Business Review discussion guide
-    - "renewal_script": Contract renewal negotiation script
-    - "onboarding_guide": New customer onboarding walkthrough
-    - "discovery_questions": Qualification and discovery question set
-
     Args:
-        client_id: The client identifier
-        transcript_type: One of the 6 transcript types listed above
-        user_role: Optional role (e.g., "AE", "CSM", "Support Agent")
+        tenant_id: The tenant identifier
+        account_id: The client/account identifier
+        transcript_type: One of the supported transcript types
+        user_role: Optional role (e.g., "AE", "CSM")
         additional_context: Optional extra context or session notes
 
     Returns:
         Generated transcript/script document in Markdown format.
     """
     from graph.outputs import generate_transcript
-    result = await generate_transcript(client_id, transcript_type, user_role, additional_context)
+    result = await generate_transcript(tenant_id, account_id, transcript_type, user_role, additional_context)
     if "error" in result:
         return json.dumps(result, indent=2)
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
@@ -281,9 +251,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
         },
     },
     {
@@ -292,10 +263,11 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_id": {"type": "string", "description": "Entity ID to retrieve"},
             },
-            "required": ["account_id", "entity_id"],
+            "required": ["tenant_id", "account_id", "entity_id"],
         },
     },
     {
@@ -304,13 +276,14 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_type": {
                     "type": "string",
                     "description": "Entity type name (e.g. Risk, Contact, Product, Feature)",
                 },
             },
-            "required": ["account_id", "entity_type"],
+            "required": ["tenant_id", "account_id", "entity_type"],
         },
     },
     {
@@ -319,12 +292,13 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "entity_id": {"type": "string", "description": "Starting entity ID"},
                 "edge_type": {"type": "string", "description": "Optional edge type filter (e.g. HAS_RISK, INCLUDES)"},
                 "max_hops": {"type": "integer", "description": "Traversal depth 1-3 (default: 1)"},
             },
-            "required": ["account_id", "entity_id"],
+            "required": ["tenant_id", "account_id", "entity_id"],
         },
     },
     {
@@ -333,11 +307,12 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "query": {"type": "string", "description": "Natural language search query"},
                 "entity_type": {"type": "string", "description": "Optional type filter (e.g. Risk, Feature)"},
             },
-            "required": ["account_id", "query"],
+            "required": ["tenant_id", "account_id", "query"],
         },
     },
     {
@@ -346,9 +321,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
         },
     },
     {
@@ -357,9 +333,10 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
         },
     },
     # ── Legacy Tools ──
@@ -369,6 +346,7 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "layer": {
                     "type": "string",
@@ -376,7 +354,7 @@ TOOL_DEFINITIONS = [
                     "description": "Which knowledge layer to read the index for",
                 },
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
         },
     },
     {
@@ -385,11 +363,12 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "node_id": {"type": "string", "description": "The node_id to navigate to"},
                 "sections_only": {"type": "boolean", "description": "If true, returns only section headers"},
             },
-            "required": ["account_id", "node_id"],
+            "required": ["tenant_id", "account_id", "node_id"],
         },
     },
     {
@@ -398,10 +377,11 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "query": {"type": "string", "description": "Natural language search query"},
             },
-            "required": ["account_id", "query"],
+            "required": ["tenant_id", "account_id", "query"],
         },
     },
     # ── Output Generation Tools ──
@@ -411,10 +391,11 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "csm_name": {"type": "string", "description": "CSM name for personalization"},
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
         },
     },
     {
@@ -423,10 +404,29 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
                 "account_id": {"type": "string", "description": "The account identifier"},
                 "meeting_notes": {"type": "string", "description": "Optional notes from the session"},
             },
-            "required": ["account_id"],
+            "required": ["tenant_id", "account_id"],
+        },
+    },
+    {
+        "name": "generate_transcript",
+        "description": tool_generate_transcript.__doc__,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "tenant_id": {"type": "string", "description": "The tenant identifier"},
+                "account_id": {"type": "string", "description": "The account identifier"},
+                "transcript_type": {
+                    "type": "string",
+                    "description": "One of: sales_script, support_script, qbr_prep, renewal_script, onboarding_guide, discovery_questions",
+                },
+                "user_role": {"type": "string", "description": "Optional role (e.g., AE, CSM)"},
+                "additional_context": {"type": "string", "description": "Optional extra context"},
+            },
+            "required": ["tenant_id", "account_id", "transcript_type"],
         },
     },
 ]

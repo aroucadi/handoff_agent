@@ -16,6 +16,50 @@ from core.db import get_firestore_client
 from graph.search import search_nodes, search_entities
 
 
+from fastapi import HTTPException
+
+def _verify_tenant_access(tenant_id: str, client_id: str):
+    """Authoritative tenant access verification.
+    
+    Checks if the given client_id belongs to the tenant_id by verifying
+    the 'tenant_id' field on the graph status documents.
+    """
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Tenant context required")
+    
+    # Fast path: deterministic prefix matches tenant
+    if client_id.startswith(f"{tenant_id}_"):
+        return True
+
+    # Authoritative check from Firestore (for non-prefixed or legacy)
+    db = get_firestore_client()
+    
+    # Check skill_graphs or knowledge_graphs status docs
+    for coll in ["skill_graphs", "knowledge_graphs"]:
+        doc = db.collection(coll).document(client_id).get()
+        if doc.exists:
+            stored_tenant = doc.to_dict().get("tenant_id")
+            if stored_tenant == tenant_id:
+                return True
+            else:
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"Access denied: Client {client_id} does not belong to tenant {tenant_id}"
+                )
+
+    # Note: If no graph doc exists yet, we let it pass the isolation check 
+    # but the subsequent read will naturally fail if the data isn't there.
+    # However, for 100% isolation, we return True only if we are CERTAIN or safe.
+    # For now, prefix is our primary trust anchor.
+    if client_id.startswith(f"{tenant_id}_"):
+        return True
+        
+    raise HTTPException(
+        status_code=403, 
+        detail=f"Access denied: No authoritative ownership found for {client_id} under tenant {tenant_id}"
+    )
+
+
 # ── Legacy Markdown Graph Traversal ──────────────────────────────
 
 def _parse_frontmatter(content: str) -> tuple[dict, str]:
@@ -37,8 +81,9 @@ def _extract_links(content: str) -> list[str]:
     return re.findall(r'\[\[([^\]]+)\]\]', content)
 
 
-def get_index(client_id: str, layer: str = "client") -> dict:
+def get_index(tenant_id: str, client_id: str, layer: str = "client") -> dict:
     """Read the index/MOC node for a given layer (legacy markdown mode)."""
+    _verify_tenant_access(tenant_id, client_id)
     if layer == "product":
         content = read_static_node("product/index.md")
         node_id = "product-index"
@@ -67,8 +112,9 @@ def get_index(client_id: str, layer: str = "client") -> dict:
     }
 
 
-def follow_link(client_id: str, node_id: str, sections_only: bool = False) -> dict:
+def follow_link(tenant_id: str, client_id: str, node_id: str, sections_only: bool = False) -> dict:
     """Follow a wikilink to read a specific node (legacy markdown mode)."""
+    _verify_tenant_access(tenant_id, client_id)
     content = read_node(client_id, node_id)
     if not content:
         content = read_static_node(f"product/{node_id}.md")
@@ -101,8 +147,9 @@ def follow_link(client_id: str, node_id: str, sections_only: bool = False) -> di
     }
 
 
-def search_graph(client_id: str, query: str) -> dict:
+def search_graph(tenant_id: str, client_id: str, query: str) -> dict:
     """Semantic search across the client's skill graph (legacy)."""
+    _verify_tenant_access(tenant_id, client_id)
     results = search_nodes(client_id, query, top_k=5)
     return {
         "query": query,
@@ -114,16 +161,18 @@ def search_graph(client_id: str, query: str) -> dict:
 
 # ── Structured Entity+Edge Graph Traversal (Phase 2) ─────────────
 
-def get_entity(client_id: str, entity_id: str) -> dict:
+def get_entity(tenant_id: str, client_id: str, entity_id: str) -> dict:
     """Retrieve a specific entity from the structured knowledge graph.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
         entity_id: Entity ID to retrieve.
 
     Returns:
         Entity dict with type, properties, and connected edges.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
 
     # Get the entity
@@ -166,16 +215,18 @@ def get_entity(client_id: str, entity_id: str) -> dict:
     }
 
 
-def get_entities_by_type(client_id: str, entity_type: str) -> dict:
+def get_entities_by_type(tenant_id: str, client_id: str, entity_type: str) -> dict:
     """Retrieve all entities of a specific type for a client.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
         entity_type: Node type name (e.g. "Risk", "Contact", "Product").
 
     Returns:
         Dict with list of matching entities.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
     entities_ref = (db.collection("knowledge_graphs")
                     .document(client_id)
@@ -194,13 +245,14 @@ def get_entities_by_type(client_id: str, entity_type: str) -> dict:
     }
 
 
-def traverse_from(client_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1) -> dict:
+def traverse_from(tenant_id: str, client_id: str, entity_id: str, edge_type: str = None, max_hops: int = 1) -> dict:
     """Multi-hop graph traversal starting from a given entity.
 
     Follows outgoing edges (optionally filtered by edge_type) up to max_hops
     levels deep. Returns the subgraph of discovered entities and edges.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
         entity_id: Starting entity ID.
         edge_type: Optional edge type filter (e.g. "HAS_RISK", "INCLUDES").
@@ -209,6 +261,7 @@ def traverse_from(client_id: str, entity_id: str, edge_type: str = None, max_hop
     Returns:
         Dict with discovered entities, edges, and traversal path.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
     max_hops = min(max_hops, 3)  # Cap at 3 to prevent excessive traversal
 
@@ -273,18 +326,20 @@ def traverse_from(client_id: str, entity_id: str, edge_type: str = None, max_hop
     }
 
 
-def get_graph_overview(client_id: str) -> dict:
+def get_graph_overview(tenant_id: str, client_id: str) -> dict:
     """Get a high-level overview of a client's structured knowledge graph.
 
     Returns entity type counts, edge type counts, and key entities
     (Organization, Deal) for orientation.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
 
     Returns:
         Dict with graph statistics and key entities.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
 
     # Check structured graph status
@@ -336,18 +391,20 @@ def get_graph_overview(client_id: str) -> dict:
     }
 
 
-def get_risk_profile(client_id: str) -> dict:
+def get_risk_profile(tenant_id: str, client_id: str) -> dict:
     """Get a comprehensive risk profile for a client's deal.
 
     Retrieves all Risk entities and their associated DeriskingStrategies,
     providing a single-tool risk assessment view.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
 
     Returns:
         Dict with risks, derisking strategies, and severity breakdown.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
     entities_ref = db.collection("knowledge_graphs").document(client_id).collection("entities")
     edges_ref = db.collection("knowledge_graphs").document(client_id).collection("edges")
@@ -393,18 +450,20 @@ def get_risk_profile(client_id: str) -> dict:
     }
 
 
-def get_product_knowledge(client_id: str) -> dict:
+def get_product_knowledge(tenant_id: str, client_id: str) -> dict:
     """Get product knowledge relevant to a client's deal.
 
     Retrieves Products included in the deal, their Features, Limitations,
     and relevant KB articles.
 
     Args:
+        tenant_id: Tenant identifier (for scoping).
         client_id: Client identifier.
 
     Returns:
         Dict with products, features, limitations, and articles.
     """
+    _verify_tenant_access(tenant_id, client_id)
     db = get_firestore_client()
     entities_ref = db.collection("knowledge_graphs").document(client_id).collection("entities")
     edges_ref = db.collection("knowledge_graphs").document(client_id).collection("edges")

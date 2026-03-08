@@ -11,6 +11,7 @@ interface TenantSummary {
     integration_status: string;
     roles: string[];
     product_count: number;
+    signed_token?: string; // New: context-isolated demo token
 }
 
 const CRM_ICONS: Record<string, string> = {
@@ -90,8 +91,14 @@ export default function TenantPicker() {
                             return (
                                 <div
                                     key={tenant.tenant_id}
-                                    className="group relative glass-card p-8 hover:border-white/30 transition-all duration-500 cursor-pointer hover:-translate-y-1 flex flex-col gap-6"
-                                    onClick={() => navigate(`/roles?tenant_id=${tenant.tenant_id}`)}
+                                    onClick={() => {
+                                        // Store signed token for authoritative context
+                                        if (tenant.signed_token) {
+                                            localStorage.setItem('synapse_tenant_token', tenant.signed_token);
+                                        }
+                                        localStorage.setItem('synapse_tenant_id', tenant.tenant_id);
+                                        navigate(`/roles?tenant_id=${tenant.tenant_id}`);
+                                    }}
                                 >
                                     {/* Hover glow */}
                                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary-purple/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

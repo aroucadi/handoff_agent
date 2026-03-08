@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from google import genai
 from google.genai.types import EmbedContentConfig
-from google.cloud import firestore
-from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
 from google.cloud.firestore_v1.vector import Vector
 
 from core.config import config
+from graph.traversal import _verify_tenant_access
 
 
 def _get_firestore() -> firestore.Client:
@@ -38,10 +37,11 @@ def embed_query(query: str) -> list[float]:
 
 # ── Legacy Search (skill_graphs) ─────────────────────────────────
 
-def search_nodes(client_id: str, query: str, top_k: int = 5) -> list[dict]:
+def search_nodes(tenant_id: str, client_id: str, query: str, top_k: int = 5) -> list[dict]:
     """Search for relevant nodes using vector similarity (legacy markdown graphs).
 
     Args:
+        tenant_id: The tenant identifier
         client_id: Client to search within.
         query: Natural language search query.
         top_k: Number of results to return.
@@ -49,6 +49,7 @@ def search_nodes(client_id: str, query: str, top_k: int = 5) -> list[dict]:
     Returns:
         List of matching node summaries with similarity scores.
     """
+    _verify_tenant_access(tenant_id, client_id)
     query_embedding = embed_query(query)
 
     db = _get_firestore()
@@ -77,6 +78,7 @@ def search_nodes(client_id: str, query: str, top_k: int = 5) -> list[dict]:
 # ── Structured Entity Search (knowledge_graphs) ──────────────────
 
 def search_entities(
+    tenant_id: str,
     client_id: str,
     query: str,
     entity_type: str = None,
@@ -88,6 +90,7 @@ def search_entities(
     collection. Optionally filters by entity type.
 
     Args:
+        tenant_id: The tenant identifier
         client_id: Client to search within.
         query: Natural language search query.
         entity_type: Optional entity type filter (e.g. "Risk", "Feature").
@@ -96,6 +99,7 @@ def search_entities(
     Returns:
         List of matching entities with their types and properties.
     """
+    _verify_tenant_access(tenant_id, client_id)
     query_embedding = embed_query(query)
 
     db = _get_firestore()

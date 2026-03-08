@@ -38,8 +38,12 @@ const CrmConfig: React.FC<CrmConfigProps> = ({ crm, onChange, onTest, tenantId, 
 
     useEffect(() => {
         if (tenantId) {
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
-            fetch(`${baseUrl}/api/tenants/${tenantId}/integration-guide`)
+            fetch(`${baseUrl}/api/tenants/${tenantId}/integration-guide`, { headers })
                 .then(res => res.json())
                 .then(data => setGuide(data))
                 .catch(err => console.error('Failed to load integration guide:', err));

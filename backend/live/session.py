@@ -47,14 +47,14 @@ def _build_live_tools() -> list[Tool]:
         # ── Structured Graph Tools (Primary) ──
         FunctionDeclaration(
             name="graph_overview",
-            description="Get a high-level overview of the client's knowledge graph. "
-                        "Use FIRST to understand available knowledge, entity types, and graph format.",
+            description="Get a high-level overview of the client's knowledge graph. Use FIRST to understand available knowledge.",
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                 },
-                "required": ["client_id"],
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -63,36 +63,39 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "entity_id": {"type": "string"},
                 },
-                "required": ["client_id", "entity_id"],
+                "required": ["tenant_id", "client_id", "entity_id"],
             },
         ),
         FunctionDeclaration(
             name="get_entities_by_type",
-            description="Get all entities of a specific type (e.g., Risk, Contact, Product, Feature).",
+            description="Get all entities of a specific type (e.g., Risk, Contact, Product).",
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
-                    "entity_type": {"type": "string", "description": "Entity type: Risk, Contact, Product, Feature, etc."},
+                    "entity_type": {"type": "string"},
                 },
-                "required": ["client_id", "entity_type"],
+                "required": ["tenant_id", "client_id", "entity_type"],
             },
         ),
         FunctionDeclaration(
             name="traverse_graph",
-            description="Multi-hop graph traversal from an entity. Follows edges to discover connected entities.",
+            description="Multi-hop graph traversal from an entity.",
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "entity_id": {"type": "string"},
-                    "edge_type": {"type": "string", "description": "Optional edge filter: HAS_RISK, INCLUDES, CHAMPIONS, etc."},
-                    "max_hops": {"type": "integer", "description": "Depth 1-3"},
+                    "edge_type": {"type": "string"},
+                    "max_hops": {"type": "integer"},
                 },
-                "required": ["client_id", "entity_id"],
+                "required": ["tenant_id", "client_id", "entity_id"],
             },
         ),
         FunctionDeclaration(
@@ -468,9 +471,13 @@ class LiveSession:
                                 fn_name = fc.name
                                 fn_args = dict(fc.args) if fc.args else {}
 
-                                # Inject client_id
+                                # Scoping: Inject context if missing
+                                if "tenant_id" not in fn_args:
+                                    fn_args["tenant_id"] = self.tenant_id
                                 if "client_id" not in fn_args:
                                     fn_args["client_id"] = self.client_id
+                                if "account_id" not in fn_args:
+                                    fn_args["account_id"] = self.client_id
 
                                 print(f"[LIVE] Tool call: {fn_name}({fn_args})")
                                 self.tool_calls.append({

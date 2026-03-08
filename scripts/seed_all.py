@@ -132,72 +132,78 @@ def step_contracts():
 
 
 # ── Step 3: CONFIGURE HUB TENANT (via API) ─────────────────────
-async def step_hub(hub_url: str, crm_url: str, graph_url: str):
+async def step_hub(hub_url: str, crm_url: str, graph_url: str, forced_tenant_id: str = None):
     """Create/configure the tenant via Hub API — simulates wizard UI."""
     banner(3, 7, "HUB — Configuring Tenant via API")
 
-    graph_webhook = f"{graph_url.rstrip('/')}/generate"
-
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Step 3a: Create tenant (as if user clicked "Create Tenant" in wizard)
-        print("  Creating tenant via POST /api/tenants ...")
-        resp = await client.post(f"{hub_url}/api/tenants", json={
+        # Step 3a: Create tenant
+        print(f"  Creating tenant via POST /api/tenants ...")
+        payload = {
             "name": "ClawdView Global Enterprise",
             "brand_name": "ClawdView",
             "crm_type": "custom",
-        })
+        }
+        if forced_tenant_id:
+            payload["tenant_id"] = forced_tenant_id
+
+        # POST /api/tenants is bypassed in middleware for creation
+        resp = await client.post(f"{hub_url}/api/tenants", json=payload)
+        
         if resp.status_code == 201:
             tenant = resp.json()
             tenant_id = tenant["tenant_id"]
+            token = tenant.get("signed_token")
             print(f"  ✅ Tenant created: {tenant_id}")
+            if token:
+                print(f"  🔑 Captured demo token")
         else:
             print(f"  ⚠️ Tenant creation returned {resp.status_code}: {resp.text[:200]}")
-            # Use fallback tenant_id
-            tenant_id = "default-tenant"
-            # Try creating with explicit ID directly in Firestore
-            db = firestore.Client(project=config.project_id)
-            db.collection("tenants").document(tenant_id).set({
-                "tenant_id": tenant_id,
-                "name": "ClawdView Global Enterprise",
-                "brand_name": "ClawdView",
-                "status": "configuring",
-                "crm": {"crm_type": "custom", "connected": False},
-                "products": [],
-                "agent": {"roles": ["csm", "sales", "support", "win-back"]},
-            })
-            print(f"  ✅ Fallback tenant '{tenant_id}' created in Firestore")
-
-        # Step 3b: Configure CRM connection (as if user filled CRM wizard step)
-        print(f"  Configuring CRM connection via PATCH /api/tenants/{tenant_id} ...")
-        resp = await client.patch(f"{hub_url}/api/tenants/{tenant_id}", json={
-            "crm": {
-                "crm_type": "custom",
-                "crm_url": crm_url,
-                "connected": True,
-                "auth_method": "api_key",
-                "field_mapping": {
-                    "deal_id": "deal_id",
-                    "company_name": "company_name",
-                    "deal_value": "deal_value",
-                    "close_date": "close_date",
-                    "industry": "industry",
-                    "products": "products",
-                    "contacts": "contacts",
-                    "risks": "risks",
-                    "success_metrics": "success_metrics",
-                    "sales_transcript": "sales_transcript",
-                    "contract_pdf_url": "contract_pdf_url",
+            tenant_id = forced_tenant_id or "default-tenant"
+            token = None
+            
+        # Headers for subsequent authenticated calls
+        headers = {"X-Tenant-Id": tenant_id}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        
+        # The rest of step_hub uses the resolved tenant_id and headers
+        graph_webhook = f"{graph_url.rstrip('/')}/ingest/{tenant_id}"
+        
+        print(f"  Configuring CRM connection for {tenant_id} ...")
+        resp = await client.patch(
+            f"{hub_url}/api/tenants/{tenant_id}", 
+            headers=headers,
+            json={
+                "crm": {
+                    "crm_type": "custom",
+                    "crm_url": crm_url,
+                    "connected": True,
+                    "auth_method": "api_key",
+                    "field_mapping": {
+                        "deal_id": "deal_id",
+                        "company_name": "company_name",
+                        "deal_value": "deal_value",
+                        "close_date": "close_date",
+                        "industry": "industry",
+                        "products": "products",
+                        "contacts": "contacts",
+                        "risks": "risks",
+                        "success_metrics": "success_metrics",
+                        "sales_transcript": "sales_transcript",
+                        "contract_pdf_url": "contract_pdf_url",
+                    },
                 },
-            },
-            "webhook_url": graph_webhook,
-        })
+                "webhook_url": graph_webhook,
+            }
+        )
         if resp.status_code == 200:
             print(f"  ✅ CRM connected → {crm_url}")
             print(f"  ✅ Webhook URL → {graph_webhook}")
         else:
             print(f"  ⚠️ CRM config returned {resp.status_code}: {resp.text[:200]}")
 
-        # Step 3c: Add products (as if user clicked "Add Product" for each)
+        # Step 3c: Add products
         products = [
             {"name": "ClawdView AgilePlace", "description": "Enterprise Agile project management and Kanban boards"},
             {"name": "ClawdView Portfolios", "description": "Strategic portfolio management and resource planning"},
@@ -207,6 +213,7 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
         for product in products:
             resp = await client.post(
                 f"{hub_url}/api/tenants/{tenant_id}/products",
+                headers=headers,
                 json=product,
             )
             if resp.status_code == 201:
@@ -215,15 +222,19 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
             else:
                 print(f"  ⚠️ Product '{product['name']}' → {resp.status_code}")
 
-        # Step 3d: Activate tenant (as if user clicked "Go Live")
-        resp = await client.patch(f"{hub_url}/api/tenants/{tenant_id}", json={
-            "status": "active",
-            "agent": {
-                "roles": ["csm", "sales", "support", "win-back"],
-                "persona": "Professional, data-driven, and proactive enterprise assistant for ClawdView customers.",
-                "brand_name": "ClawdView",
-            },
-        })
+        # Step 3d: Activate tenant
+        resp = await client.patch(
+            f"{hub_url}/api/tenants/{tenant_id}", 
+            headers=headers,
+            json={
+                "status": "active",
+                "agent": {
+                    "roles": ["csm", "sales", "support", "win-back"],
+                    "persona": "Professional, data-driven, and proactive enterprise assistant for ClawdView customers.",
+                    "brand_name": "ClawdView",
+                },
+            }
+        )
         if resp.status_code == 200:
             print(f"  ✅ Tenant activated")
         else:
@@ -288,16 +299,16 @@ async def step_trigger_won(crm_url: str):
 
 
 # ── Step 6: SEED REMAINING DEALS (via webhook) ────────────────
-async def step_seed_remaining(api_url: str):
+async def step_seed_remaining(api_url: str, tenant_id: str):
     """Seed non-won deals via the Synapse API webhook endpoint."""
-    banner(6, 7, "RAG — Seeding Remaining Deals via Webhook")
+    banner(6, 7, f"RAG — Seeding Remaining Deals for {tenant_id}")
 
     from seed_data import DEMO_DEALS
 
     non_won_deals = [d for d in DEMO_DEALS if d.stage.value != "closed_won"]
     print(f"  Seeding {len(non_won_deals)} non-won deals via API webhook")
 
-    webhook_url = f"{api_url}/api/webhooks/crm/deal-closed"
+    webhook_url = f"{api_url}/api/webhooks/crm/deal-closed/{tenant_id}"
 
     # Group by company for historical context
     companies: dict[str, list] = {}
@@ -305,6 +316,9 @@ async def step_seed_remaining(api_url: str):
         companies.setdefault(deal.company_name, []).append(deal)
 
     async with httpx.AsyncClient(timeout=30.0) as client:
+        # Headers for context propagation
+        headers = {"X-Tenant-Id": tenant_id}
+        
         for idx, deal in enumerate(non_won_deals, 1):
             historical = [
                 {
@@ -337,10 +351,11 @@ async def step_seed_remaining(api_url: str):
                 "sales_transcript": deal.sales_transcript or "",
                 "contract_pdf_url": f"gs://{config.uploads_bucket}/contracts/{deal.deal_id}_contract.pdf",
                 "historical_deals": historical,
+                "tenant_id": tenant_id,
             }
 
             try:
-                resp = await client.post(webhook_url, json=payload, timeout=60.0)
+                resp = await client.post(webhook_url, json=payload, headers=headers, timeout=60.0)
                 status = "✅" if resp.status_code in [200, 202] else "⚠️"
                 msg = resp.json().get("message", resp.text[:80]) if resp.status_code in [200, 202] else resp.text[:80]
                 print(f"  [{idx}/{len(non_won_deals)}] {status} {deal.deal_id} ({deal.company_name}) — {msg}")
@@ -385,7 +400,7 @@ def step_verify():
 
 
 # ── Main Orchestrator ──────────────────────────────────────────
-async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str):
+async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str, tenant_id: str = None):
     print("╔══════════════════════════════════════════════════════╗")
     print("║    SYNAPSE — Full End-to-End Seeding Orchestrator    ║")
     print("╚══════════════════════════════════════════════════════╝")
@@ -402,7 +417,7 @@ async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str):
     step_contracts()
 
     # 3. Configure Hub tenant via API
-    tenant_id = await step_hub(hub_url, crm_url, graph_url)
+    tenant_id = await step_hub(hub_url, crm_url, graph_url, forced_tenant_id=tenant_id)
 
     # 4. Reset CRM deals
     await step_crm_reset(crm_url)
@@ -411,7 +426,7 @@ async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str):
     await step_trigger_won(crm_url)
 
     # 6. Seed remaining deals via API webhook
-    await step_seed_remaining(api_url)
+    await step_seed_remaining(api_url, tenant_id)
 
     # Wait for last graph generation to complete
     print("\n⏳ Waiting 30 seconds for final graph generation...")
@@ -431,6 +446,7 @@ if __name__ == "__main__":
     parser.add_argument("--crm_url", default=DEFAULT_CRM_URL)
     parser.add_argument("--hub_url", default=DEFAULT_HUB_URL)
     parser.add_argument("--graph_url", default=DEFAULT_GRAPH_URL)
+    parser.add_argument("--tenant_id", help="Explicit tenant_id to use")
     args = parser.parse_args()
 
-    asyncio.run(main(args.api_url, args.crm_url, args.hub_url, args.graph_url))
+    asyncio.run(main(args.api_url, args.crm_url, args.hub_url, args.graph_url, tenant_id=args.tenant_id))

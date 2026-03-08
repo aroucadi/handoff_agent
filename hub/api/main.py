@@ -54,6 +54,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from core.auth import verify_tenant_context, sign_tenant_context, DEMO_SECRET_KEY
+from fastapi.responses import JSONResponse
+from fastapi import Request
+import hmac
+
+@app.middleware("http")
+async def tenant_context_middleware(request: Request, call_next):
+    """Enforce and propagate tenant context."""
+    # Creation of tenant is bypassable
+    bypass_paths = ["/health", "/docs", "/openapi.json"]
+    is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
+    
+    # POST /api/tenants is how you create a new one, should be bypassable 
+    # if we want to allow new onboardings without pre-existing context
+    if request.url.path == "/api/tenants" and request.method in ["POST", "GET"]:
+        is_bypassed = True
+
+    tenant_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        tenant_id = verify_tenant_context(token)
+    
+    if not tenant_id:
+        tenant_id = request.headers.get("X-Tenant-Id")
+        
+    request.state.tenant_id = tenant_id
+    
+    if not is_bypassed and not tenant_id:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Tenant context required"}
+        )
+        
+    response = await call_next(request)
+    return response
+
 db = firestore.Client()
 TENANTS_COLLECTION = "tenants"
 
@@ -72,11 +111,34 @@ def health():
 # ── Tenant CRUD ──────────────────────────────────────────────────
 
 @app.get("/api/tenants", response_model=TenantListResponse)
-def list_tenants():
-    """List all configured tenants."""
+def list_tenants(request: Request):
+    """List all configured tenants (Oracle closed; no tokens returned here)."""
     docs = db.collection(TENANTS_COLLECTION).stream()
-    tenants = [TenantConfig(**doc.to_dict()) for doc in docs]
+    tenants = []
+    for doc in docs:
+        data = doc.to_dict()
+        tid = data.get("tenant_id")
+        if tid:
+            # Oracle is now CLOSED. Discovery only.
+            data["signed_token"] = None 
+            tenants.append(TenantConfig(**data))
     return TenantListResponse(tenants=tenants, total=len(tenants))
+
+
+@app.post("/api/tenants/{tenant_id}/login")
+def login_tenant(tenant_id: str):
+    """Explicitly issue a signed token for a demo-enabled tenant."""
+    doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
+    if not doc.exists:
+        raise HTTPException(404, "Tenant not found")
+    
+    data = doc.to_dict()
+    # Check if this tenant is explicitly allowed for public demo access
+    if not data.get("allow_public_demo", True):
+        raise HTTPException(403, "Public demo access disabled for this tenant")
+    
+    token = sign_tenant_context(tenant_id)
+    return {"signed_token": token, "tenant_id": tenant_id}
 
 
 @app.post("/api/tenants", response_model=TenantConfig, status_code=201)
@@ -100,35 +162,58 @@ def create_tenant(req: CreateTenantRequest):
     # Auto-provision webhook URL
     tenant.webhook_url = f"{GRAPH_GENERATOR_URL}/ingest/{tenant.tenant_id}"
 
+    # Sign token for immediate use by creator (seeding script / UI)
+    tenant.signed_token = sign_tenant_context(tenant.tenant_id)
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant.tenant_id)
     doc_ref.set(tenant.model_dump())
-    log.info(f"Created tenant: {tenant.tenant_id} ({tenant.name}) webhook: {tenant.webhook_url}")
+    log.info(f"Created tenant: {tenant.tenant_id} ({tenant.name})")
     return tenant
 
 
 # ── Job Observability ──────────────────────────────────────────
 
 @app.get("/api/jobs")
-def list_graph_jobs(limit: int = 20):
-    """List recent graph generation jobs from Firestore."""
+def list_graph_jobs(request: Request, limit: int = 20):
+    """List recent graph generation jobs for the authenticated tenant."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+
     jobs_ref = db.collection("graph_jobs")
-    query = jobs_ref.order_by("started_at", direction=firestore.Query.DESCENDING).limit(limit)
+    # Filter by tenant_id to prevent multi-tenant data leakage
+    query = jobs_ref.where("tenant_id", "==", ctx_tenant_id).order_by("started_at", direction=firestore.Query.DESCENDING).limit(limit)
     docs = query.stream()
     return [doc.to_dict() for doc in docs]
 
 
 @app.get("/api/jobs/{job_id}")
-def get_graph_job(job_id: str):
-    """Get status and details of a specific graph job."""
+def get_graph_job(job_id: str, request: Request):
+    """Get status and details of a specific graph job (with tenant check)."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+
     doc = db.collection("graph_jobs").document(job_id).get()
     if not doc.exists:
         raise HTTPException(404, f"Job {job_id} not found")
-    return doc.to_dict()
+    
+    job_data = doc.to_dict()
+    if job_data.get("tenant_id") != ctx_tenant_id:
+        raise HTTPException(403, "Job context mismatch")
+
+    return job_data
 
 
 @app.get("/api/tenants/{tenant_id}", response_model=TenantConfig)
-def get_tenant(tenant_id: str):
+def get_tenant(tenant_id: str, request: Request):
     """Retrieve a tenant's full configuration."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+        
     doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
     if not doc.exists:
         raise HTTPException(404, f"Tenant {tenant_id} not found")
@@ -136,8 +221,14 @@ def get_tenant(tenant_id: str):
 
 
 @app.patch("/api/tenants/{tenant_id}", response_model=TenantConfig)
-def update_tenant(tenant_id: str, req: UpdateTenantRequest):
+def update_tenant(tenant_id: str, req: UpdateTenantRequest, request: Request):
     """Update tenant fields (partial update)."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
@@ -166,8 +257,14 @@ def update_tenant(tenant_id: str, req: UpdateTenantRequest):
 
 
 @app.delete("/api/tenants/{tenant_id}", status_code=204)
-def delete_tenant(tenant_id: str):
+def delete_tenant(tenant_id: str, request: Request):
     """Delete a tenant configuration."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
@@ -179,8 +276,14 @@ def delete_tenant(tenant_id: str):
 # ── Integration Guide ─────────────────────────────────────────────
 
 @app.get("/api/tenants/{tenant_id}/integration-guide")
-def get_integration_guide(tenant_id: str):
-    """Get CRM-specific integration instructions for a tenant."""
+def get_integration_guide(tenant_id: str, request: Request):
+    """Get CRM-specific integration instructions for a tenant (hardened)."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     from crm_templates import get_setup_instructions, get_template_for_crm
 
     doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
@@ -207,8 +310,14 @@ def get_integration_guide(tenant_id: str):
 # ── Product Management ───────────────────────────────────────────
 
 @app.post("/api/tenants/{tenant_id}/products", response_model=Product, status_code=201)
-def add_product(tenant_id: str, req: AddProductRequest):
+def add_product(tenant_id: str, req: AddProductRequest, request: Request):
     """Add a product to a tenant's catalog."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
@@ -233,8 +342,14 @@ def add_product(tenant_id: str, req: AddProductRequest):
 
 
 @app.delete("/api/tenants/{tenant_id}/products/{product_id}", status_code=204)
-def remove_product(tenant_id: str, product_id: str):
+def remove_product(tenant_id: str, product_id: str, request: Request):
     """Remove a product from a tenant's catalog."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
@@ -254,8 +369,14 @@ def remove_product(tenant_id: str, product_id: str):
 # ── Knowledge Generation ────────────────────────────────────────
 
 @app.post("/api/tenants/{tenant_id}/generate-knowledge")
-async def generate_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
+async def generate_knowledge(tenant_id: str, background_tasks: BackgroundTasks, request: Request):
     """Trigger tenant knowledge generation (background)."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant_id)
     doc = doc_ref.get()
     if not doc.exists:
@@ -305,8 +426,14 @@ async def _run_generate_knowledge(tenant_id: str):
 
 
 @app.post("/api/tenants/{tenant_id}/sync-knowledge")
-async def sync_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
+async def sync_knowledge(tenant_id: str, background_tasks: BackgroundTasks, request: Request):
     """Trigger tenant knowledge sync in the Graph Generator (background)."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
     if not doc.exists:
         raise HTTPException(404, f"Tenant {tenant_id} not found")
@@ -334,8 +461,14 @@ async def _run_sync_knowledge_background(tenant_id: str):
 # ── Test Webhook ─────────────────────────────────────────────────
 
 @app.post("/api/tenants/{tenant_id}/test-webhook")
-async def test_webhook(tenant_id: str):
+async def test_webhook(tenant_id: str, request: Request):
     """Fire a test webhook to validate the CRM → graph-generator pipeline."""
+    ctx_tenant_id = request.state.tenant_id
+    if not ctx_tenant_id:
+        raise HTTPException(401, "Tenant context required")
+    if tenant_id != ctx_tenant_id:
+        raise HTTPException(403, "Tenant context mismatch")
+
     import httpx
 
     doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()

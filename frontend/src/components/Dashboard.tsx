@@ -87,8 +87,12 @@ export default function Dashboard() {
         const fetchTenantConfig = async () => {
             if (!tenantId) return;
             try {
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const baseUrl = import.meta.env.VITE_API_URL || '';
-                const res = await fetch(`${baseUrl}/api/tenants/${tenantId}`);
+                const res = await fetch(`${baseUrl}/api/tenants/${tenantId}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     setTenantConfig(data);
@@ -100,11 +104,15 @@ export default function Dashboard() {
 
         const fetchDeals = async () => {
             try {
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const baseUrl = import.meta.env.VITE_API_URL || '';
                 const url = tenantId
                     ? `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`
                     : `${baseUrl}/api/crm/deals`;
-                const res = await fetch(url);
+                const res = await fetch(url, { headers });
                 const data = await res.json();
 
                 const filtered = (data.deals || []).filter((d: { stage: string }) =>
@@ -138,7 +146,14 @@ export default function Dashboard() {
         const counts: Record<string, Record<string, number>> = {};
         await Promise.all(clientIds.map(async (cid) => {
             try {
-                const res = await fetch(`${apiUrl}/api/clients/${cid}/outputs`);
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const url = tenantId
+                    ? `${apiUrl}/api/clients/${cid}/outputs?tenant_id=${tenantId}`
+                    : `${apiUrl}/api/clients/${cid}/outputs`;
+                const res = await fetch(url, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     const typeCounts: Record<string, number> = {};
@@ -313,6 +328,7 @@ export default function Dashboard() {
             {/* Artifact Viewer Modal */}
             <ArtifactViewer
                 clientId={viewerClientId}
+                tenantId={tenantId}
                 isOpen={viewerOpen}
                 onClose={() => setViewerOpen(false)}
             />

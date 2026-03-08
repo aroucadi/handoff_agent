@@ -121,10 +121,17 @@ const TenantWizard: React.FC = () => {
         setTestResult(null);
 
         try {
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'X-Tenant-Id': id || ''
+            };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
             const resp = await fetch(`${baseUrl}/api/test-connection`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     crm_type: config.crm.crm_type,
                     crm_url: config.crm.crm_url || '',
@@ -149,8 +156,12 @@ const TenantWizard: React.FC = () => {
 
     useEffect(() => {
         if (id) {
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
-            fetch(`${baseUrl}/api/tenants/${id}`)
+            fetch(`${baseUrl}/api/tenants/${id}`, { headers })
                 .then(res => res.json())
                 .then(data => {
                     setConfig(data);
@@ -168,11 +179,15 @@ const TenantWizard: React.FC = () => {
         const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         const url = id ? `${baseUrl}/api/tenants/${id}` : `${baseUrl}/api/tenants`;
 
+        const token = localStorage.getItem('synapse_tenant_token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         setSaving(true);
         try {
             const resp = await fetch(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(config)
             });
             if (resp.ok) {
@@ -186,11 +201,15 @@ const TenantWizard: React.FC = () => {
     };
 
     const addProduct = async (name: string, description: string) => {
+        const token = localStorage.getItem('synapse_tenant_token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         if (id) {
             const resp = await fetch(`${baseUrl}/api/tenants/${id}/products`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ name, description })
             });
             const newProduct = await resp.json();
@@ -202,9 +221,13 @@ const TenantWizard: React.FC = () => {
     };
 
     const removeProduct = async (pid: string) => {
+        const token = localStorage.getItem('synapse_tenant_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const baseUrl = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_HUB_API_URL || '';
         if (id) {
-            await fetch(`${baseUrl}/api/tenants/${id}/products/${pid}`, { method: 'DELETE' });
+            await fetch(`${baseUrl}/api/tenants/${id}/products/${pid}`, { method: 'DELETE', headers });
         }
         setConfig({ ...config, products: config.products.filter(p => p.product_id !== pid) });
     };
@@ -222,7 +245,11 @@ const TenantWizard: React.FC = () => {
             return;
         }
 
-        const resp = await fetch(`${baseUrl}/api/tenants/${id}/generate-knowledge`, { method: 'POST' });
+        const token = localStorage.getItem('synapse_tenant_token');
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const resp = await fetch(`${baseUrl}/api/tenants/${id}/generate-knowledge`, { method: 'POST', headers });
         if (resp.ok) {
             const updated = await fetch(`${baseUrl}/api/tenants/${id}`).then(r => r.json());
             setConfig(updated);

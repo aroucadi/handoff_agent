@@ -162,6 +162,10 @@ class TenantConfig(BaseModel):
     updated_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    # Access Control: Allow public discovery and auto-login for demo purposes
+    allow_public_demo: bool = True
+    # Metadata for frontend demo 'login' flow
+    signed_token: Optional[str] = None
 
 
 # ── API Request/Response Models ──────────────────────────────────

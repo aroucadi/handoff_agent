@@ -56,8 +56,15 @@ export default function BriefingSession() {
 
         const fetchClientDetails = async () => {
             try {
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const url = import.meta.env.VITE_API_URL || "";
-                const res = await fetch(`${url}/api/clients`);
+                const requestUrl = tenantId
+                    ? `${url}/api/clients?tenant_id=${tenantId}`
+                    : `${url}/api/clients`;
+                const res = await fetch(requestUrl, { headers });
                 const data = await res.json();
                 const client = data.clients?.find((c: ClientDetails) => c.client_id === clientId);
                 if (client) setClientDetails(client);
@@ -71,11 +78,18 @@ export default function BriefingSession() {
             hasStartedRef.current = true;
 
             try {
+                const token = localStorage.getItem('synapse_tenant_token');
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    'X-Tenant-Id': tenantId || ''
+                };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const url = import.meta.env.VITE_API_URL || "";
                 // Call /api/sessions/start to get a real session ID from the backend nexus
                 const res = await fetch(`${url}/api/sessions/start`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         client_id: clientId,
                         tenant_id: tenantId,
@@ -228,6 +242,7 @@ export default function BriefingSession() {
                         <div className="flex-1 min-w-0">
                             <GraphPanel
                                 clientId={clientId || ''}
+                                tenantId={tenantId}
                                 toolCalls={toolCalls}
                                 currentNode={currentNode}
                             />
@@ -239,6 +254,7 @@ export default function BriefingSession() {
             {/* Artifact Viewer Modal */}
             <ArtifactViewer
                 clientId={clientId || ''}
+                tenantId={tenantId}
                 isOpen={isArtifactsOpen}
                 onClose={() => setIsArtifactsOpen(false)}
             />

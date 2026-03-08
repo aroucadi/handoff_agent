@@ -408,11 +408,12 @@ function buildEdges(
 
 interface GraphPanelProps {
     clientId: string;
+    tenantId: string | null;
     toolCalls: ToolCallEntry[];
     currentNode: string | null;
 }
 
-export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPanelProps) {
+export default function GraphPanel({ clientId, tenantId, toolCalls, currentNode }: GraphPanelProps) {
     const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
     const [nodeContent, setNodeContent] = useState<string | null>(null);
     const [allClientNodes, setAllClientNodes] = useState<ServerNodeMetadata[]>([]);
@@ -431,8 +432,13 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                 const apiUrl = import.meta.env.VITE_API_URL || '';
                 const lowerId = clientId.toLowerCase();
 
+                const token = localStorage.getItem('synapse_tenant_token');
+                const urlSuffix = tenantId ? `?tenant_id=${tenantId}` : '';
+                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 // Check status first to determine format
-                const statusRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/status`);
+                const statusRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/status${urlSuffix}`, { headers });
                 if (statusRes.ok) {
                     const status = await statusRes.json();
                     const format = status.graph_format || 'markdown';
@@ -440,7 +446,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
 
                     if (format === 'structured') {
                         // Fetch structured entity+edge data
-                        const entRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/entities`);
+                        const entRes = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/entities${urlSuffix}`, { headers });
                         if (entRes.ok) {
                             const entData = await entRes.json();
                             setGraphEntities(entData.entities || []);
@@ -448,7 +454,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                         }
                     } else {
                         // Fetch legacy markdown nodes
-                        const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
+                        const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes${urlSuffix}`, { headers });
                         if (res.ok) {
                             const data = await res.json();
                             if (data.nodes) setAllClientNodes(data.nodes);
@@ -457,7 +463,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
                 } else {
                     // Fallback: try legacy
                     setGraphFormat('markdown');
-                    const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes`);
+                    const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes${urlSuffix}`, { headers });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.nodes) setAllClientNodes(data.nodes);
@@ -550,7 +556,12 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         try {
             const apiUrl = import.meta.env.VITE_API_URL || '';
             const lowerId = clientId.toLowerCase();
-            const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes/${nodeId}`);
+            const urlSuffix = tenantId ? `?tenant_id=${tenantId}` : '';
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch(`${apiUrl}/api/clients/${lowerId}/graph/nodes/${nodeId}${urlSuffix}`, { headers });
             if (res.ok) {
                 const data = await res.json();
                 setNodeContent(data.content);
@@ -558,7 +569,7 @@ export default function GraphPanel({ clientId, toolCalls, currentNode }: GraphPa
         } catch {
             console.error('Failed to fetch node content');
         }
-    }, [clientId]);
+    }, [clientId, tenantId]);
 
     useEffect(() => {
         if (currentNode) fetchNodeContent(currentNode);

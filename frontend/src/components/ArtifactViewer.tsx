@@ -41,12 +41,13 @@ interface ArtifactOutput {
 
 interface ArtifactViewerProps {
     clientId: string;
+    tenantId: string | null;
     isOpen: boolean;
     onClose: () => void;
     selectedOutputId?: string | null;
 }
 
-export default function ArtifactViewer({ clientId, isOpen, onClose, selectedOutputId }: ArtifactViewerProps) {
+export default function ArtifactViewer({ clientId, tenantId, isOpen, onClose, selectedOutputId }: ArtifactViewerProps) {
     const [outputs, setOutputs] = useState<ArtifactOutput[]>([]);
     const [selectedOutput, setSelectedOutput] = useState<ArtifactOutput | null>(null);
     const [loading, setLoading] = useState(false);
@@ -57,7 +58,14 @@ export default function ArtifactViewer({ clientId, isOpen, onClose, selectedOutp
     const fetchOutputs = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${apiUrl}/api/clients/${clientId}/outputs`);
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const url = tenantId
+                ? `${apiUrl}/api/clients/${clientId}/outputs?tenant_id=${tenantId}`
+                : `${apiUrl}/api/clients/${clientId}/outputs`;
+            const res = await fetch(url, { headers });
             const data = await res.json();
             setOutputs(data.outputs || []);
         } catch (err) {
@@ -65,17 +73,24 @@ export default function ArtifactViewer({ clientId, isOpen, onClose, selectedOutp
         } finally {
             setLoading(false);
         }
-    }, [clientId, apiUrl]);
+    }, [clientId, tenantId, apiUrl]);
 
     const fetchOutputDetail = useCallback(async (outputId: string) => {
         try {
-            const res = await fetch(`${apiUrl}/api/clients/${clientId}/outputs/${outputId}`);
+            const token = localStorage.getItem('synapse_tenant_token');
+            const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const url = tenantId
+                ? `${apiUrl}/api/clients/${clientId}/outputs/${outputId}?tenant_id=${tenantId}`
+                : `${apiUrl}/api/clients/${clientId}/outputs/${outputId}`;
+            const res = await fetch(url, { headers });
             const data = await res.json();
             setSelectedOutput(data);
         } catch (err) {
             console.error('Failed to fetch output detail:', err);
         }
-    }, [clientId, apiUrl]);
+    }, [clientId, tenantId, apiUrl]);
 
     useEffect(() => {
         if (isOpen) {

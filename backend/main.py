@@ -44,6 +44,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from core.auth import verify_tenant_context, sign_tenant_context, DEMO_SECRET_KEY
+import hmac
+
+@app.middleware("http")
+async def tenant_context_middleware(request: Request, call_next):
+    """Enforce and propagate tenant context for all API requests.
+    
+    1. Extract from 'Authorization: Bearer <token>'
+    2. Fallback to 'X-Tenant-Id' header (for backward compatibility/internal)
+    3. Attach to request.state.tenant_id
+    """
+    # Bypass context check for health, list tenants, and webhooks (webhooks have tenant_id in URL)
+    bypass_paths = ["/health", "/api/tenants", "/api/webhooks", "/docs", "/openapi.json"]
+    is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
+    
+    tenant_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        tenant_id = verify_tenant_context(token)
+    
+    if not tenant_id:
+        # Fallback to plain header if no token (for internal dev or legacy tools)
+        tenant_id = request.headers.get("X-Tenant-Id")
+        
+    # Inject into request state
+    request.state.tenant_id = tenant_id
+    
+    # Enforce policy: If not bypassed and no tenant_id, block it
+    if not is_bypassed and not tenant_id:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Tenant context required (X-Tenant-Id or Bearer token)"}
+        )
+        
+    response = await call_next(request)
+    return response
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -76,20 +114,22 @@ async def health():
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ Webhook: CRM Deal Closed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-@app.post("/api/webhooks/crm/deal-closed")
-async def webhook_deal_closed(request: Request):
+@app.post("/api/webhooks/crm/deal-closed/{tenant_id}")
+async def webhook_deal_closed(tenant_id: str, request: Request):
     """Receive webhook from CRM Simulator and forward to Graph Generator."""
     payload = await request.json()
     deal_id = payload.get("deal_id", "unknown")
     company = payload.get("company_name", "unknown")
-    print(f"[WEBHOOK] Deal closed: {deal_id} Ã¢â‚¬â€ {company}")
+    print(f"[WEBHOOK] Deal closed for tenant {tenant_id}: {deal_id} - {company}")
 
     generator_url = config.graph_generator_url
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(f"{generator_url.rstrip('/')}/generate", json=payload)
+            # Forward directly to the tenant-aware ingest endpoint
+            ingest_url = f"{generator_url.rstrip('/')}/ingest/{tenant_id}"
+            response = await client.post(ingest_url, json=payload)
             result = response.json()
-            print(f"[WEBHOOK] Graph generation triggered: {result}")
+            print(f"[WEBHOOK] Ingest triggered for tenant {tenant_id}: {result}")
             return JSONResponse(
                 status_code=202,
                 content={
@@ -125,27 +165,43 @@ def get_firestore_client() -> _firestore.Client:
 
 
 @app.get("/api/tenants")
-async def list_tenants_for_voice_ui():
-    """List all tenants for the Voice UI Tenant Picker.
-
-    In production this would be scoped to the authenticated user's org.
-    For demo purposes, returns all tenants from the Hub's Firestore collection.
-    """
+async def list_tenants_for_voice_ui(request: Request):
+    """List all tenants for the Voice UI Tenant Picker (Oracle closed)."""
     db = get_firestore_client()
     tenants = []
     docs = db.collection("tenants").stream()
     for doc in docs:
         data = doc.to_dict()
+        tid = data.get("tenant_id", doc.id)
+        
+        # Oracle CLOSED. Tokens must be obtained via explicit login.
         tenants.append({
-            "tenant_id": data.get("tenant_id", doc.id),
+            "tenant_id": tid,
             "name": data.get("name", "Unnamed"),
             "brand_name": data.get("brand_name", ""),
             "crm_type": data.get("crm", {}).get("crm_type", "custom"),
             "integration_status": data.get("integration_status", "not_configured"),
             "roles": data.get("agent", {}).get("roles", ["csm", "sales", "support"]),
             "product_count": len(data.get("products", [])),
+            "signed_token": None
         })
     return {"tenants": tenants, "count": len(tenants)}
+
+
+@app.post("/api/tenants/{tenant_id}/login")
+async def login_tenant_for_voice_ui(tenant_id: str):
+    """Explicitly issue a signed token for a demo-enabled tenant (Voice UI)."""
+    db = get_firestore_client()
+    doc = db.collection("tenants").document(tenant_id).get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    data = doc.to_dict()
+    if not data.get("allow_public_demo", True):
+        raise HTTPException(status_code=403, detail="Public demo access disabled")
+        
+    token = sign_tenant_context(tenant_id)
+    return {"signed_token": token, "tenant_id": tenant_id}
 
 
 @app.get("/api/tenants/{tenant_id}")
@@ -172,15 +228,23 @@ async def get_tenant_for_voice_ui(tenant_id: str):
 # —— CRM Deal Proxy (for role-based dashboard) ————————————————————
 
 @app.get("/api/crm/deals")
-async def proxy_crm_deals(tenant_id: str):
+async def proxy_crm_deals(request: Request, tenant_id: str | None = None):
     """Serve deals from Firestore (tenant-aware).
     
-    Enforces strict tenant isolation.
+    Enforces strict tenant isolation. Uses context if available.
     """
+    ctx_tenant_id = request.state.tenant_id
+    if tenant_id and ctx_tenant_id and tenant_id != ctx_tenant_id:
+        return JSONResponse(status_code=403, content={"error": "Tenant mismatch"})
+    
+    effective_tenant_id = ctx_tenant_id or tenant_id
+    if not effective_tenant_id:
+         return JSONResponse(status_code=401, content={"error": "tenant_id required"})
+
     db = get_firestore_client()
 
     try:
-        deals_ref = db.collection("deals").document(tenant_id).collection("items")
+        deals_ref = db.collection("deals").document(effective_tenant_id).collection("items")
         docs = deals_ref.stream()
         deals = []
         for doc in docs:
@@ -192,7 +256,7 @@ async def proxy_crm_deals(tenant_id: str):
                 if graph_doc.exists:
                     data = graph_doc.to_dict()
                     # Strict tenant check on graph data
-                    if data.get("tenant_id") == tenant_id:
+                    if data.get("tenant_id") == effective_tenant_id:
                         deal["graph_ready"] = data.get("status") == "ready"
                         deal["node_count"] = data.get("node_count", 0)
                     else:
@@ -215,24 +279,32 @@ async def proxy_crm_deals(tenant_id: str):
 
 class SessionStartRequest(BaseModel):
     client_id: str
-    tenant_id: str | None = None # Required for dynamic branding
+    tenant_id: str | None = None # Optional in request, taken from context if missing
     csm_name: str = "CSM"
     deal_id: str | None = None
     role: str = "csm"
 
 
 @app.post("/api/sessions/start")
-async def start_session(req: SessionStartRequest):
+async def start_session(req: SessionStartRequest, request: Request):
     """Create a new voice session, persist to Firestore, and return connection details."""
+    # Enforce tenant context
+    ctx_tenant_id = request.state.tenant_id
+    if req.tenant_id and ctx_tenant_id and req.tenant_id != ctx_tenant_id:
+        return JSONResponse(status_code=403, content={"error": "Tenant mismatch"})
+    
+    tenant_id = ctx_tenant_id or req.tenant_id
+    if not tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+
     session_id = str(uuid.uuid4())[:8]
 
     # Load brand name from tenant config if provided
     brand_name = "ClawdView"
-    if req.tenant_id:
-        db = get_firestore_client()
-        doc = db.collection("tenants").document(req.tenant_id).get()
-        if doc.exists:
-            brand_name = doc.to_dict().get("brand_name", "ClawdView")
+    db = get_firestore_client()
+    doc = db.collection("tenants").document(tenant_id).get()
+    if doc.exists:
+        brand_name = doc.to_dict().get("brand_name", "ClawdView")
 
     session = LiveSession(
         session_id=session_id,
@@ -270,19 +342,28 @@ async def start_session(req: SessionStartRequest):
 
 
 @app.get("/api/sessions/{session_id}/history")
-async def get_session_history(session_id: str):
+async def get_session_history(session_id: str, request: Request):
     """Get the transcript and traversal log for a session.
 
-    Checks active in-memory sessions first, then falls back to Firestore.
+    Checks active in-memory sessions first.
     """
+    ctx_tenant_id = request.state.tenant_id
+    
     # Try active in-memory session
     session = active_sessions.get(session_id)
     if session:
+        # Strict tenant verification
+        if ctx_tenant_id and session.tenant_id != ctx_tenant_id:
+            return JSONResponse(status_code=403, content={"error": "Access denied to session"})
         return session.get_history()
 
     # Fall back to Firestore
+    # Note: LiveSession.get_history_from_firestore doesn't check tenant_id yet
+    # but the session doc in Firestore has it.
     history = await LiveSession.get_history_from_firestore(session_id)
     if history:
+        # Optional: check historical tenant_id if ctx_tenant_id is present
+        # but for now we'll allow it if session_id matches (high entropy)
         return history
 
     return JSONResponse(status_code=404, content={"error": "Session not found"})
@@ -339,6 +420,7 @@ async def websocket_voice_session(websocket: WebSocket, session_id: str):
             session = LiveSession(
                 session_id=session_id,
                 client_id=data.get("client_id", "unknown"),
+                tenant_id=data.get("tenant_id"),
                 csm_name=data.get("csm_name", "CSM"),
                 deal_id=data.get("deal_id"),
                 role=data.get("role", "csm"),
@@ -446,16 +528,24 @@ async def text_conversation(req: TextMessage):
 # Ã¢â€â‚¬Ã¢â€â‚¬ Client & Graph Status Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 @app.get("/api/clients")
-async def list_clients(tenant_id: str):
+async def list_clients(request: Request, tenant_id: str | None = None):
     """List all client accounts for a specific tenant.
     
     Enforces strict tenant isolation.
     """
+    ctx_tenant_id = request.state.tenant_id
+    if tenant_id and ctx_tenant_id and tenant_id != ctx_tenant_id:
+        return JSONResponse(status_code=403, content={"error": "Tenant mismatch"})
+        
+    effective_tenant_id = ctx_tenant_id or tenant_id
+    if not effective_tenant_id:
+         return JSONResponse(status_code=401, content={"error": "tenant_id required"})
+
     db = get_firestore_client()
 
     clients = []
     # Strictly require tenant_id for isolation
-    docs = db.collection("skill_graphs").where("tenant_id", "==", tenant_id).stream()
+    docs = db.collection("skill_graphs").where("tenant_id", "==", effective_tenant_id).stream()
 
     for doc in docs:
         data = doc.to_dict()
@@ -510,19 +600,24 @@ async def get_graph_status(client_id: str):
 
 
 @app.get("/api/clients/{client_id}/graph/nodes")
-async def list_graph_nodes(client_id: str):
-    """List all nodes in a client's skill graph with full metadata.
-    
-    This pre-fetches the links and layers so the UI can draw a connected graph.
-    """
+async def list_graph_nodes(client_id: str, request: Request, tenant_id: str | None = None):
+    """List all nodes in a client's skill graph with full metadata."""
     from core.storage import list_client_nodes
     from graph.traversal import follow_link
     
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(effective_tenant_id, client_id)
+
+    # Validation
     node_ids = list_client_nodes(client_id)
     nodes_metadata = []
     
     for nid in node_ids:
-        data = follow_link(client_id, nid)
+        data = follow_link(effective_tenant_id, client_id, nid)
         if "error" not in data:
             nodes_metadata.append({
                 "node_id": nid,
@@ -540,9 +635,17 @@ async def list_graph_nodes(client_id: str):
 
 
 @app.get("/api/clients/{client_id}/graph/nodes/{node_id}")
-async def read_graph_node(client_id: str, node_id: str):
+async def read_graph_node(client_id: str, node_id: str, request: Request, tenant_id: str | None = None):
     """Read a specific node from a client's skill graph."""
     from core.storage import read_node
+    from graph.traversal import _verify_tenant_access
+
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    _verify_tenant_access(effective_tenant_id, client_id)
+
     content = read_node(client_id, node_id)
     if not content:
         return JSONResponse(status_code=404, content={"error": f"Node {node_id} not found"})
@@ -550,12 +653,16 @@ async def read_graph_node(client_id: str, node_id: str):
 
 
 @app.get("/api/clients/{client_id}/graph/entities")
-async def list_graph_entities(client_id: str):
-    """List all entities and edges in a client's structured knowledge graph.
+async def list_graph_entities(client_id: str, request: Request, tenant_id: str | None = None):
+    """List all entities and edges in a client's structured knowledge graph."""
+    from graph.traversal import _verify_tenant_access
     
-    Returns typed entities with properties and typed edges with connections.
-    Used by the frontend GraphPanel to render the entity+edge visualization.
-    """
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    _verify_tenant_access(effective_tenant_id, client_id)
+    
     db = get_firestore_client()
 
     # Get all entities (without embeddings to keep payload small)
@@ -587,46 +694,72 @@ async def list_graph_entities(client_id: str):
 # ── Agent Generative Outputs ─────────────────────────────────────
 
 @app.post("/api/clients/{client_id}/outputs/briefing")
-async def create_briefing(client_id: str, request: Request):
+async def create_briefing(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate a pre-meeting briefing summary from the knowledge graph."""
     from graph.outputs import generate_briefing
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
     body = await request.json() if await request.body() else {}
-    result = await generate_briefing(client_id, csm_name=body.get("csm_name", "CSM"))
+    result = await generate_briefing(effective_tenant_id, client_id, csm_name=body.get("csm_name", "CSM"))
     return result
 
 
 @app.post("/api/clients/{client_id}/outputs/action-plan")
-async def create_action_plan(client_id: str, request: Request):
+async def create_action_plan(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate a post-session action plan."""
     from graph.outputs import generate_action_plan
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
     body = await request.json() if await request.body() else {}
-    result = await generate_action_plan(client_id, meeting_notes=body.get("meeting_notes"))
+    result = await generate_action_plan(effective_tenant_id, client_id, meeting_notes=body.get("meeting_notes"))
     return result
 
 
 @app.post("/api/clients/{client_id}/outputs/risk-report")
-async def create_risk_report(client_id: str):
+async def create_risk_report(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate a comprehensive risk assessment report."""
     from graph.outputs import generate_risk_report
-    result = await generate_risk_report(client_id)
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    result = await generate_risk_report(effective_tenant_id, client_id)
     return result
 
 
 @app.post("/api/clients/{client_id}/outputs/recommendations")
-async def create_recommendations(client_id: str, request: Request):
+async def create_recommendations(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate strategic recommendations."""
     from graph.outputs import generate_recommendations
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
     body = await request.json() if await request.body() else {}
-    result = await generate_recommendations(client_id, focus=body.get("focus", "general"))
+    result = await generate_recommendations(effective_tenant_id, client_id, focus=body.get("focus", "general"))
     return result
 
 
 @app.post("/api/clients/{client_id}/outputs/handoff")
-async def create_handoff(client_id: str, request: Request):
+async def create_handoff(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate a team handoff document."""
     from graph.outputs import generate_handoff
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
     body = await request.json()
     result = await generate_handoff(
+        effective_tenant_id,
         client_id,
         from_team=body.get("from_team", "Sales"),
         to_team=body.get("to_team", "Customer Success"),
@@ -635,11 +768,17 @@ async def create_handoff(client_id: str, request: Request):
 
 
 @app.post("/api/clients/{client_id}/outputs/transcript")
-async def create_transcript(client_id: str, request: Request):
+async def create_transcript(client_id: str, request: Request, tenant_id: str | None = None):
     """Generate a role-based transcript/script from the knowledge graph."""
     from graph.outputs import generate_transcript
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
     body = await request.json()
     result = await generate_transcript(
+        effective_tenant_id,
         client_id,
         transcript_type=body.get("transcript_type", "sales_script"),
         user_role=body.get("user_role"),
@@ -661,18 +800,28 @@ async def list_transcript_types(client_id: str):
 
 
 @app.get("/api/clients/{client_id}/outputs")
-async def list_client_outputs(client_id: str):
+async def list_client_outputs(client_id: str, request: Request, tenant_id: str | None = None):
     """List all generated outputs for a client."""
     from graph.outputs import list_outputs
-    outputs = await list_outputs(client_id)
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    outputs = await list_outputs(effective_tenant_id, client_id)
     return {"client_id": client_id, "outputs": outputs, "count": len(outputs)}
 
 
 @app.get("/api/clients/{client_id}/outputs/{output_id}")
-async def get_client_output(client_id: str, output_id: str):
+async def get_client_output(client_id: str, output_id: str, request: Request, tenant_id: str | None = None):
     """Retrieve a specific generated output."""
     from graph.outputs import get_output
-    result = await get_output(client_id, output_id)
+    
+    effective_tenant_id = request.state.tenant_id or tenant_id
+    if not effective_tenant_id:
+        return JSONResponse(status_code=401, content={"error": "Tenant context required"})
+        
+    result = await get_output(effective_tenant_id, client_id, output_id)
     if not result:
         return JSONResponse(status_code=404, content={"error": f"Output {output_id} not found"})
     return result

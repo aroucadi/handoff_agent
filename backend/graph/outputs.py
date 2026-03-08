@@ -54,17 +54,20 @@ def _generate(prompt: str, system: str = None) -> str:
 
 # ── Graph Data Collectors ─────────────────────────────────────────
 
-def _collect_graph_context(client_id: str) -> dict:
+def _collect_graph_context(tenant_id: str, client_id: str) -> dict:
     """Collect comprehensive graph data for document generation."""
-    overview = get_graph_overview(client_id)
-    risks = get_risk_profile(client_id)
-    products = get_product_knowledge(client_id)
-    contacts = get_entities_by_type(client_id, "Contact")
-    deals = get_entities_by_type(client_id, "Deal")
-    milestones = get_entities_by_type(client_id, "Milestone")
-    success_metrics = get_entities_by_type(client_id, "SuccessMetric")
-    commitments = get_entities_by_type(client_id, "Commitment")
-    objections = get_entities_by_type(client_id, "Objection")
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(tenant_id, client_id)
+
+    overview = get_graph_overview(tenant_id, client_id)
+    risks = get_risk_profile(tenant_id, client_id)
+    products = get_product_knowledge(tenant_id, client_id)
+    contacts = get_entities_by_type(tenant_id, client_id, "Contact")
+    deals = get_entities_by_type(tenant_id, client_id, "Deal")
+    milestones = get_entities_by_type(tenant_id, client_id, "Milestone")
+    success_metrics = get_entities_by_type(tenant_id, client_id, "SuccessMetric")
+    commitments = get_entities_by_type(tenant_id, client_id, "Commitment")
+    objections = get_entities_by_type(tenant_id, client_id, "Objection")
 
     return {
         "overview": overview,
@@ -81,20 +84,21 @@ def _collect_graph_context(client_id: str) -> dict:
 
 # ── Output Generators ────────────────────────────────────────────
 
-async def generate_briefing(client_id: str, csm_name: str = "CSM") -> dict:
+async def generate_briefing(tenant_id: str, client_id: str, csm_name: str = "CSM") -> dict:
     """Generate a comprehensive briefing summary for a deal.
 
     Reads the full knowledge graph for a client and produces a structured
     briefing document covering all key aspects for a customer success meeting.
 
     Args:
+        tenant_id: Tenant identifier.
         client_id: Client identifier.
         csm_name: Name of the CSM for personalization.
 
     Returns:
         Dict with title, content (markdown), and metadata.
     """
-    ctx = _collect_graph_context(client_id)
+    ctx = _collect_graph_context(tenant_id, client_id)
 
     # Build the deal info from graph
     deal_info = ""
@@ -155,21 +159,22 @@ Keep it concise, actionable, and focused on what the CSM needs to know."""
     }
 
     # Persist to Firestore
-    _save_output(client_id, result)
+    _save_output(tenant_id, client_id, result)
     return result
 
 
-async def generate_action_plan(client_id: str, meeting_notes: str = None) -> dict:
+async def generate_action_plan(tenant_id: str, client_id: str, meeting_notes: str = None) -> dict:
     """Generate an action plan based on graph data and optional meeting notes.
 
     Args:
+        tenant_id: Tenant identifier.
         client_id: Client identifier.
         meeting_notes: Optional notes from a recent meeting or session.
 
     Returns:
         Dict with structured action plan.
     """
-    ctx = _collect_graph_context(client_id)
+    ctx = _collect_graph_context(tenant_id, client_id)
 
     notes_section = ""
     if meeting_notes:
@@ -213,21 +218,25 @@ Group actions by category:
         },
     }
 
-    _save_output(client_id, result)
+    _save_output(tenant_id, client_id, result)
     return result
 
 
-async def generate_risk_report(client_id: str) -> dict:
+async def generate_risk_report(tenant_id: str, client_id: str) -> dict:
     """Generate a detailed risk assessment report.
 
     Args:
+        tenant_id: Tenant identifier.
         client_id: Client identifier.
 
     Returns:
         Dict with risk report content.
     """
-    risks = get_risk_profile(client_id)
-    products = get_product_knowledge(client_id)
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(tenant_id, client_id)
+
+    risks = get_risk_profile(tenant_id, client_id)
+    products = get_product_knowledge(tenant_id, client_id)
 
     prompt = f"""You are generating a comprehensive risk assessment report for executive review.
 
@@ -265,11 +274,11 @@ Generate a professional risk report in Markdown:
         },
     }
 
-    _save_output(client_id, result)
+    _save_output(tenant_id, client_id, result)
     return result
 
 
-async def generate_recommendations(client_id: str, focus: str = "general") -> dict:
+async def generate_recommendations(tenant_id: str, client_id: str, focus: str = "general") -> dict:
     """Generate strategic recommendations for a client engagement.
 
     Args:
@@ -279,7 +288,7 @@ async def generate_recommendations(client_id: str, focus: str = "general") -> di
     Returns:
         Dict with recommendations content.
     """
-    ctx = _collect_graph_context(client_id)
+    ctx = _collect_graph_context(tenant_id, client_id)
 
     prompt = f"""You are generating strategic recommendations for a customer success engagement.
 
@@ -316,11 +325,11 @@ Generate {focus}-focused recommendations in Markdown:
         "metadata": {"focus": focus},
     }
 
-    _save_output(client_id, result)
+    _save_output(tenant_id, client_id, result)
     return result
 
 
-async def generate_handoff(client_id: str, from_team: str, to_team: str) -> dict:
+async def generate_handoff(tenant_id: str, client_id: str, from_team: str, to_team: str) -> dict:
     """Generate a handoff document for transitioning a client between teams/stages.
 
     Args:
@@ -331,7 +340,7 @@ async def generate_handoff(client_id: str, from_team: str, to_team: str) -> dict
     Returns:
         Dict with handoff document content.
     """
-    ctx = _collect_graph_context(client_id)
+    ctx = _collect_graph_context(tenant_id, client_id)
 
     prompt = f"""You are generating a handoff document for transitioning client ownership.
 
@@ -369,7 +378,7 @@ Generate a comprehensive handoff document in Markdown:
         "metadata": {"from_team": from_team, "to_team": to_team},
     }
 
-    _save_output(client_id, result)
+    _save_output(tenant_id, client_id, result)
     return result
 
 
@@ -463,6 +472,7 @@ TRANSCRIPT_TYPES = {
 
 
 async def generate_transcript(
+    tenant_id: str,
     client_id: str,
     transcript_type: str = "sales_script",
     user_role: str = None,
@@ -490,7 +500,7 @@ async def generate_transcript(
         available = ", ".join(TRANSCRIPT_TYPES.keys())
         return {"error": f"Unknown transcript type '{transcript_type}'. Available: {available}"}
 
-    ctx = _collect_graph_context(client_id)
+    ctx = _collect_graph_context(tenant_id, client_id)
 
     # Build role context
     role_line = f"for a {user_role}" if user_role else ""
@@ -519,7 +529,7 @@ async def generate_transcript(
 
 **Success Metrics**: {json.dumps(ctx['success_metrics'].get('entities', []), default=str)}
 
-**Competitor Mentions**: {json.dumps(get_entities_by_type(client_id, 'CompetitorMention').get('entities', []), default=str)}
+**Competitor Mentions**: {json.dumps(get_entities_by_type(tenant_id, client_id, 'CompetitorMention').get('entities', []), default=str)}
 {extra_section}
 
 ## Required Structure
@@ -553,18 +563,18 @@ Output as well-structured Markdown with clear section headers."""
         },
     }
 
-    _save_output(client_id, result)
+    # Persist to Firestore
+    _save_output(tenant_id, client_id, result)
     return result
 
 
 # ── Persistence ───────────────────────────────────────────────────
 
-def _save_output(client_id: str, output: dict):
-    """Save a generated output to Firestore with version tracking.
+def _save_output(tenant_id: str, client_id: str, output: dict):
+    """Save a generated output to Firestore with version tracking."""
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(tenant_id, client_id)
     
-    Each output type maintains a version counter. New generations increment
-    the version and mark the previous as non-latest.
-    """
     db = get_firestore_client()
     outputs_ref = db.collection("knowledge_graphs").document(client_id).collection("outputs")
 
@@ -604,15 +614,19 @@ def _save_output(client_id: str, output: dict):
     print(f"[OUTPUTS] Saved {type_key} v{next_version} for {client_id} as {doc_id}")
 
 
-async def list_outputs(client_id: str) -> list[dict]:
+async def list_outputs(tenant_id: str, client_id: str) -> list[dict]:
     """List all generated outputs for a client.
 
     Args:
+        tenant_id: Tenant identifier.
         client_id: Client identifier.
 
     Returns:
         List of output summaries (without full content to save bandwidth).
     """
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(tenant_id, client_id)
+    
     db = get_firestore_client()
     outputs_ref = (db.collection("knowledge_graphs")
                    .document(client_id)
@@ -635,16 +649,20 @@ async def list_outputs(client_id: str) -> list[dict]:
     return results
 
 
-async def get_output(client_id: str, output_id: str) -> dict | None:
+async def get_output(tenant_id: str, client_id: str, output_id: str) -> dict | None:
     """Retrieve a specific generated output by ID.
 
     Args:
+        tenant_id: Tenant identifier.
         client_id: Client identifier.
         output_id: Output document ID.
 
     Returns:
         Full output dict including content, or None if not found.
     """
+    from graph.traversal import _verify_tenant_access
+    _verify_tenant_access(tenant_id, client_id)
+    
     db = get_firestore_client()
     doc = (db.collection("knowledge_graphs")
            .document(client_id)
