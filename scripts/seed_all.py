@@ -140,21 +140,23 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str, forced_tenant_id:
         # Step 3a: Create tenant
         print(f"  Creating tenant via POST /api/tenants ...")
         payload = {
-            "name": "ClawdView Global Enterprise",
-            "brand_name": "ClawdView",
+            "name": "Gemini Live Hackathon",
+            "brand_name": "Synapse",
             "crm_type": "custom",
         }
         if forced_tenant_id:
             payload["tenant_id"] = forced_tenant_id
 
-        # POST /api/tenants is bypassed in middleware for creation
-        resp = await client.post(f"{hub_url}/api/tenants", json=payload)
+        # POST /api/tenants now requires the Nexus Admin Key
+        admin_headers = {"X-Synapse-Admin-Key": "nexus-admin-2026"}
+        resp = await client.post(f"{hub_url}/api/tenants", json=payload, headers=admin_headers)
         
         if resp.status_code == 201:
             tenant = resp.json()
             tenant_id = tenant["tenant_id"]
+            slug = tenant.get("slug")
             token = tenant.get("signed_token")
-            print(f"  ✅ Tenant created: {tenant_id}")
+            print(f"  ✅ Tenant created: {tenant_id} (slug: {slug})")
             if token:
                 print(f"  🔑 Captured demo token")
         else:
@@ -230,8 +232,8 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str, forced_tenant_id:
                 "status": "active",
                 "agent": {
                     "roles": ["csm", "sales", "support", "win-back"],
-                    "persona": "Professional, data-driven, and proactive enterprise assistant for ClawdView customers.",
-                    "brand_name": "ClawdView",
+                    "persona": "Professional, data-driven, and proactive enterprise assistant for the Gemini Live Hackathon.",
+                    "brand_name": "Synapse",
                 },
             }
         )

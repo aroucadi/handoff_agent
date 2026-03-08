@@ -94,6 +94,8 @@ async def tenant_context_middleware(request: Request, call_next):
     return response
 
 db = firestore.Client()
+import hmac
+SYNAPSE_ADMIN_KEY = os.getenv("SYNAPSE_ADMIN_KEY", "nexus-admin-2026")
 TENANTS_COLLECTION = "tenants"
 
 
@@ -125,6 +127,24 @@ def list_tenants(request: Request):
     return TenantListResponse(tenants=tenants, total=len(tenants))
 
 
+@app.get("/api/resolve-tenant")
+def resolve_tenant(slug: str):
+    """Resolve a tenant by its human-readable slug (Zero-Oracle for Demo)."""
+    docs = db.collection(TENANTS_COLLECTION).where("slug", "==", slug).limit(1).stream()
+    doc = next(docs, None)
+    if not doc:
+        raise HTTPException(404, f"Tenant with slug '{slug}' not found")
+    
+    data = doc.to_dict()
+    # Auto-login if public demo is enabled
+    if data.get("allow_public_demo", True):
+        data["signed_token"] = sign_tenant_context(data["tenant_id"])
+    else:
+        data["signed_token"] = None
+
+    return TenantConfig(**data)
+
+
 @app.post("/api/tenants/{tenant_id}/login")
 def login_tenant(tenant_id: str):
     """Explicitly issue a signed token for a demo-enabled tenant."""
@@ -142,13 +162,27 @@ def login_tenant(tenant_id: str):
 
 
 @app.post("/api/tenants", response_model=TenantConfig, status_code=201)
-def create_tenant(req: CreateTenantRequest):
-    """Create a new tenant with default configuration."""
+def create_tenant(req: CreateTenantRequest, request: Request):
+    """Create a new tenant (Nexus Admin Only)."""
+    # Enforce Admin Key
+    admin_key = request.headers.get("X-Synapse-Admin-Key")
+    if not hmac.compare_digest(admin_key or "", SYNAPSE_ADMIN_KEY):
+         raise HTTPException(403, "Nexus Admin Key Required")
+
     from crm_templates import get_template_for_crm
 
     template = get_template_for_crm(req.crm_type.value)
+    
+    # Generate slug from name
+    slug = slugify(req.name)
+    # Check uniqueness
+    existing = db.collection(TENANTS_COLLECTION).where("slug", "==", slug).limit(1).get()
+    if existing:
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+
     tenant = TenantConfig(
         name=req.name,
+        slug=slug,
         brand_name=req.brand_name or req.name,
         crm=CrmConnection(
             crm_type=req.crm_type,
@@ -167,7 +201,7 @@ def create_tenant(req: CreateTenantRequest):
 
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant.tenant_id)
     doc_ref.set(tenant.model_dump())
-    log.info(f"Created tenant: {tenant.tenant_id} ({tenant.name})")
+    log.info(f"Created tenant: {tenant.tenant_id} slug: {tenant.slug} ({tenant.name})")
     return tenant
 
 

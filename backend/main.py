@@ -55,8 +55,8 @@ async def tenant_context_middleware(request: Request, call_next):
     2. Fallback to 'X-Tenant-Id' header (for backward compatibility/internal)
     3. Attach to request.state.tenant_id
     """
-    # Bypass context check for health, list tenants, and webhooks (webhooks have tenant_id in URL)
-    bypass_paths = ["/health", "/api/tenants", "/api/webhooks", "/docs", "/openapi.json"]
+    # Bypass context check for health, list tenants, resolve-tenant, and webhooks
+    bypass_paths = ["/health", "/api/tenants", "/api/resolve-tenant", "/api/webhooks", "/docs", "/openapi.json"]
     is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
     
     tenant_id = None
@@ -202,6 +202,33 @@ async def login_tenant_for_voice_ui(tenant_id: str):
         
     token = sign_tenant_context(tenant_id)
     return {"signed_token": token, "tenant_id": tenant_id}
+
+
+@app.get("/api/resolve-tenant")
+async def resolve_tenant_for_voice_ui(slug: str):
+    """Resolve a tenant by its slug for Voice UI (Atlassian-style)."""
+    db = get_firestore_client()
+    docs = db.collection("tenants").where("slug", "==", slug).limit(1).stream()
+    doc = next(docs, None)
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Tenant '{slug}' not found")
+    
+    data = doc.to_dict()
+    tid = data.get("tenant_id", doc.id)
+    
+    # Auto-issue token for public demo
+    token = None
+    if data.get("allow_public_demo", True):
+        token = sign_tenant_context(tid)
+
+    return {
+        "tenant_id": tid,
+        "name": data.get("name"),
+        "brand_name": data.get("brand_name"),
+        "signed_token": token,
+        "agent": data.get("agent"),
+        "terminology_overrides": data.get("terminology_overrides")
+    }
 
 
 @app.get("/api/tenants/{tenant_id}")

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import TenantSelector from './components/TenantSelector.tsx';
 import TenantWizard from './components/TenantWizard.tsx';
+import TenantLayout from './components/TenantLayout.tsx';
 import './index.css';
 
 const App: React.FC = () => {
@@ -19,9 +20,15 @@ const App: React.FC = () => {
 
         <main className="container pt-12">
           <Routes>
+            {/* Dedicated Tenant Workspace */}
+            <Route path="/t/:slug/*" element={<TenantLayout />} />
+
+            {/* Admin/Discovery Surface */}
             <Route path="/" element={<TenantSelector />} />
             <Route path="/tenants/new" element={<TenantWizard />} />
-            <Route path="/tenants/:id" element={<TenantWizard />} />
+
+            {/* Fallback */}
+            <Route path="*" element={<TenantSelector />} />
           </Routes>
         </main>
       </div>
