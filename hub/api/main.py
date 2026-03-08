@@ -68,9 +68,8 @@ async def tenant_context_middleware(request: Request, call_next):
     bypass_paths = ["/health", "/docs", "/openapi.json"]
     is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
     
-    # POST /api/tenants is how you create a new one, should be bypassable 
-    # if we want to allow new onboardings without pre-existing context
-    if request.url.path == "/api/tenants" and request.method in ["POST", "GET"]:
+    # GET /api/tenants is for discovery
+    if request.url.path == "/api/tenants" and request.method == "GET":
         is_bypassed = True
 
     tenant_id = None
@@ -114,7 +113,14 @@ def health():
 
 @app.get("/api/tenants", response_model=TenantListResponse)
 def list_tenants(request: Request):
-    """List all configured tenants (Oracle closed; no tokens returned here)."""
+    """List all configured tenants (Admin Context or Nexus Admin Key Required)."""
+    # Enforce Admin Key or authenticated tenant context
+    admin_key = request.headers.get("X-Synapse-Admin-Key")
+    ctx_tenant_id = getattr(request.state, 'tenant_id', None)
+    
+    if not hmac.compare_digest(admin_key or "", SYNAPSE_ADMIN_KEY) and not ctx_tenant_id:
+         raise HTTPException(403, "Authentication Required for Discovery")
+
     docs = db.collection(TENANTS_COLLECTION).stream()
     tenants = []
     for doc in docs:

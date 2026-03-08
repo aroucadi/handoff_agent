@@ -55,7 +55,7 @@ async def tenant_context_middleware(request: Request, call_next):
     2. Fallback to 'X-Tenant-Id' header (for backward compatibility/internal)
     3. Attach to request.state.tenant_id
     """
-    # Bypass context check for health, list tenants, resolve-tenant, and webhooks
+    # Bypass context check for health, discovery, and webhooks
     bypass_paths = ["/health", "/api/tenants", "/api/resolve-tenant", "/api/webhooks", "/docs", "/openapi.json"]
     is_bypassed = any(request.url.path.startswith(p) for p in bypass_paths)
     
@@ -385,12 +385,12 @@ async def get_session_history(session_id: str, request: Request):
         return session.get_history()
 
     # Fall back to Firestore
-    # Note: LiveSession.get_history_from_firestore doesn't check tenant_id yet
-    # but the session doc in Firestore has it.
+    # Note: LiveSession.get_history_from_firestore fetches context from the 'sessions' collection
     history = await LiveSession.get_history_from_firestore(session_id)
     if history:
-        # Optional: check historical tenant_id if ctx_tenant_id is present
-        # but for now we'll allow it if session_id matches (high entropy)
+        # Strict tenant verification for historical data
+        if ctx_tenant_id and history.get("tenant_id") != ctx_tenant_id:
+            return JSONResponse(status_code=403, content={"error": "Access denied to historical session"})
         return history
 
     return JSONResponse(status_code=404, content={"error": "Session not found"})
