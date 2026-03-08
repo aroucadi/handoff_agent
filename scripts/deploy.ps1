@@ -101,6 +101,7 @@ if (Get-Command firebase -ErrorAction SilentlyContinue) {
 Set-Location -Path ..
 
 Write-Host -Object 'Deployment Complete! The Voice Agent is now LIVE.' -ForegroundColor Green
+Write-Host -Object "Workspace URL: ${voiceUiUrl}/t/gemini-live-hackathon/voice" -ForegroundColor Green
 Write-Host -Object 'Check output variables from Terraform for URLs.' -ForegroundColor Green
 
 # 6. Run Integrated System Test

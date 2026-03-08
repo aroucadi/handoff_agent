@@ -55,3 +55,15 @@ resource "google_firestore_index" "graph_jobs_index" {
     order      = "DESCENDING"
   }
 }
+
+# Index for Workspace Resolution (Slug-based)
+resource "google_firestore_index" "tenant_slug_index" {
+  project    = var.project_id
+  database   = google_firestore_database.synapse.name
+  collection = "tenants"
+
+  fields {
+    field_path = "slug"
+    order      = "ASCENDING"
+  }
+}
