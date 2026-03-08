@@ -299,6 +299,14 @@ resource "google_cloud_run_v2_service" "hub" {
         value = var.skill_graphs_bucket
       }
       env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
+        name  = "GRAPH_GENERATOR_URL"
+        value = google_cloud_run_v2_service.graph_generator.uri
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
