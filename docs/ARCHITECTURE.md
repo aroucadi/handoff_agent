@@ -119,23 +119,23 @@ sequenceDiagram
 
 ---
 
-## Hub Integration Flow (Multi-Tenant)
+## Atlassian-Style Multi-Tenancy
 
-The Hub acts as a configuration layer that maps agnostic CRM data into the Synapse internal schema.
+Synapse uses a path-based workspace model (`/t/:slug`) ensuring ironclad isolation driven by cryptographic signatures.
+
+Detailed Deep Dive: [MULTI_TENANCY.md](MULTI_TENANCY.md)
 
 ```mermaid
 sequenceDiagram
-    participant CRM as Customer CRM
-    participant Hub as Synapse Hub (FastAPI)
-    participant UI as Hub UI (React)
-    participant Backend as Synapse API
+    participant UI as Frontend (React)
+    participant Hub as Hub API (Registry)
+    participant Backend as Synapse Voice API
     
-    UI->>Hub: Define Tenant & Brand
-    UI->>Hub: Set Field Mappings (e.g. "DealName" -> "synapse_title")
-    Hub->>CRM: Register Webhook
-    CRM->>Hub: EVENT: "Deal Closed Won"
-    Hub-->>Hub: Resolve Mapping + Tenant Config
-    Hub->>Backend: POST /generate-knowledge (Structured Data)
+    UI->>Hub: GET /api/resolve-tenant?slug=acme
+    Hub-->>UI: Config + Signed Token (HMAC)
+    UI->>Backend: Request with Authorization: Bearer <token>
+    Backend-->>Backend: Middleware Verify Signature
+    Backend->>Backend: Access Firestore {tenant_id} context
 ```
 
 ---
