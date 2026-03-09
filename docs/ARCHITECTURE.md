@@ -94,7 +94,7 @@ sequenceDiagram
     Hub-->>API: Config Data
 
     React->>API: WebSocket Connect
-    API->>Gemini: LiveConnect (13 tools + GoogleSearch)
+    API->>Gemini: LiveConnect (14 tools + GoogleSearch)
 
     loop Voice Conversation
         User->>React: Speaks / Types / Clicks Smart Chip
@@ -115,6 +115,9 @@ sequenceDiagram
             API->>Gemini: Generate document (3.1 Pro)
             API->>KG: Save versioned output
             API-->>Gemini: "Briefing v2 saved"
+        else Web Search/Scrape
+            Gemini->>Search: Google Search or Web Scrape tool
+            Search-->>Gemini: Grounded content
         end
 
         Gemini-->>API: Audio Response
@@ -248,7 +251,7 @@ The system is terminology-agnostic. While the internal ontology uses these defau
 | `gemini-3.1-pro-preview` | Entity extraction, high-fidelity node generation | Graph Generator |
 | `gemini-3.1-flash-lite-preview` | Thinking-enabled reasoning, document generation, agent summarization | Hub, Output Generators, ADK |
 | `gemini-live-2.5-flash-native-audio` | Real-time voice (Multimodal Live API) | Backend Live Sessions |
-| Google Search Grounding | Industry context, competitor data, market trends | Live Sessions |
+| Google Search / Web Scrape | Industry context, real-time browsing, market trends | Live Sessions, Text Agent |
 
 ---
 
@@ -279,7 +282,7 @@ synapse/
 │   ├── main.py                 # FastAPI + 30+ endpoints
 │   ├── agent/                  # ADK Agent Engine
 │   │   ├── prompts.py          # 4 role prompts + search policy
-│   │   ├── tools.py            # 13 tool definitions + wrappers
+│   │   ├── tools.py            # 14 tool definitions + wrappers
 │   │   └── synapse_agent.py    # Agent runner
 │   ├── graph/                  # Knowledge Graph Engine
 │   │   ├── ontology.py         # 20+ entity types, edge schema

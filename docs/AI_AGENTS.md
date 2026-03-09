@@ -38,9 +38,9 @@ Every entity in the knowledge graph is embedded and stored in **Firestore** with
 ## 3. The Multimodal Live Agent (Real-Time Voice + Vision)
 **Model:** `gemini-live-2.5-flash-native-audio`
 
-### 13 ADK Tools
-
-The agent has access to 13 function-calling tools organized into three categories:
+### 14 ADK Tools
+ 
+The agent has access to 14 function-calling tools organized into three categories:
 
 #### Structured Graph Tools (7)
 | Tool | Description |
@@ -52,6 +52,7 @@ The agent has access to 13 function-calling tools organized into three categorie
 | `search_entities` | Semantic search with optional type filter |
 | `risk_profile` | Comprehensive risk assessment with severity breakdown |
 | `product_knowledge` | Products, features, limitations, and KB articles |
+| `web_scrape` | Real-time browsing and scraping of public website content |
 
 #### Output Generation Tools (3)
 | Tool | Description |
@@ -103,6 +104,7 @@ Available as both REST API endpoints and agent tools during live sessions:
 | `generate_recommendations` | Strategic guidance (general/upsell/retention/expansion) |
 | `generate_handoff` | Team transition documents (Sales→CS, CS→Support) |
 | `generate_transcript` | Role-based scripts (6 types) |
+| `web_scrape` | Real-time public web content extraction |
 | `list_outputs` / `get_output` | Retrieve versioned artifacts from Firestore |
 
 ### 6 Transcript Types
