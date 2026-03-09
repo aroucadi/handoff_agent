@@ -195,7 +195,7 @@ async def list_tenants_for_voice_ui(request: Request):
             "integration_status": data.get("integration_status", "not_configured"),
             "roles": data.get("agent", {}).get("roles", ["csm", "sales", "support"]),
             "product_count": len(data.get("products", [])),
-            "signed_token": None
+            "synapse_tenant_token": None
         })
     return {"tenants": tenants, "count": len(tenants)}
 

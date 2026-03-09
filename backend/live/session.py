@@ -215,6 +215,19 @@ def _build_live_tools() -> list[Tool]:
                 "required": ["client_id", "query"],
             },
         ),
+        FunctionDeclaration(
+            name="web_scrape",
+            description="Fetch and scrape the text content of a public website URL. "
+                        "Use this for real-time browsing when the knowledge graph doesn't have "
+                        "the latest information.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The full URL to browse and scrape"},
+                },
+                "required": ["url"],
+            },
+        ),
     ]
     return [Tool(function_declarations=declarations)]
 

@@ -131,12 +131,18 @@ async def run_text_conversation(
         tool_calls_log.append({"tool": "search_graph", "args": {"query": query}})
         return TOOL_FUNCTIONS["search_graph"](account_id, query)
 
-    from google.genai.types import AutomaticFunctionCallingConfig
+    # Wrapper functions for automatic function calling
+    def web_scrape(url: str) -> str:
+        """Fetch and scrape the text content of a public website URL."""
+        tool_calls_log.append({"tool": "web_scrape", "args": {"url": url}})
+        return asyncio.run(TOOL_FUNCTIONS["web_scrape"](url))
+
+    from google.genai.types import AutomaticFunctionCallingConfig, GoogleSearch
     
     gen_config = GenerateContentConfig(
         system_instruction=system_instruction,
         temperature=0.3,
-        tools=[get_index, follow_link, search_graph],
+        tools=[get_index, follow_link, search_graph, web_scrape, Tool(google_search=GoogleSearch())],
         automatic_function_calling=AutomaticFunctionCallingConfig(disable=False),
     )
 

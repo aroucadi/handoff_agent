@@ -240,6 +240,44 @@ async def tool_generate_transcript(
     return json.dumps({"title": result["title"], "content": result["content"][:3000]}, indent=2, default=str)
 
 
+async def tool_web_scrape(url: str, **kwargs) -> str:
+    """Fetch and scrape the text content of a public website URL.
+    
+    Use this for real-time browsing when the knowledge graph doesn't have 
+    latest company info or the specific page details.
+    
+    Args:
+        url: The full URL to scrape
+        
+    Returns:
+        Structured text content of the page.
+    """
+    import httpx
+    from bs4 import BeautifulSoup
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            headers = {"User-Agent": "SynapseAgent/1.0 (Mozilla/5.0)"}
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Remove noise
+            for s in soup(["script", "style", "nav", "footer", "header"]):
+                s.decompose()
+                
+            text = soup.get_text(separator="\n", strip=True)
+            # Limit length to avoid context overflow
+            return json.dumps({
+                "url": url,
+                "content": text[:8000],
+                "status": "success"
+            }, indent=2)
+    except Exception as e:
+        return json.dumps({"url": url, "error": str(e), "status": "failed"}, indent=2)
+
+
 # ── Tool Definitions for ADK / Gemini Function Calling ────────────
 
 
@@ -429,6 +467,17 @@ TOOL_DEFINITIONS = [
             "required": ["tenant_id", "account_id", "transcript_type"],
         },
     },
+    {
+        "name": "web_scrape",
+        "description": tool_web_scrape.__doc__,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "The full URL to browse and scrape"},
+            },
+            "required": ["url"],
+        },
+    },
 ]
 
 
@@ -450,5 +499,6 @@ TOOL_FUNCTIONS = {
     "generate_briefing": tool_generate_briefing,
     "generate_action_plan": tool_generate_action_plan,
     "generate_transcript": tool_generate_transcript,
+    "web_scrape": tool_web_scrape,
 }
 
