@@ -135,7 +135,14 @@ async def webhook_deal_closed(tenant_id: str, request: Request):
         async with httpx.AsyncClient(timeout=30.0) as client:
             # Forward directly to the tenant-aware ingest endpoint
             ingest_url = f"{generator_url.rstrip('/')}/ingest/{tenant_id}"
-            response = await client.post(ingest_url, json=payload)
+            
+            # Forward the signature header if present (to satisfy graph-generator hardening)
+            headers = {}
+            sig = request.headers.get("X-Webhook-Signature")
+            if sig:
+                headers["X-Webhook-Signature"] = sig
+                
+            response = await client.post(ingest_url, json=payload, headers=headers)
             result = response.json()
             print(f"[WEBHOOK] Ingest triggered for tenant {tenant_id}: {result}")
             return JSONResponse(
@@ -244,8 +251,13 @@ async def resolve_tenant_for_voice_ui(slug: str):
 
 
 @app.get("/api/tenants/{tenant_id}")
-async def get_tenant_for_voice_ui(tenant_id: str):
+async def get_tenant_for_voice_ui(tenant_id: str, request: Request):
     """Get tenant config for Voice UI (roles, brand name, CRM type)."""
+    # Enforce tenant context
+    ctx_tenant_id = request.state.tenant_id
+    if ctx_tenant_id and tenant_id != ctx_tenant_id:
+        return JSONResponse(status_code=403, content={"error": "Tenant mismatch"})
+
     db = get_firestore_client()
     doc = db.collection("tenants").document(tenant_id).get()
     if not doc.exists:
@@ -348,7 +360,7 @@ async def start_session(req: SessionStartRequest, request: Request):
     session = LiveSession(
         session_id=session_id,
         client_id=req.client_id,
-        tenant_id=req.tenant_id,
+        tenant_id=tenant_id,
         brand_name=brand_name,
         csm_name=req.csm_name,
         deal_id=req.deal_id,
@@ -361,7 +373,7 @@ async def start_session(req: SessionStartRequest, request: Request):
     db.collection("sessions").document(session_id).set({
         "session_id": session_id,
         "client_id": req.client_id,
-        "tenant_id": req.tenant_id,
+        "tenant_id": tenant_id,
         "brand_name": brand_name,
         "csm_name": req.csm_name,
         "deal_id": req.deal_id,
@@ -370,7 +382,7 @@ async def start_session(req: SessionStartRequest, request: Request):
         "status": "active",
     })
 
-    print(f"[SESSION] Created session {session_id} for tenant {req.tenant_id} and client {req.client_id}")
+    print(f"[SESSION] Created session {session_id} for tenant {tenant_id} and client {req.client_id}")
 
     return {
         "session_id": session_id,
@@ -554,16 +566,18 @@ class TextMessage(BaseModel):
 
 
 @app.post("/api/sessions/text")
-async def text_conversation(req: TextMessage):
+async def text_conversation(req: TextMessage, request: Request):
     """Have a text conversation with the Synapse agent (R1 endpoint, still available)."""
     print(f"[TEXT] Client: {req.client_id} | Message: {req.message}")
 
     # For text mode, we might need a tenant_id too if we want dynamic branding
     # For now, we'll try to find an active session or just use default
     brand_name = "ClawdView"
+    ctx_tenant_id = request.state.tenant_id
     
     result = await run_text_conversation(
-        client_id=req.client_id,
+        tenant_id=ctx_tenant_id,
+        account_id=req.client_id,
         message=req.message,
         history=req.history,
         brand_name=brand_name

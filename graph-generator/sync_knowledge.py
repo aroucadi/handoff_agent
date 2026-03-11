@@ -64,8 +64,21 @@ def _normalize_product_ids(graph: dict) -> dict:
     graph["id_map"] = id_map
     return graph
 
+import os
+from fastapi import Request
+
 @router.post("/api/sync-knowledge/{tenant_id}")
-async def sync_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
+async def sync_knowledge(tenant_id: str, request: Request, background_tasks: BackgroundTasks):
+    # Enforce Admin Key
+    admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+    if not admin_key:
+        # Prevent "effectively open" endpoint if env var is missing
+        raise HTTPException(500, "Insecure Configuration: SYNAPSE_ADMIN_KEY is not set.")
+        
+    provided_key = request.headers.get("X-Synapse-Admin-Key")
+    if provided_key != admin_key:
+        raise HTTPException(403, "Invalid Admin Key")
+
     db = get_firestore_client()
     tenant_doc = db.collection("tenants").document(tenant_id).get()
     if not tenant_doc.exists:
@@ -81,7 +94,16 @@ async def sync_knowledge(tenant_id: str, background_tasks: BackgroundTasks):
 
 
 @router.get("/api/sync-knowledge/{tenant_id}/status")
-async def get_sync_status(tenant_id: str):
+async def get_sync_status(tenant_id: str, request: Request):
+    # Enforce Admin Key (Audit Alignment - Fail Closed)
+    admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+    if not admin_key:
+        raise HTTPException(500, "Insecure Configuration: SYNAPSE_ADMIN_KEY is not set.")
+        
+    provided_key = request.headers.get("X-Synapse-Admin-Key")
+    if provided_key != admin_key:
+        raise HTTPException(403, "Invalid Admin Key")
+
     db = get_firestore_client()
     doc = db.collection("tenant_knowledge").document(tenant_id).get()
     if not doc.exists:

@@ -14,3 +14,9 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "synapse_admin_key" {
+  description = "The master admin key for Synapse"
+  type        = string
+  sensitive   = true
+}

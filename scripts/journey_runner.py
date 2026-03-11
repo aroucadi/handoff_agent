@@ -40,23 +40,22 @@ def _slug_company(name: str) -> str:
     return name.lower().replace(" ", "-").replace(",", "").replace(".", "")
 
 
-async def _get_json(url: str, timeout: float = 60.0) -> dict:
+async def _post_json(url: str, payload: dict | None = None, headers: dict | None = None, timeout: float = 120.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.get(url)
+        resp = await client.post(url, json=payload or {}, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
+async def _get_json(url: str, headers: dict | None = None, timeout: float = 60.0) -> dict:
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(url, headers=headers)
         resp.raise_for_status()
         return resp.json()
 
 
-async def _post_json(url: str, payload: dict | None = None, timeout: float = 120.0) -> dict:
+async def _patch_json(url: str, payload: dict, headers: dict | None = None, timeout: float = 120.0) -> dict:
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(url, json=payload or {})
-        resp.raise_for_status()
-        return resp.json()
-
-
-async def _patch_json(url: str, payload: dict, timeout: float = 120.0) -> dict:
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.patch(url, json=payload)
+        resp = await client.patch(url, json=payload, headers=headers)
         resp.raise_for_status()
         return resp.json()
 
@@ -113,9 +112,16 @@ async def healthcheck(urls: ServiceUrls):
 
 
 async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> str:
+    admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+    if not admin_key:
+        print("❌ Error: SYNAPSE_ADMIN_KEY not set. Journey runner cannot proceed in hardened mode.")
+        sys.exit(1)
+    admin_headers = {"X-Synapse-Admin-Key": admin_key}
+    
     tenant = await _post_json(
         f"{urls.hub.rstrip('/')}/api/tenants",
         {"name": tenant_name, "brand_name": "ClawdView", "crm_type": "custom"},
+        headers=admin_headers,
         timeout=30.0,
     )
     tenant_id = tenant["tenant_id"]
@@ -173,15 +179,15 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
         {"name": "ClawdView PPM Pro", "description": "Project portfolio management for enterprises"},
     ]
     for p in products:
-        await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/products", p, timeout=30.0)
+        await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/products", p, headers=admin_headers, timeout=30.0)
 
     print("\n[RUNNER] Triggering knowledge generation (background)...")
-    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/generate-knowledge", timeout=120.0)
+    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/generate-knowledge", headers=admin_headers, timeout=120.0)
 
     print("[RUNNER] Waiting for knowledge generation to complete...")
     for _ in range(30):
         await asyncio.sleep(10)
-        tenant_status = await _get_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}", timeout=10.0)
+        tenant_status = await _get_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}", headers=admin_headers, timeout=10.0)
         products_list = tenant_status.get("products", [])
         if all(p.get("knowledge_generated") for p in products_list):
             print(f"[RUNNER] Knowledge generation complete for all {len(products_list)} products!")
@@ -191,13 +197,13 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
     else:
         print("[RUNNER] WARNING: Knowledge generation timed out (polling stopped).")
     print("\n[RUNNER] Triggering knowledge center sync (background)...")
-    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/sync-knowledge", timeout=120.0)
+    await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/sync-knowledge", headers=admin_headers, timeout=120.0)
 
     print("[RUNNER] Waiting for knowledge sync to complete (may take up to 5 minutes due to AI quotas)...")
     for _ in range(60):
         await asyncio.sleep(10)
         try:
-            status_resp = await _get_json(f"{urls.graph.rstrip('/')}/api/sync-knowledge/{tenant_id}/status", timeout=15.0)
+            status_resp = await _get_json(f"{urls.graph.rstrip('/')}/api/sync-knowledge/{tenant_id}/status", headers=admin_headers, timeout=15.0)
             status = status_resp.get("status")
             if status == "ready":
                 print(f"[RUNNER] Knowledge sync complete! Found {status_resp.get('entity_count')} entities.")
@@ -215,9 +221,13 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
 
 
 async def tenant_onboard_negative(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> str:
+    admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+    admin_headers = {"X-Synapse-Admin-Key": admin_key}
+    
     tenant = await _post_json(
         f"{urls.hub.rstrip('/')}/api/tenants",
         {"name": tenant_name, "brand_name": "ClawdView", "crm_type": "custom"},
+        headers=admin_headers,
         timeout=30.0,
     )
     tenant_id = tenant["tenant_id"]

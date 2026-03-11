@@ -91,6 +91,7 @@ module "cloud_run" {
   region              = var.region
   skill_graphs_bucket = module.storage.skill_graphs_bucket_name
   uploads_bucket      = module.storage.uploads_bucket_name
+  synapse_admin_key   = var.synapse_admin_key
 
   depends_on = [module.storage, module.firestore]
 }

@@ -57,7 +57,7 @@ interface TenantInfo {
 export default function RoleSelection() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const tenantId = searchParams.get('tenant_id');
+    const tenantId = searchParams.get('tenant_id') || localStorage.getItem('tenant_id');
 
     const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
     const [dealCounts, setDealCounts] = useState<Record<string, number>>({});

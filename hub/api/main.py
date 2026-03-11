@@ -94,7 +94,9 @@ async def tenant_context_middleware(request: Request, call_next):
 
 db = firestore.Client()
 import hmac
-SYNAPSE_ADMIN_KEY = os.getenv("SYNAPSE_ADMIN_KEY", "nexus-admin-2026")
+SYNAPSE_ADMIN_KEY = os.getenv("SYNAPSE_ADMIN_KEY")
+if not SYNAPSE_ADMIN_KEY:
+    raise RuntimeError("Critical Security Configuration Missing: SYNAPSE_ADMIN_KEY is not set.")
 TENANTS_COLLECTION = "tenants"
 
 
@@ -142,8 +144,8 @@ def resolve_tenant(slug: str):
         raise HTTPException(404, f"Tenant with slug '{slug}' not found")
     
     data = doc.to_dict()
-    # Auto-login if public demo is enabled
-    if data.get("allow_public_demo", True):
+    # Auto-login ONLY if public demo is explicitly enabled (Audit Alignment)
+    if data.get("allow_public_demo", False):
         data["synapse_tenant_token"] = sign_tenant_context(data["tenant_id"])
     else:
         data["synapse_tenant_token"] = None
@@ -159,8 +161,8 @@ def login_tenant(tenant_id: str):
         raise HTTPException(404, "Tenant not found")
     
     data = doc.to_dict()
-    # Check if this tenant is explicitly allowed for public demo access
-    if not data.get("allow_public_demo", True):
+    # Check if this tenant is explicitly allowed for public demo access (Audit Alignment)
+    if not data.get("allow_public_demo", False):
         raise HTTPException(403, "Public demo access disabled for this tenant")
     
     token = sign_tenant_context(tenant_id)

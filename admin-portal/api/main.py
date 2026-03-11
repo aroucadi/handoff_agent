@@ -10,7 +10,9 @@ from fastapi.responses import FileResponse
 
 app = FastAPI(title="Synapse Admin API")
 
-SYNAPSE_ADMIN_KEY = os.getenv("SYNAPSE_ADMIN_KEY", "synapse-admin-demo-key-2026")
+SYNAPSE_ADMIN_KEY = os.getenv("SYNAPSE_ADMIN_KEY")
+if not SYNAPSE_ADMIN_KEY:
+    raise RuntimeError("Critical Security Configuration Missing: SYNAPSE_ADMIN_KEY environment variable is required.")
 db = firestore.Client()
 TENANTS_COLLECTION = "tenants"
 

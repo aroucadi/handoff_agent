@@ -78,6 +78,7 @@ def _build_tools() -> list[Tool]:
 
 
 async def run_text_conversation(
+    tenant_id: str,
     account_id: str,
     message: str,
     history: list[dict] | None = None,
@@ -118,24 +119,24 @@ async def run_text_conversation(
     def get_index(layer: str = "account") -> str:
         """Read the index/table-of-contents node for a skill graph layer. Use this FIRST when starting a briefing."""
         tool_calls_log.append({"tool": "read_index", "args": {"layer": layer}})
-        return TOOL_FUNCTIONS["read_index"](account_id, layer)
+        return TOOL_FUNCTIONS["read_index"](tenant_id, account_id, layer)
 
     def follow_link(node_id: str, sections_only: bool = False) -> str:
         """Navigate to a specific node in the skill graph by following a wikilink."""
         tool_calls_log.append({"tool": "follow_link", "args": {"node_id": node_id, "sections_only": sections_only}})
         nodes_visited.append(node_id)
-        return TOOL_FUNCTIONS["follow_link"](account_id, node_id, sections_only)
+        return TOOL_FUNCTIONS["follow_link"](tenant_id, account_id, node_id, sections_only)
 
     def search_graph(query: str) -> str:
         """Search across the account's entire skill graph using semantic search."""
         tool_calls_log.append({"tool": "search_graph", "args": {"query": query}})
-        return TOOL_FUNCTIONS["search_graph"](account_id, query)
+        return TOOL_FUNCTIONS["search_graph"](tenant_id, account_id, query)
 
     # Wrapper functions for automatic function calling
-    def web_scrape(url: str) -> str:
+    async def web_scrape(url: str) -> str:
         """Fetch and scrape the text content of a public website URL."""
         tool_calls_log.append({"tool": "web_scrape", "args": {"url": url}})
-        return asyncio.run(TOOL_FUNCTIONS["web_scrape"](url))
+        return await TOOL_FUNCTIONS["web_scrape"](url)
 
     from google.genai.types import AutomaticFunctionCallingConfig, GoogleSearch
     

@@ -60,10 +60,10 @@ async def ingest_webhook(
     payload_bytes = await request.body()
     signature = request.headers.get("X-Webhook-Signature", "")
 
-    if webhook_secret and signature:
-        if not _verify_signature(payload_bytes, webhook_secret, signature):
-            log.warning(f"[INGEST] Invalid signature for tenant {tenant_id}")
-            raise HTTPException(401, "Invalid webhook signature")
+    if webhook_secret:
+        if not signature or not _verify_signature(payload_bytes, webhook_secret, signature):
+            log.warning(f"[INGEST] Invalid or missing signature for tenant {tenant_id}")
+            raise HTTPException(401, "Invalid or missing webhook signature")
 
     # 3. Parse and apply field mapping
     import json

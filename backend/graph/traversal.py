@@ -150,7 +150,7 @@ def follow_link(tenant_id: str, client_id: str, node_id: str, sections_only: boo
 def search_graph(tenant_id: str, client_id: str, query: str) -> dict:
     """Semantic search across the client's skill graph (legacy)."""
     _verify_tenant_access(tenant_id, client_id)
-    results = search_nodes(client_id, query, top_k=5)
+    results = search_nodes(tenant_id, client_id, query, top_k=5)
     return {
         "query": query,
         "results": results,

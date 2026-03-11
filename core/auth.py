@@ -13,8 +13,11 @@ log = logging.getLogger("core.auth")
 # but log a warning if the secure environment variable is missing.
 DEMO_SECRET_KEY = os.getenv("DEMO_SECRET_KEY")
 if not DEMO_SECRET_KEY:
-    DEMO_SECRET_KEY = "synapse-demo-secret-2026"
-    log.warning("DEMO_SECRET_KEY not set. Using stable demo fallback. This is for investor discovery only.")
+    # For local development without env vars, you might want a fallback, 
+    # but for "Ironclad" mode we should enforce it or at least not use a known default in prod.
+    # We'll keep a fallback for the VERY specific demo environment if needed, 
+    # but the review asked to remove it to avoid undermining security.
+    raise RuntimeError("DEMO_SECRET_KEY environment variable is required for secure tenant isolation.")
 else:
     log.info("DEMO_SECRET_KEY loaded from environment. Hardened context enabled.")
 

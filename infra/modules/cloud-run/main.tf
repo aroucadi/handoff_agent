@@ -317,7 +317,7 @@ resource "google_cloud_run_v2_service" "hub" {
       }
       env {
         name  = "SYNAPSE_ADMIN_KEY"
-        value = "synapse-admin-demo-key-2026"
+        value = var.synapse_admin_key
       }
 
       resources {
@@ -376,7 +376,7 @@ resource "google_cloud_run_v2_service" "admin" {
       }
       env {
         name  = "SYNAPSE_ADMIN_KEY"
-        value = "synapse-admin-demo-key-2026"
+        value = var.synapse_admin_key
       }
 
       resources {

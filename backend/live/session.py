@@ -105,11 +105,12 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "query": {"type": "string"},
                     "entity_type": {"type": "string", "description": "Optional type filter"},
                 },
-                "required": ["client_id", "query"],
+                "required": ["tenant_id", "client_id", "query"],
             },
         ),
         FunctionDeclaration(
@@ -117,8 +118,11 @@ def _build_live_tools() -> list[Tool]:
             description="Get comprehensive risk profile: all risks with severity breakdown and derisking strategies.",
             parameters={
                 "type": "object",
-                "properties": {"client_id": {"type": "string"}},
-                "required": ["client_id"],
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"}
+                },
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -126,8 +130,11 @@ def _build_live_tools() -> list[Tool]:
             description="Get product knowledge: products, features, limitations, and KB articles.",
             parameters={
                 "type": "object",
-                "properties": {"client_id": {"type": "string"}},
-                "required": ["client_id"],
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"}
+                },
+                "required": ["tenant_id", "client_id"],
             },
         ),
         # ── Output Generation Tools ──
@@ -137,10 +144,11 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "csm_name": {"type": "string", "description": "CSM name for personalization"},
                 },
-                "required": ["client_id"],
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -149,10 +157,11 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "meeting_notes": {"type": "string", "description": "Optional session notes"},
                 },
-                "required": ["client_id"],
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -162,6 +171,7 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "transcript_type": {
                         "type": "string",
@@ -171,7 +181,7 @@ def _build_live_tools() -> list[Tool]:
                     "user_role": {"type": "string", "description": "User role (AE, CSM, Support Agent)"},
                     "additional_context": {"type": "string", "description": "Extra context or notes"},
                 },
-                "required": ["client_id", "transcript_type"],
+                "required": ["tenant_id", "client_id", "transcript_type"],
             },
         ),
         # ── Legacy Tools (backward compat) ──
@@ -181,10 +191,11 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "layer": {"type": "string", "enum": ["client", "product", "industry"]},
                 },
-                "required": ["client_id"],
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -195,11 +206,12 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "node_id": {"type": "string"},
                     "sections_only": {"type": "boolean"},
                 },
-                "required": ["client_id", "node_id"],
+                "required": ["tenant_id", "client_id", "node_id"],
             },
         ),
         FunctionDeclaration(
@@ -209,10 +221,11 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "query": {"type": "string"},
                 },
-                "required": ["client_id", "query"],
+                "required": ["tenant_id", "client_id", "query"],
             },
         ),
         FunctionDeclaration(
@@ -334,7 +347,7 @@ class LiveSession:
         # Deterministic Kickoff: Pre-load the graph index locally to bypass the 1008 API crash.
         # This prevents the LLM from attempting to monologue while generating a tool call.
         try:
-            index_data = get_index(self.client_id, "client")
+            index_data = get_index(self.tenant_id, self.client_id, "client")
             node_id = index_data.get("node_id") if index_data else None
             if node_id:
                 self.nodes_visited.append(node_id)
@@ -589,6 +602,8 @@ class LiveSession:
             await doc_ref.set({
                 "session_id": self.session_id,
                 "client_id": self.client_id,
+                "tenant_id": self.tenant_id,
+                "brand_name": self.brand_name,
                 "csm_name": self.csm_name,
                 "started_at": self.started_at,
                 "ended_at": datetime.utcnow().isoformat(),

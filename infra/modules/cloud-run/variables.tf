@@ -17,3 +17,9 @@ variable "uploads_bucket" {
   description = "GCS bucket name for uploads"
   type        = string
 }
+
+variable "synapse_admin_key" {
+  description = "The master admin key for Synapse"
+  type        = string
+  sensitive   = true
+}

@@ -93,7 +93,7 @@ def tool_search_entities(tenant_id: str, account_id: str, query: str, entity_typ
         Ranked list of relevant entities with properties.
     """
     # Note: search_entities in graph/search.py might need tenant_id too if it has a shared index
-    results = search_entities(account_id, query, entity_type)
+    results = search_entities(tenant_id, account_id, query, entity_type)
     return json.dumps({
         "query": query,
         "entity_type_filter": entity_type,

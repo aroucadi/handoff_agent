@@ -148,8 +148,13 @@ async def step_hub(admin_url: str, hub_url: str, crm_url: str, graph_url: str, f
         if forced_tenant_id:
             payload["tenant_id"] = forced_tenant_id
 
-        # POST /api/tenants now requires the Master Admin Key
-        admin_headers = {"X-Synapse-Admin-Key": "synapse-admin-demo-key-2026"}
+        # POST /api/tenants now requires the Master Admin Key (Fail Closed Alignment)
+        admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+        if not admin_key:
+             print("❌ Error: SYNAPSE_ADMIN_KEY not set. Seeding cannot proceed in hardened mode.")
+             sys.exit(1)
+             
+        admin_headers = {"X-Synapse-Admin-Key": admin_key}
         resp = await client.post(f"{admin_url}/api/tenants", json=payload, headers=admin_headers)
         
         if resp.status_code == 201:

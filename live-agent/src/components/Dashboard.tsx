@@ -47,7 +47,7 @@ export default function Dashboard() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const roleId = searchParams.get('role') || 'csm';
-    const tenantId = searchParams.get('tenant_id');
+    const tenantId = searchParams.get('tenant_id') || localStorage.getItem('tenant_id');
     const [deals, setDeals] = useState<Deal[]>([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [tenantConfig, setTenantConfig] = useState<any>(null);
