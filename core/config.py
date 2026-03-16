@@ -13,7 +13,35 @@ class CoreConfig:
     """Unified application configuration."""
 
     # GCP
-    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID", "synapse-488201"))
+    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID") or CoreConfig._resolve_project_id())
+
+    @staticmethod
+    def _resolve_project_id() -> str:
+        """Attempt to resolve project ID from gcloud if not in environment."""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                capture_output=True, text=True, check=False
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    def resolve_run_url(self, service_name: str, region: str = None) -> str:
+        """Dynamically resolve the URL of a Cloud Run service."""
+        try:
+            import subprocess
+            reg = region or self.region
+            result = subprocess.run(
+                ["gcloud", "run", "services", "describe", service_name, "--region", reg, "--project", self.project_id, "--format", "value(status.url)"],
+                capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+            return ""
+        except Exception:
+            return ""
     region: str = field(default_factory=lambda: os.environ.get("REGION", "us-central1"))
     # Gemini 3.x preview generation models require the global endpoint
     gen_region: str = field(default_factory=lambda: os.environ.get("GEN_REGION", "global"))
@@ -26,8 +54,8 @@ class CoreConfig:
 
     # Gemini Model Strategy — Vertex AI resource names (no "models/" prefix)
     # Queried from: genai.Client(vertexai=True).models.list()
-    gen_model: str = "gemini-3.1-pro-preview"
-    fallback_model: str = "gemini-3-flash-preview"
+    gen_model: str = "gemini-3.1-flash-lite-preview"
+    fallback_model: str = "gemini-2.5-flash"
     summary_model: str = "gemini-3-flash-preview"
     graph_gen_model: str = "gemini-3-flash-preview"  # Used by the text agent in synapse_agent.py
     # Switch to 2.5-flash for Hackathon True Multimodal Vision and Text natively over Vertex AI
@@ -35,23 +63,36 @@ class CoreConfig:
     embedding_model: str = "gemini-embedding-001"
     embedding_dims: int = 768  # Hackathon/demo standard
 
+    # Knowledge Center (ClawdView product documentation)
+    knowledge_center_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "KNOWLEDGE_CENTER_URL",
+            "http://localhost:8080"   # local dev — gsutil serves on :8080
+        )
+    )
+
+    # Graph output: "structured" emits entities+edges; "markdown" is legacy 8-node format
+    graph_output_format: str = field(
+        default_factory=lambda: os.environ.get("GRAPH_OUTPUT_FORMAT", "structured")
+    )
+
     # Storage buckets
     skill_graphs_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "SKILL_GRAPHS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-graphs",
+            f"{os.environ.get('PROJECT_ID', '')}-synapse-graphs" if os.environ.get('PROJECT_ID') else "synapse-graphs",
         )
     )
     uploads_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "UPLOADS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-uploads",
+            f"{os.environ.get('PROJECT_ID', '')}-synapse-uploads" if os.environ.get('PROJECT_ID') else "synapse-uploads",
         )
     )
 
     # Simulator URLs (for local dev callbacks)
     graph_generator_url: str = field(
-        default_factory=lambda: os.environ.get("GRAPH_GENERATOR_URL", "http://localhost:8002/generate")
+        default_factory=lambda: os.environ.get("GRAPH_GENERATOR_URL", "http://localhost:8002")
     )
     crm_simulator_url: str = field(
         default_factory=lambda: os.environ.get("CRM_SIMULATOR_URL", "http://localhost:8001")

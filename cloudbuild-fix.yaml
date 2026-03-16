@@ -1,0 +1,9 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}', '-f', 'graph-generator/Dockerfile', '.']
+images:
+- '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}'
+
+substitutions:
+  _REGION: us-central1
+  _TAG: latest

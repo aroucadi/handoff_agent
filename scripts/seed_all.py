@@ -23,6 +23,7 @@ import argparse
 import sys
 import os
 import time
+import random
 from pathlib import Path
 
 # Add root to sys path
@@ -34,11 +35,12 @@ import httpx
 from google.cloud import firestore, storage
 from core.config import config
 
-# Default deployed URLs (from Terraform outputs)
-DEFAULT_API_URL = "https://synapse-api-uicugotuta-uc.a.run.app"
-DEFAULT_CRM_URL = "https://synapse-crm-simulator-uicugotuta-uc.a.run.app"
-DEFAULT_HUB_URL = "https://synapse-hub-uicugotuta-uc.a.run.app"
-DEFAULT_GRAPH_URL = "https://synapse-graph-generator-uicugotuta-uc.a.run.app"
+# Default deployed URLs (Dynamic resolution placeholders)
+DEFAULT_API_URL = "AUTO"
+DEFAULT_CRM_URL = "AUTO"
+DEFAULT_HUB_URL = "AUTO"
+DEFAULT_ADMIN_URL = "AUTO"
+DEFAULT_GRAPH_URL = "AUTO"
 
 
 def banner(step: int, total: int, title: str):
@@ -132,72 +134,80 @@ def step_contracts():
 
 
 # ── Step 3: CONFIGURE HUB TENANT (via API) ─────────────────────
-async def step_hub(hub_url: str, crm_url: str, graph_url: str):
-    """Create/configure the tenant via Hub API — simulates wizard UI."""
-    banner(3, 7, "HUB — Configuring Tenant via API")
-
-    graph_webhook = f"{graph_url.rstrip('/')}/generate"
+async def step_hub(admin_url: str, hub_url: str, crm_url: str, graph_url: str, forced_tenant_id: str = None):
+    """Create/configure the tenant via Synapse Admin API — simulates owner flow."""
+    banner(3, 7, "ADMIN — Provisioning Tenant via Synapse Admin API")
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Step 3a: Create tenant (as if user clicked "Create Tenant" in wizard)
-        print("  Creating tenant via POST /api/tenants ...")
-        resp = await client.post(f"{hub_url}/api/tenants", json={
-            "name": "ClawdView Demo",
-            "brand_name": "ClawdView",
+        # Step 3a: Create tenant via Admin API
+        print(f"  Provisioning tenant via POST {admin_url}/api/tenants ...")
+        payload = {
+            "name": "Gemini Live Hackathon",
+            "brand_name": "Synapse",
             "crm_type": "custom",
-        })
+        }
+        if forced_tenant_id:
+            payload["tenant_id"] = forced_tenant_id
+
+        # POST /api/tenants now requires the Master Admin Key (Fail Closed Alignment)
+        admin_key = os.getenv("SYNAPSE_ADMIN_KEY")
+        if not admin_key:
+             print("❌ Error: SYNAPSE_ADMIN_KEY not set. Seeding cannot proceed in hardened mode.")
+             sys.exit(1)
+             
+        admin_headers = {"X-Synapse-Admin-Key": admin_key}
+        resp = await client.post(f"{admin_url}/api/tenants", json=payload, headers=admin_headers)
+        
         if resp.status_code == 201:
             tenant = resp.json()
             tenant_id = tenant["tenant_id"]
-            print(f"  ✅ Tenant created: {tenant_id}")
+            slug = tenant.get("slug")
+            print(f"  ✅ Tenant provisioned: {tenant_id} (slug: {slug})")
         else:
-            print(f"  ⚠️ Tenant creation returned {resp.status_code}: {resp.text[:200]}")
-            # Use fallback tenant_id
-            tenant_id = "default-tenant"
-            # Try creating with explicit ID directly in Firestore
-            db = firestore.Client(project=config.project_id)
-            db.collection("tenants").document(tenant_id).set({
-                "tenant_id": tenant_id,
-                "name": "ClawdView Demo",
-                "brand_name": "ClawdView",
-                "status": "configuring",
-                "crm": {"crm_type": "custom", "connected": False},
-                "products": [],
-                "agent": {"roles": ["csm", "sales", "support", "win-back"]},
-            })
-            print(f"  ✅ Fallback tenant '{tenant_id}' created in Firestore")
-
-        # Step 3b: Configure CRM connection (as if user filled CRM wizard step)
-        print(f"  Configuring CRM connection via PATCH /api/tenants/{tenant_id} ...")
-        resp = await client.patch(f"{hub_url}/api/tenants/{tenant_id}", json={
-            "crm": {
-                "crm_type": "custom",
-                "crm_url": crm_url,
-                "connected": True,
-                "auth_method": "api_key",
-                "field_mapping": {
-                    "deal_id": "deal_id",
-                    "company_name": "company_name",
-                    "deal_value": "deal_value",
-                    "close_date": "close_date",
-                    "industry": "industry",
-                    "products": "products",
-                    "contacts": "contacts",
-                    "risks": "risks",
-                    "success_metrics": "success_metrics",
-                    "sales_transcript": "sales_transcript",
-                    "contract_pdf_url": "contract_pdf_url",
+            print(f"  ⚠️ Tenant provisioning returned {resp.status_code}: {resp.text[:200]}")
+            tenant_id = forced_tenant_id or "default-tenant"
+            
+        # Headers for subsequent configuration via Hub API
+        # Note: Hub API might still use its own resolution logic
+        headers = {"X-Tenant-Id": tenant_id}
+        
+        # The rest of step_hub uses the resolved tenant_id and headers
+        graph_webhook = f"{graph_url.rstrip('/')}/ingest/{tenant_id}"
+        
+        print(f"  Configuring CRM connection for {tenant_id} ...")
+        resp = await client.patch(
+            f"{hub_url}/api/tenants/{tenant_id}", 
+            headers=headers,
+            json={
+                "crm": {
+                    "crm_type": "custom",
+                    "crm_url": crm_url,
+                    "connected": True,
+                    "auth_method": "api_key",
+                    "field_mapping": {
+                        "deal_id": "deal_id",
+                        "company_name": "company_name",
+                        "deal_value": "deal_value",
+                        "close_date": "close_date",
+                        "industry": "industry",
+                        "products": "products",
+                        "contacts": "contacts",
+                        "risks": "risks",
+                        "success_metrics": "success_metrics",
+                        "sales_transcript": "sales_transcript",
+                        "contract_pdf_url": "contract_pdf_url",
+                    },
                 },
-            },
-            "webhook_url": graph_webhook,
-        })
+                "webhook_url": graph_webhook,
+            }
+        )
         if resp.status_code == 200:
             print(f"  ✅ CRM connected → {crm_url}")
             print(f"  ✅ Webhook URL → {graph_webhook}")
         else:
             print(f"  ⚠️ CRM config returned {resp.status_code}: {resp.text[:200]}")
 
-        # Step 3c: Add products (as if user clicked "Add Product" for each)
+        # Step 3c: Add products
         products = [
             {"name": "ClawdView AgilePlace", "description": "Enterprise Agile project management and Kanban boards"},
             {"name": "ClawdView Portfolios", "description": "Strategic portfolio management and resource planning"},
@@ -207,43 +217,91 @@ async def step_hub(hub_url: str, crm_url: str, graph_url: str):
         for product in products:
             resp = await client.post(
                 f"{hub_url}/api/tenants/{tenant_id}/products",
+                headers=headers,
                 json=product,
             )
             if resp.status_code == 201:
                 p = resp.json()
                 print(f"  📦 Added product: {p['name']} (node_id: {p['node_id']})")
+                # Anti-Suspension: Jittered delay between product adds
+                await asyncio.sleep(2 + random.uniform(1.0, 3.0))
             else:
                 print(f"  ⚠️ Product '{product['name']}' → {resp.status_code}")
 
-        # Step 3d: Activate tenant (as if user clicked "Go Live")
-        resp = await client.patch(f"{hub_url}/api/tenants/{tenant_id}", json={
-            "status": "active",
-            "agent": {
-                "roles": ["csm", "sales", "support", "win-back"],
-                "persona": "Professional, data-driven, and proactive enterprise assistant.",
-                "brand_name": "Synapse",
-            },
-        })
+        # Step 3d: Activate tenant
+        resp = await client.patch(
+            f"{hub_url}/api/tenants/{tenant_id}", 
+            headers=headers,
+            json={
+                "status": "active",
+                "agent": {
+                    "roles": ["csm", "sales", "support", "win-back"],
+                    "persona": "Professional, data-driven, and proactive enterprise assistant for the Gemini Live Hackathon.",
+                    "brand_name": "Synapse",
+                },
+            }
+        )
         if resp.status_code == 200:
             print(f"  ✅ Tenant activated")
         else:
             print(f"  ⚠️ Activation returned {resp.status_code}")
+
+        # Step 3e: Trigger AI Knowledge Generation from Website (Knowledge Center)
+        print(f"\n  [AI] Triggering Knowledge Generation (Crawl -> Graph)...")
+        await client.post(f"{hub_url}/api/tenants/{tenant_id}/generate-knowledge", headers=admin_headers)
+        
+        print(f"  [AI] Waiting for knowledge generation to complete (polling Hub)...")
+        # Poll for up to 5 minutes (30 * 10s)
+        for _ in range(30):
+            await asyncio.sleep(10)
+            status_resp = await client.get(f"{hub_url}/api/tenants/{tenant_id}", headers=admin_headers)
+            if status_resp.status_code == 200:
+                tenant_data = status_resp.json()
+                prods = tenant_data.get("products", [])
+                if prods and all(p.get("knowledge_generated") for p in prods):
+                    print(f"  ✅ Knowledge generation complete for all {len(prods)} products!")
+                    break
+                gen_count = len([p for p in prods if p.get("knowledge_generated")])
+                print(f"    Progress: {gen_count}/{len(prods)} products indexed...")
+
+        print(f"  [AI] Syncing Knowledge Center entities into Graph...")
+        await client.post(f"{hub_url}/api/tenants/{tenant_id}/sync-knowledge", headers=admin_headers)
+        
+        # Anti-Suspension: Jittered delay after sync trigger
+        await asyncio.sleep(10 + random.uniform(5.0, 10.0))
 
     return tenant_id
 
 
 # ── Step 4: RESET CRM DEALS ───────────────────────────────────
 async def step_crm_reset(crm_url: str):
-    """Reset CRM data — simulates fresh deal pipeline."""
-    banner(4, 7, "CRM — Resetting Deal Pipeline")
+    """Reset CRM data — seeds all 24 demo deals directly."""
+    banner(4, 7, "CRM — Seeding Deal Pipeline (24 Deals)")
 
+    from seed_data import DEMO_DEALS
+    
     async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(f"{crm_url}/api/reset")
-        if resp.status_code == 200:
-            body = resp.json()
-            print(f"  ✅ CRM reset: {body.get('count', '?')} deals loaded")
-        else:
-            print(f"  ⚠️ CRM reset returned {resp.status_code}: {resp.text[:200]}")
+        print(f"  Purging existing CRM data via {crm_url}/api/reset ...")
+        await client.post(f"{crm_url}/api/reset")
+        
+        count = 0
+        for deal in DEMO_DEALS:
+            try:
+                # Use the Deal model dump which handles date/enum conversion
+                payload = deal.model_dump(mode="json")
+                resp = await client.post(f"{crm_url}/api/deals", json=payload)
+                if resp.status_code in [200, 201]:
+                    count += 1
+                elif resp.status_code == 409:
+                    # Already exists, just update it
+                    await client.patch(f"{crm_url}/api/deals/{deal.deal_id}/stage", params={"stage": deal.stage.value})
+                    count += 1
+                else:
+                    print(f"    ⚠️ Failed to seed {deal.deal_id}: {resp.status_code} {resp.text[:50]}")
+            except Exception as e:
+                print(f"    ❌ Error seeding {deal.deal_id}: {e}")
+        
+        print(f"  ✅ CRM seeded: {count}/{len(DEMO_DEALS)} deals loaded")
 
 
 # ── Step 5: TRIGGER STAGE TRANSITIONS (CLOSED WON) ────────────
@@ -282,22 +340,24 @@ async def step_trigger_won(crm_url: str):
             else:
                 print(f"    ⚠️ Stage→closed_won failed: {resp.status_code}")
 
-            # Rate limit: wait for Gemini to process graph generation
-            print(f"    ⏳ Waiting 10s for Gemini quota...")
-            await asyncio.sleep(10)
+            # Anti-Suspension: mandatory throttled delay (15-20s) between deal stage transitions.
+            # This is the PRIMARY safety mechanism to prevent Gemini/Vertex AI account suspension.
+            wait_time = 15 + random.uniform(2.0, 5.0)
+            print(f"    ⏳ Anti-Suspension: Sleeping {wait_time:.1f}s for Gemini quota and safety...")
+            await asyncio.sleep(wait_time)
 
 
 # ── Step 6: SEED REMAINING DEALS (via webhook) ────────────────
-async def step_seed_remaining(api_url: str):
+async def step_seed_remaining(api_url: str, tenant_id: str):
     """Seed non-won deals via the Synapse API webhook endpoint."""
-    banner(6, 7, "RAG — Seeding Remaining Deals via Webhook")
+    banner(6, 7, f"RAG — Seeding Remaining Deals for {tenant_id}")
 
     from seed_data import DEMO_DEALS
 
     non_won_deals = [d for d in DEMO_DEALS if d.stage.value != "closed_won"]
     print(f"  Seeding {len(non_won_deals)} non-won deals via API webhook")
 
-    webhook_url = f"{api_url}/api/webhooks/crm/deal-closed"
+    webhook_url = f"{api_url}/api/webhooks/crm/deal-closed/{tenant_id}"
 
     # Group by company for historical context
     companies: dict[str, list] = {}
@@ -305,6 +365,9 @@ async def step_seed_remaining(api_url: str):
         companies.setdefault(deal.company_name, []).append(deal)
 
     async with httpx.AsyncClient(timeout=30.0) as client:
+        # Headers for context propagation
+        headers = {"X-Tenant-Id": tenant_id}
+        
         for idx, deal in enumerate(non_won_deals, 1):
             historical = [
                 {
@@ -337,19 +400,21 @@ async def step_seed_remaining(api_url: str):
                 "sales_transcript": deal.sales_transcript or "",
                 "contract_pdf_url": f"gs://{config.uploads_bucket}/contracts/{deal.deal_id}_contract.pdf",
                 "historical_deals": historical,
+                "tenant_id": tenant_id,
             }
 
             try:
-                resp = await client.post(webhook_url, json=payload, timeout=60.0)
+                resp = await client.post(webhook_url, json=payload, headers=headers, timeout=60.0)
                 status = "✅" if resp.status_code in [200, 202] else "⚠️"
                 msg = resp.json().get("message", resp.text[:80]) if resp.status_code in [200, 202] else resp.text[:80]
                 print(f"  [{idx}/{len(non_won_deals)}] {status} {deal.deal_id} ({deal.company_name}) — {msg}")
             except Exception as e:
                 print(f"  [{idx}/{len(non_won_deals)}] ❌ {deal.deal_id} — {e}")
 
-            # Rate limit: wait for Gemini API quota to reset
-            print(f"    ⏳ Waiting 10s for Gemini quota...")
-            await asyncio.sleep(10)
+            # Anti-Suspension: mandatory throttled delay (15-20s) between RAG seeding payloads.
+            wait_time = 15 + random.uniform(2.0, 5.0)
+            print(f"    ⏳ Anti-Suspension: Sleeping {wait_time:.1f}s for Gemini safety...")
+            await asyncio.sleep(wait_time)
 
 
 # ── Step 7: VERIFY ─────────────────────────────────────────────
@@ -368,56 +433,73 @@ def step_verify():
         products = data.get("products", [])
         print(f"      Products: {len(products)} — {', '.join(p.get('name', '?') for p in products)}")
 
-    # Check skill_graphs
-    graphs = list(db.collection("skill_graphs").stream())
-    print(f"\n  Skill Graphs: {len(graphs)}")
+    # Check knowledge_graphs (Phase 1B Structured)
+    print(f"\n  Knowledge Graphs (Structured):")
+    graphs = list(db.collection("knowledge_graphs").stream())
+    if not graphs:
+        # Fallback to Phase 1A skill_graphs
+        graphs = list(db.collection("skill_graphs").stream())
+        print(f"    (Falling back to skill_graphs)")
+
     for g in graphs:
         data = g.to_dict()
         status = data.get("status", "unknown")
-        nodes = len(list(g.reference.collection("nodes").stream()))
-        print(f"    • {g.id}: status={status}, nodes={nodes}")
+        # Support both legacy node_count and structured entity_count
+        entities = data.get("entity_count") or data.get("node_count")
+        if entities is None:
+             # Deep check subcollection
+             entities = len(list(g.reference.collection("entities").stream())) or \
+                        len(list(g.reference.collection("nodes").stream()))
+        
+        print(f"    • {g.id}: status={status}, nodes={entities}")
 
     # Check notifications
     notifications = list(db.collection("notifications").stream())
     print(f"\n  Notifications: {len(notifications)}")
+    for n in notifications:
+        d = n.to_dict()
+        print(f"    - {d.get('status','?')}: {d.get('company_name','?')} ({d.get('deal_id','?')})")
 
     print(f"\n  ✅ Verification complete")
 
 
 # ── Main Orchestrator ──────────────────────────────────────────
-async def main(api_url: str, crm_url: str, hub_url: str, graph_url: str):
+async def main(api_url: str, crm_url: str, hub_url: str, admin_url: str, graph_url: str, tenant_id: str = None):
     print("╔══════════════════════════════════════════════════════╗")
     print("║    SYNAPSE — Full End-to-End Seeding Orchestrator    ║")
     print("╚══════════════════════════════════════════════════════╝")
     print(f"  API:   {api_url}")
     print(f"  CRM:   {crm_url}")
     print(f"  Hub:   {hub_url}")
+    print(f"  Admin: {admin_url}")
     print(f"  Graph: {graph_url}")
     print(f"  Project: {config.project_id}")
 
-    # 1. Clean
+    # 1. Clean — Wipe stale state
     step_clean()
 
-    # 2. Generate & upload contracts
-    step_contracts()
-
-    # 3. Configure Hub tenant via API
-    tenant_id = await step_hub(hub_url, crm_url, graph_url)
-
-    # 4. Reset CRM deals
+    # 2. Reset CRM deals — Foundation data first (Deals/Contacts)
     await step_crm_reset(crm_url)
 
-    # 5. Trigger closed_won transitions (fires webhooks realistically)
+    # 3. Generate & upload contracts — Second (PDF Artifacts in GCS)
+    step_contracts()
+
+    # 4. Provision Hub tenant — Third (Admin provision + Hub Config + Knowledge Sync)
+    # This now triggers the General Knowledge sync from the website.
+    tenant_id = await step_hub(admin_url, hub_url, crm_url, graph_url, forced_tenant_id=tenant_id)
+
+    # 5. Trigger closed_won transitions — Fourth (Actionable webhooks)
+    # This triggers deal-specific knowledge graph generation.
     await step_trigger_won(crm_url)
 
-    # 6. Seed remaining deals via API webhook
-    await step_seed_remaining(api_url)
+    # 6. Seed remaining deals via direct API webhook — Fifth (RAG Context)
+    await step_seed_remaining(api_url, tenant_id)
 
     # Wait for last graph generation to complete
-    print("\n⏳ Waiting 30 seconds for final graph generation...")
-    await asyncio.sleep(30)
+    print("\n⏳ Anti-Suspension: Waiting 60 seconds for async graph generation to complete safely...")
+    await asyncio.sleep(60)
 
-    # 7. Verify
+    # 7. Verify — Final check
     step_verify()
 
     print("\n" + "=" * 60)
@@ -430,7 +512,24 @@ if __name__ == "__main__":
     parser.add_argument("--api_url", default=DEFAULT_API_URL)
     parser.add_argument("--crm_url", default=DEFAULT_CRM_URL)
     parser.add_argument("--hub_url", default=DEFAULT_HUB_URL)
+    parser.add_argument("--admin_url", default=DEFAULT_ADMIN_URL)
     parser.add_argument("--graph_url", default=DEFAULT_GRAPH_URL)
+    parser.add_argument("--project", help="GCP Project ID override")
+    parser.add_argument("--tenant_id", help="Explicit tenant_id to use")
     args = parser.parse_args()
 
-    asyncio.run(main(args.api_url, args.crm_url, args.hub_url, args.graph_url))
+    if args.project:
+        config.project_id = args.project
+
+    # Dynamic URL resolution for "AUTO" defaults
+    api_url = args.api_url if args.api_url != "AUTO" else config.resolve_run_url("synapse-api")
+    crm_url = args.crm_url if args.crm_url != "AUTO" else config.resolve_run_url("synapse-crm-simulator")
+    hub_url = args.hub_url if args.hub_url != "AUTO" else config.resolve_run_url("synapse-hub")
+    admin_url = args.admin_url if args.admin_url != "AUTO" else config.resolve_run_url("synapse-admin")
+    graph_url = args.graph_url if args.graph_url != "AUTO" else config.resolve_run_url("synapse-graph-generator")
+
+    if not all([api_url, crm_url, hub_url, admin_url, graph_url]):
+        print("❌ Error: Could not resolve one or more service URLs. Please provide them explicitly via --api_url, etc.")
+        sys.exit(1)
+
+    asyncio.run(main(api_url, crm_url, hub_url, admin_url, graph_url, tenant_id=args.tenant_id))

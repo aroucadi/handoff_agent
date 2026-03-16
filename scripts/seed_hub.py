@@ -52,7 +52,25 @@ def seed_hub(tenant_id: str, graph_gen_url: str, crm_url: str):
                 "success_metrics": "success_metrics",
                 "sales_transcript": "sales_transcript",
                 "contract_pdf_url": "contract_pdf_url"
+            },
+            "stage_mapping": {
+                "won": "closed_won",
+                "prospecting": "prospecting",
+                "qualifying": "qualification",
+                "negotiating": "negotiation",
+                "deployed": "implemented",
+                "lost": "closed_lost"
             }
+        },
+        "product_alias_map": {
+            "AgilePlace": "prod-agile",
+            "Portfolios": "prod-port",
+            "Hub": "prod-hub",
+            "PPM Pro": "prod-ppm"
+        },
+        "terminology_overrides": {
+            "account": "Account",
+            "case": "Case"
         },
         "products": [
             {"product_id": "prod-agile", "name": "ClawdView AgilePlace", "description": "Agile project management", "node_id": "clawdview-agileplace", "knowledge_generated": True},
@@ -61,9 +79,23 @@ def seed_hub(tenant_id: str, graph_gen_url: str, crm_url: str):
             {"product_id": "prod-ppm", "name": "ClawdView PPM Pro", "description": "Project and Portfolio management", "node_id": "clawdview-ppm-pro", "knowledge_generated": True}
         ],
         "agent": {
-            "roles": ["csm", "sales", "support", "win-back"],
+            "roles": ["csm", "sales", "support", "strategy"],
             "persona": "Professional, data-driven, and proactive enterprise assistant.",
-            "brand_name": "Synapse"
+            "brand_name": "Synapse",
+            "role_views": {
+                "csm": {"display_name": "Success Dashboard", "stage_filter": ["closed_won"], "icon": "LayoutDashboard"},
+                "sales": {"display_name": "Pipeline Intelligence", "stage_filter": ["prospecting", "qualification", "negotiation"], "icon": "Zap"},
+                "support": {"display_name": "Deployment Hub", "stage_filter": ["implemented"], "icon": "Database"},
+                "strategy": {"display_name": "Win-Back Suite", "stage_filter": ["closed_lost"], "icon": "Briefcase"}
+            },
+            "stage_display_config": {
+                "closed_won": "Won",
+                "prospecting": "Prospecting",
+                "qualification": "Qualifying",
+                "negotiation": "Negotiating",
+                "implemented": "Deployed",
+                "closed_lost": "Lost"
+            }
         },
         "created_at": firestore.SERVER_TIMESTAMP,
         "updated_at": firestore.SERVER_TIMESTAMP

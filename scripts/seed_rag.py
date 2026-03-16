@@ -27,11 +27,11 @@ from seed_data import DEMO_DEALS
 import os
 
 # The Synapse API endpoint for CRM webhooks (remote default)
-DEFAULT_WEBHOOK_URL = "https://synapse-api-uicugotuta-uc.a.run.app/api/webhooks/crm/deal-closed"
-WEBHOOK_URL = os.environ.get("SYNAPSE_WEBHOOK_URL") or DEFAULT_WEBHOOK_URL
+DEFAULT_WEBHOOK_BASE = "AUTO"
+WEBHOOK_URL = os.environ.get("SYNAPSE_WEBHOOK_URL")
 
 
-async def seed_rag(tenant_id: str = "default-tenant"):
+async def seed_rag(tenant_id: str = "default-tenant", lite: bool = False):
     # Group deals by company for historical context
     companies: dict[str, list] = {}
     for deal in DEMO_DEALS:
@@ -39,13 +39,18 @@ async def seed_rag(tenant_id: str = "default-tenant"):
             companies[deal.company_name] = []
         companies[deal.company_name].append(deal)
 
-    total_deals = len(DEMO_DEALS)
+    deals_to_process = DEMO_DEALS[:3] if lite else DEMO_DEALS
+    total_deals = len(deals_to_process)
+    
     print(f"Starting RAG seeding for tenant: {tenant_id}")
-    print(f"Stats: {total_deals} deals across {len(companies)} accounts")
+    print(f"Stats: {total_deals} deals across {len(set(d.company_name for d in deals_to_process))} accounts")
+    if lite:
+        print("⚠️ LITE MODE ACTIVE: Processing restricted to 3 deals.")
+    print("🔒 ANTI-SUSPENSION MODE: Active. Delays of 15-25s enforced between all API calls.")
     print("=" * 60)
 
     async with httpx.AsyncClient() as client:
-        for idx, deal in enumerate(DEMO_DEALS, 1):
+        for idx, deal in enumerate(deals_to_process, 1):
             # Build historical context: all OTHER deals for the same account
             account_deals = companies[deal.company_name]
             historical_deals = []
@@ -110,6 +115,12 @@ async def seed_rag(tenant_id: str = "default-tenant"):
             except Exception as e:
                 print(f"    ❌ Error: {str(e)}")
 
+            # Anti-Suspension: mandatory throttled delay (15-25s) between RAG seeding payloads.
+            import random
+            wait_time = 15 + random.uniform(5.0, 10.0)
+            print(f"    ⏳ Anti-Suspension: Sleeping {wait_time:.1f}s for Gemini/Vertex AI safety...")
+            await asyncio.sleep(wait_time)
+
     print("\n" + "=" * 60)
     print(f"RAG seeding complete for tenant: {tenant_id}")
     print("Note: Graph generation is async. Check Firestore skill_graphs collection for status.")
@@ -118,6 +129,16 @@ async def seed_rag(tenant_id: str = "default-tenant"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed RAG data for a specific tenant.")
     parser.add_argument("--tenant", type=str, default="default-tenant", help="The tenant_id to seed for.")
+    parser.add_argument("--lite", action="store_true", help="Limit to 3 deals and add delays to prevent API abuse.")
     args = parser.parse_args()
     
-    asyncio.run(seed_rag(args.tenant))
+    # Resolve webhook URL if not provided
+    global WEBHOOK_URL
+    if not WEBHOOK_URL:
+        base_url = config.resolve_run_url("synapse-api")
+        if not base_url:
+            print("❌ Error: Could not resolve Synapse API URL for RAG seeding. Provide SYNAPSE_WEBHOOK_URL env var.")
+            sys.exit(1)
+        WEBHOOK_URL = f"{base_url.rstrip('/')}/api/webhooks/crm/deal-closed"
+
+    asyncio.run(seed_rag(args.tenant, lite=args.lite))

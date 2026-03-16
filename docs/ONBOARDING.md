@@ -1,64 +1,95 @@
-# 🚀 Synapse Developer Onboarding Guide
+# 🚀 ClawdView (Synapse) Developer Onboarding Guide
 
-Welcome to the Synapse monorepo! This repository houses the entire Level 5 AI Voice Agent for Customer Success platform. It contains multiple independent microservices, a frontend dashboard, shared libraries, and infrastructure-as-code (IaC). 
-
-This guide will help you understand how the repository is structured, how we manage global versioning, and how to use our shared automation scripts.
+welcome to the **ClawdView** monorepo! This repository houses a Level 5 AI Voice Agent for Customer Success — a CRM-agnostic, multi-tenant briefing system powered by the **Synapse Core Engine (Gemini 3.1 Pro + 2.5 Flash)**.
 
 ---
 
 ## 1. Monorepo Repository Structure
 
-The codebase is split conceptually into Frontend, Backend Microservices, Infrastructure, and Shared Tooling.
-
 ```text
-synapse_agent/
-├── hub/                # (UI + API) The Tenant Configuration Hub (Bridge)
-├── backend/            # (Microservice) Core Voice API (Multi-tenant)
-├── crm-simulator/      # (Microservice) SalesClaw mock CRM
-├── graph-generator/    # (Microservice) Delta Knowledge Generator
-├── core/               # (Shared) Models & Logic
-├── frontend/           # (UI) Multi-role Voice UI
-├── infra/              # (IaC) GCP Terraform modules
-├── scripts/            # (Tooling) One-click automation (py-based)
-└── synapse.yaml        # Global Monorepo Manifest
+synapse/
+├── hub/                    # (UI + API) Tenant Configuration Hub — CRM-agnostic portal
+├── backend/                # (Microservice) Core Voice API — 13 ADK tools, Live sessions
+│   ├── agent/              # Agent engine: prompts, tools, system instructions
+│   ├── graph/              # Knowledge graph: ontology, traversal, search, output generators
+│   ├── live/               # Gemini Live session handler (voice + Google Search)
+├── graph-generator/        # (Microservice) Ontology-driven graph pipeline
+│   └── extractors/         # CRM extractor + Knowledge Center extractor
+├── crm-simulator/          # (Microservice) SalesClaw mock CRM
+├── frontend/               # (UI) Multi-role Voice UI (Dashboard, Briefing, ArtifactViewer)
+├── knowledge-center/       # (Static) ClawdView product knowledge site
+├── core/                   # (Shared) Config, DB, schemas, and Normalization Bridge
+├── infra/                  # (IaC) GCP Terraform modules (4 modules)
+├── scripts/                # One-click automation (deploy, teardown, start-local)
+└── synapse.yaml            # Global Monorepo Manifest
 ```
 
-> **Developer Note:** The three Python microservices (`backend/`, `crm-simulator/`, and `graph-generator/`) all rely on the shared `core/` package. When building Docker images, the build context is run from the **Root** of this repository so the `core/` directory can be legitimately mounted into each microservice container.
+> **Developer Note:** The Python microservices (`backend/`, `crm-simulator/`, `graph-generator/`) all depend on the shared `core/` package. Docker builds use the **root** as build context so `core/` is mounted into each container.
 
 ---
 
-## 2. The Monorepo Manifest (`synapse.yaml`)
+## 2. Key Components
 
-Because this repo runs 4 parallel applications, we utilize a single **Root Manifest** (`synapse.yaml`) to coordinate the platform.
-
-### Global Versioning
-To prevent API mismatch, we enforce a unified version number (e.g., `v3.1.0`) across all sub-components. **Do not manually edit version strings in Python or Node.js files.** 
-
-Instead, perform version bumps using our manifest tooling:
-1. Open `synapse.yaml`.
-2. Update the `global_version: X.Y.Z` string.
-3. Run `bash scripts/bump-version.sh` (or `.ps1` on Windows).
-4. The script will dynamically inject the global version downward into `frontend/package.json` and the three `main.py` FastAPI definitions.
-
-### Infrastructure Truth
-The manifest also contains the explicit `gcp_project` and `firebase_project` identifiers used by our zero-touch CI/CD scripts.
-
----
-
-## 3. Automation Scripts (`scripts/`)
-
-We embrace "One-Click" automation for developers regardless of their OS (Windows PowerShell `.ps1` or macOS/Linux Bash `.sh`). 
-
-| Script | Purpose | Execution Example |
+| Component | Stack | Purpose |
 |---|---|---|
-| `bump-version` | Propagates the version globally | `py scripts/bump-version.py` |
-| `start-local` | Spins up the full 7-service stack | `.\scripts\start-local.ps1` |
-| `demo-setup` | Installs dependencies for all services | `.\scripts\demo-setup.ps1` |
-| `seed_rag` | Injects per-tenant data into RAG | `py scripts/seed_rag.py --tenant T001` |
-| `deploy` | Full Cloud Run/GCP deployment | `.\scripts\deploy.ps1` |
+| **Hub** | React + FastAPI | Multi-tenant config: CRM field mapping, branding, role config |
+| **Backend** | FastAPI + WebSockets | Voice sessions, 13 ADK tools, 7 output generators, REST API |
+| **Graph Generator** | FastAPI + Gemini 3.1 Pro | Ontology-driven entity extraction (20+ types, stage normalization) |
+| **Knowledge Center** | Static HTML/CSS | ClawdView product docs — crawled by graph generator for KB enrichment |
+| **Frontend** | React 19 + React Flow | Dashboard, voice briefing, smart action chips, artifact viewer |
+| **CRM Simulator** | FastAPI + React | Mock CRM for demos (replaceable via Hub with any CRM) |
+
+---
+
+## 3. The Monorepo Manifest (`synapse.yaml`)
+
+We use a Root Manifest for cross-service coordination:
+
+- **Global Versioning**: Unified version across all sub-components. Run `bash scripts/bump-version.sh` after updating `global_version` in `synapse.yaml`.
+- **Infrastructure IDs**: Contains `gcp_project` and `firebase_project` identifiers for CI/CD.
+
+---
+
+## 4. Automation Scripts (`scripts/`)
+
+| Script | Purpose | Example |
+|---|---|---|
+| `deploy.ps1` | Full GCP deployment (Cloud Build → Terraform → Firebase) | `.\scripts\deploy.ps1 -ProjectId "my-project"` |
+| `teardown.ps1` | Destroy all GCP resources | `.\scripts\teardown.ps1 -ProjectId "my-project"` |
+| `start-local.ps1` | Spin up all services locally | `.\scripts\start-local.ps1` |
+| `demo-setup.ps1` | Install all dependencies | `.\scripts\demo-setup.ps1` |
+| `bump-version` | Propagate version globally | `py scripts/bump-version.py` |
+
+---
+
+## 5. Quick Start (Local Development)
+
+```bash
+# 1. Install dependencies
+.\scripts\demo-setup.ps1
+
+# 2. Set your API key
+$env:GEMINI_API_KEY = "your-key-here"
+
+# 3. Start all services
+.\scripts\start-local.ps1
+
+# 4. Open services
+# Hub:             http://localhost:5176
+# Voice UI:        http://localhost:5174
+# Backend API:     http://localhost:8000/health
+# Graph Generator: http://localhost:8002/health
+# CRM Simulator:   http://localhost:5173
+# Knowledge Center: http://localhost:3000
+```
 
 ---
 
 ## Where to go next?
-* If you want to spin up the code locally immediately, follow [CONTRIBUTING.md](../CONTRIBUTING.md).
-* If you want to understand *how* the Gemini Live agent actually works, read [AI_AGENTS.md](AI_AGENTS.md).
+
+- **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md) — System diagrams and data flow
+- **AI Agents**: [AI_AGENTS.md](AI_AGENTS.md) — 13 tools, Google Search, 7 generators, 4 role personas
+- **GCP Safety**: [CLAWVIEW_GCP_SURVIVAL.md](CLAWVIEW_GCP_SURVIVAL.md) — Safeguards against API abuse
+- **API Reference**: [API_REFERENCE.md](API_REFERENCE.md) — All REST endpoints and WebSocket protocol
+- **Infrastructure**: [INFRASTRUCTURE.md](INFRASTRUCTURE.md) — GCP Terraform modules and deployment pipeline
+- **Contributing**: [CONTRIBUTING.md](../CONTRIBUTING.md) — Code style, PR process, testing

@@ -25,9 +25,13 @@
       "@/*": [
         "src/*"
       ]
-    }
+    },
+    "types": [
+      "vite/client"
+    ]
   },
   "include": [
-    "src"
+    "src",
+    "vite.config.ts"
   ]
 }

@@ -15,8 +15,13 @@ if (-not $env:GEMINI_API_KEY) {
     exit 1
 }
 
-$PROJECT_ID = if ($env:PROJECT_ID) { $env:PROJECT_ID } else { "synapse-dev" }
-$BUCKET = if ($env:SKILL_GRAPHS_BUCKET) { $env:SKILL_GRAPHS_BUCKET } else { "${PROJECT_ID}-skill-graphs" }
+$PROJECT_ID = if ($env:PROJECT_ID) { $env:PROJECT_ID } else { $(gcloud config get-value project) }
+if (-not $PROJECT_ID) {
+    Write-Host "❌ PROJECT_ID not set and could not be resolved from gcloud. Export it first:" -ForegroundColor Red
+    Write-Host "   `$env:PROJECT_ID='your-project-id'"
+    exit 1
+}
+$BUCKET = if ($env:SKILL_GRAPHS_BUCKET) { $env:SKILL_GRAPHS_BUCKET } else { "${PROJECT_ID}-synapse-graphs" }
 
 Write-Host "📋 Configuration:"
 Write-Host "   PROJECT_ID: $PROJECT_ID"

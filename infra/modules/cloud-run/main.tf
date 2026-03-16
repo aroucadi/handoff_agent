@@ -59,10 +59,10 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:${var.deploy_tag}"
 
       ports {
-        container_port = 8000
+        container_port = 8080
       }
 
       env {
@@ -87,7 +87,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name  = "GRAPH_GENERATOR_URL"
-        value = "${google_cloud_run_v2_service.graph_generator.uri}/generate"
+        value = google_cloud_run_v2_service.graph_generator.uri
       }
       env {
         name  = "CRM_SIMULATOR_URL"
@@ -103,8 +103,12 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
       env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v5.0.0-ROLE-BASED-DASHBOARD"
+        value = "v5.0.1-CORE-AUTH-FIX"
       }
 
       resources {
@@ -149,10 +153,10 @@ resource "google_cloud_run_v2_service" "graph_generator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:${var.deploy_tag}"
 
       ports {
-        container_port = 8002
+        container_port = 8080
       }
 
       env {
@@ -181,8 +185,12 @@ resource "google_cloud_run_v2_service" "graph_generator" {
         }
       }
       env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v4.3.0-LIVE-AUDIO-FIXES"
+        value = "v4.3.0-SECURITY-HARDENING"
       }
 
       resources {
@@ -225,10 +233,10 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/crm-simulator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/crm-simulator:${var.deploy_tag}"
 
       ports {
-        container_port = 8001
+        container_port = 8080
       }
       
       env {
@@ -236,8 +244,16 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
         value = "1"
       }
       env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v3.7.0-GEMINI-2.5-UPGRADE"
+        value = "v3.7.0-SECURITY-HARDENING"
       }
 
       resources {
@@ -280,10 +296,10 @@ resource "google_cloud_run_v2_service" "hub" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/hub:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/hub:${var.deploy_tag}"
 
       ports {
-        container_port = 8003
+        container_port = 8080
       }
 
       env {
@@ -303,6 +319,10 @@ resource "google_cloud_run_v2_service" "hub" {
         value = "1"
       }
       env {
+        name  = "GRAPH_GENERATOR_URL"
+        value = google_cloud_run_v2_service.graph_generator.uri
+      }
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
@@ -310,6 +330,14 @@ resource "google_cloud_run_v2_service" "hub" {
             version = "latest"
           }
         }
+      }
+      env {
+        name  = "SYNAPSE_ADMIN_KEY"
+        value = var.synapse_admin_key
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
       }
 
       resources {
@@ -336,6 +364,69 @@ resource "google_cloud_run_v2_service_iam_member" "hub_public" {
   member   = "allUsers"
 }
 
+# ── Cloud Run: Synapse Admin Portal ──────────────────────────
+
+resource "google_cloud_run_v2_service" "admin" {
+  name     = "synapse-admin"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = google_service_account.synapse_runner.email
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 1
+    }
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/admin:${var.deploy_tag}"
+
+      ports {
+        container_port = 8080
+      }
+
+      env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "PYTHONUNBUFFERED"
+        value = "1"
+      }
+      env {
+        name  = "SYNAPSE_ADMIN_KEY"
+        value = var.synapse_admin_key
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "1Gi"
+        }
+      }
+    }
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+}
+
+# Public access for Admin Portal
+resource "google_cloud_run_v2_service_iam_member" "admin_public" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.admin.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # ── Outputs ──────────────────────────────────────────────────────
 
 output "api_url" {
@@ -352,6 +443,10 @@ output "crm_simulator_url" {
 
 output "hub_url" {
   value = google_cloud_run_v2_service.hub.uri
+}
+
+output "admin_url" {
+  value = google_cloud_run_v2_service.admin.uri
 }
 
 output "artifact_registry" {

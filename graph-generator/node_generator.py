@@ -11,7 +11,7 @@ import asyncio
 from datetime import date, datetime
 
 from google import genai
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 import os
 import sys
@@ -187,11 +187,14 @@ async def generate_client_nodes(
         from core.telemetry import record_trace
         start_gen_time = datetime.utcnow()
         
+        thinking_config = ThinkingConfig(thinking_level="high")
+        
         raw_text = await generate_content_with_fallback(
             contents=prompt,
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
         )
         end_gen_time = datetime.utcnow()
         
@@ -218,6 +221,7 @@ async def generate_client_nodes(
             gen_config=gen_config,
             primary_model=config.gen_model,
             fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
         )
         end_rev_time = datetime.utcnow()
         
@@ -258,3 +262,165 @@ async def generate_client_nodes(
         nodes = [nodes]
 
     return nodes
+
+
+# ── Structured Entity Extraction (Phase 1B) ──────────────────────
+
+from ontology import get_extraction_schema_prompt
+
+
+ENTITY_EXTRACTION_PROMPT = """You are a knowledge graph entity extractor for {brand_name}'s customer success platform.
+
+Given deal data (CRM, transcript, contract), extract ALL entities and relationships following this ontology:
+
+{schema}
+
+IMPORTANT:
+- For entries already provided as nodes (Organization, Deal, Contact), you may enrich their properties or add missing ones.
+- Focus on extracting NEW entities from unstructured text: Risks, Milestones, Objections, Commitments, CompetitorMentions, DeriskingStrategies, SuccessMetrics.
+- Create edges between entities.
+- Use the client_id "{client_id}" as prefix for all new entity IDs.
+- Each entity must have a unique "id".
+
+Return ONLY valid JSON:
+{{
+  "nodes": [{{"id": "...", "type": "NodeTypeName", "properties": {{...}}}}],
+  "edges": [{{"type": "EDGE_TYPE", "from_id": "...", "to_id": "...", "properties": {{}}}}]
+}}
+
+CLIENT DATA:
+"""
+
+
+async def generate_structured_entities(
+    client_id: str,
+    company_name: str,
+    industry: str,
+    crm_entities: dict,
+    transcript_data: dict | None = None,
+    contract_data: dict | None = None,
+    tenant_id: str | None = None,
+) -> dict:
+    """Extract structured entities from deal data using Gemini + ontology.
+
+    This is the Phase 1B replacement for generate_client_nodes().
+    Instead of producing 8 markdown documents, it produces a graph
+    of typed nodes and edges.
+
+    Args:
+        client_id: Prefixed client identifier.
+        company_name: Company name for context.
+        industry: Industry vertical.
+        crm_entities: Pre-extracted CRM entities from crm_extractor.
+        transcript_data: Transcript extraction (optional).
+        contract_data: Contract extraction (optional).
+        tenant_id: Tenant identifier.
+
+    Returns:
+        Dict with "nodes" and "edges" merged from CRM + AI extraction.
+    """
+    tenant_config = load_tenant_config(tenant_id)
+    brand_name = tenant_config.get("brand_name", "ClawdView") if tenant_config else "ClawdView"
+
+    schema = get_extraction_schema_prompt()
+
+    combined_data = {
+        "client_id": client_id,
+        "company_name": company_name,
+        "industry": industry,
+        "crm_entities": crm_entities,
+    }
+    if transcript_data:
+        combined_data["transcript_extraction"] = transcript_data
+    if contract_data:
+        combined_data["contract_extraction"] = contract_data
+
+    prompt = ENTITY_EXTRACTION_PROMPT.format(
+        brand_name=brand_name,
+        client_id=client_id,
+        schema=schema,
+    )
+    prompt += json.dumps(combined_data, indent=2, default=str)
+
+    try:
+        gen_config = GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.1,
+            max_output_tokens=16384,
+        )
+
+        start_time = datetime.utcnow()
+        thinking_config = ThinkingConfig(thinking_level="high")
+        
+        raw_text = await generate_content_with_fallback(
+            contents=prompt,
+            gen_config=gen_config,
+            primary_model=config.gen_model,
+            fallback_model=config.fallback_model,
+            thinking_config=thinking_config,
+        )
+        end_time = datetime.utcnow()
+
+        from core.telemetry import record_trace
+        asyncio.create_task(
+            record_trace(
+                agent_name="entity_extractor",
+                job_id=f"extract-{client_id}",
+                start_time=start_time,
+                end_time=end_time,
+                client_id=client_id,
+            )
+        )
+
+        if not raw_text:
+            print("[ENTITY_EXT] Empty response from Gemini")
+            return crm_entities  # Fall back to CRM-only entities
+
+        ai_result = json.loads(raw_text)
+
+    except json.JSONDecodeError:
+        # Try extracting JSON from code blocks
+        if raw_text and "```json" in raw_text:
+            json_str = raw_text.split("```json")[1].split("```")[0].strip()
+            ai_result = json.loads(json_str)
+        elif raw_text and "```" in raw_text:
+            json_str = raw_text.split("```")[1].split("```")[0].strip()
+            ai_result = json.loads(json_str)
+        else:
+            print(f"[ENTITY_EXT] JSON parse error, falling back to CRM entities")
+            return crm_entities
+    except Exception as e:
+        print(f"[ENTITY_EXT] Extraction failed: {e}")
+        return crm_entities
+
+    # Merge: CRM entities are the base, AI-extracted entities are layered on top
+    merged_nodes = list(crm_entities.get("nodes", []))
+    merged_edges = list(crm_entities.get("edges", []))
+
+    existing_ids = {n["id"] for n in merged_nodes}
+
+    for node in ai_result.get("nodes", []):
+        if node.get("id") not in existing_ids:
+            merged_nodes.append(node)
+            existing_ids.add(node["id"])
+        else:
+            # Enrich existing node properties
+            for existing in merged_nodes:
+                if existing["id"] == node.get("id"):
+                    existing["properties"].update(
+                        {k: v for k, v in node.get("properties", {}).items() if v}
+                    )
+                    break
+
+    merged_edges.extend(ai_result.get("edges", []))
+
+    print(f"[ENTITY_EXT] Merged: {len(merged_nodes)} nodes, {len(merged_edges)} edges "
+          f"(CRM: {len(crm_entities.get('nodes', []))}, AI: {len(ai_result.get('nodes', []))})")
+
+    return {
+        "nodes": merged_nodes,
+        "edges": merged_edges,
+        "client_id": client_id,
+        "tenant_id": tenant_id or crm_entities.get("tenant_id", "default"),
+    }
+

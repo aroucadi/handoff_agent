@@ -1,0 +1,5 @@
+﻿steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/synapse-488201/synapse/hub:20260306-134112', '-f', 'hub/Dockerfile.api', '.']
+images:
+  - 'us-central1-docker.pkg.dev/synapse-488201/synapse/hub:20260306-134112'

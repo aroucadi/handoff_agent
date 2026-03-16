@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawdView Portfolios — Product Documentation</title>
+    <meta name="description"
+        content="ClawdView Portfolios documentation: strategic portfolio management for enterprise leaders with investment analysis, roadmap planning, and outcome tracking.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav>
+            <a href="../index.html">Home</a>
+            <a href="portfolios.html" class="active">Products</a>
+            <a href="../guides/enterprise-scaling.html">Guides</a>
+            <a href="../best-practices/agile-transformation.html">Best Practices</a>
+            <a href="../release-notes/v4-2-0.html">Release Notes</a>
+        </nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="portfolios.html">Products</a> / Portfolios
+        </div>
+        <h1>ClawdView Portfolios</h1>
+        <p class="subtitle">Strategic portfolio management for enterprise leaders. Align investments with business
+            outcomes, prioritize the right work, and deliver measurable value across your entire portfolio.</p>
+
+        <h2>Overview</h2>
+        <p>ClawdView Portfolios is the strategic layer of the ClawdView platform, designed for <strong>C-suite
+                executives, PMO leaders, and portfolio managers</strong> who need to make data-driven investment
+            decisions across hundreds of projects, programs, and products. It provides a single pane of glass for
+            understanding where your organization is investing, what's delivering value, and where resources are being
+            wasted.</p>
+        <p>Unlike project-level tools that focus on task execution, Portfolios operates at the <strong>strategic
+                investment level</strong> — answering questions like "Should we fund Initiative A or Initiative B?" and
+            "Which business capability has the highest risk of under-delivery?"</p>
+
+        <h2>Core Features</h2>
+        <div class="feature-grid">
+            <div class="feature-item">
+                <h4>Investment Analysis</h4>
+                <p>Compare funding scenarios with what-if modeling. Evaluate ROI, NPV, and payback period across
+                    portfolio items.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Strategic Roadmapping</h4>
+                <p>Create multi-year roadmaps aligned to business capabilities. Drag-and-drop timeline planning with
+                    dependency visualization.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Capacity Planning</h4>
+                <p>Model resource demand vs. supply across teams and time horizons. Identify bottlenecks before they
+                    impact delivery.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Scoring & Prioritization</h4>
+                <p>Define custom scoring models with weighted criteria. Rank initiatives objectively using configurable
+                    frameworks.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Executive Dashboards</h4>
+                <p>Pre-built and customizable dashboards for board presentations. Real-time health indicators, risk heat
+                    maps, and trend analysis.</p>
+            </div>
+            <div class="feature-item">
+                <h4>Stage-Gate Governance</h4>
+                <p>Configure approval workflows for initiative lifecycle. Define gate criteria, reviewers, and
+                    escalation paths.</p>
+            </div>
+        </div>
+
+        <h2>Architecture & Scalability</h2>
+        <p>Portfolios is built on ClawdView's multi-tenant SaaS architecture hosted on Google Cloud Platform. Key
+            scalability characteristics:</p>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Standard Tier</th>
+                <th>Enterprise Tier</th>
+            </tr>
+            <tr>
+                <td>Max portfolio items</td>
+                <td>500</td>
+                <td>10,000</td>
+            </tr>
+            <tr>
+                <td>Concurrent users</td>
+                <td>100</td>
+                <td>2,000</td>
+            </tr>
+            <tr>
+                <td>API rate limit</td>
+                <td>100 req/min</td>
+                <td>1,000 req/min</td>
+            </tr>
+            <tr>
+                <td>Data retention</td>
+                <td>2 years</td>
+                <td>7 years</td>
+            </tr>
+            <tr>
+                <td>Dashboard refresh</td>
+                <td>15 min</td>
+                <td>Real-time</td>
+            </tr>
+        </table>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Scaling Limitation</div>
+            <p>Portfolio views with more than <strong>2,000 items</strong> may experience rendering delays of 3-5
+                seconds on the roadmap timeline view. For portfolios exceeding this threshold, we recommend using
+                filtered views or the Portfolio Groups feature to segment content. See the <a
+                    href="../guides/enterprise-scaling.html">Enterprise Scaling Guide</a> for optimization strategies.
+            </p>
+        </div>
+
+        <h2>Integration Points</h2>
+        <p>Portfolios connects upstream and downstream through ClawdView Hub:</p>
+        <ul>
+            <li><strong>Upstream (Strategy)</strong>: Import strategic plans from PowerPoint, Excel, or OKR platforms
+                (Gtmhub, WorkBoard)</li>
+            <li><strong>Downstream (Execution)</strong>: Automatic status roll-up from PPM Pro projects and AgilePlace
+                boards</li>
+            <li><strong>Financial</strong>: Bidirectional sync with SAP, Oracle Financials, and NetSuite for budget
+                actuals</li>
+            <li><strong>Reporting</strong>: Export to Power BI, Tableau, and Looker via the Analytics API</li>
+        </ul>
+
+        <h2>Common Use Cases</h2>
+        <h3>IT Portfolio Rationalization</h3>
+        <p>Use the Scoring & Prioritization module to evaluate your application portfolio against criteria like business
+            value, technical debt, TCO, and strategic alignment. The built-in rationalization templates help identify
+            candidates for retirement, consolidation, or investment — typically reducing application portfolio costs by
+            15-25% in the first year.</p>
+
+        <h3>M&A Integration Planning</h3>
+        <p>During mergers and acquisitions, Portfolios provides a unified view of both organizations' project
+            portfolios. The "Portfolio Comparison" feature highlights overlapping investments, conflicting priorities,
+            and integration synergy opportunities. Capacity planning models help estimate the combined organization's
+            ability to absorb integration workload alongside business-as-usual delivery.</p>
+
+        <h3>Annual Planning Cycle</h3>
+        <p>Streamline the annual budgeting and planning process with collaborative scenario planning. Business unit
+            leaders submit initiative proposals through configurable intake forms, which are automatically scored and
+            ranked. Portfolio review committees use the Governance module to approve, defer, or reject proposals with
+            full audit trails.</p>
+
+        <div class="info-box tip">
+            <div class="label">💡 Best Practice</div>
+            <p>Start with no more than <strong>5-7 scoring criteria</strong> when implementing prioritization.
+                Organizations that use more than 10 criteria tend to see reduced stakeholder engagement and decision
+                fatigue. You can always refine your model after the first planning cycle. See <a
+                    href="../best-practices/portfolio-governance.html">Portfolio Governance Framework</a> for detailed
+                guidance.</p>
+        </div>
+
+        <h2>Prerequisites</h2>
+        <ul>
+            <li>ClawdView Platform license (Standard or Enterprise tier)</li>
+            <li>Portfolios module activation by your ClawdView CSM</li>
+            <li>SSO configuration completed (see <a href="../guides/sso-configuration.html">SSO Guide</a>)</li>
+            <li>At least one data source connected via Hub (recommended: ERP or financial system for budget data)</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

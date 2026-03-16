@@ -56,3 +56,7 @@ service-account.json
 *.txt
 !requirements.txt
 
+
+# Investor Demo Assets
+video/
+showcase/

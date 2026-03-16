@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Dashboard Setup — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="../guides/enterprise-scaling.html">Guides</a><a href="agile-transformation.html"
+                class="active">Best Practices</a><a href="../release-notes/v4-2-0.html">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="agile-transformation.html">Best
+                Practices</a> / Executive Reporting</div>
+        <h1>Executive Dashboard Setup</h1>
+        <p class="subtitle">Build executive-ready dashboards that communicate portfolio health, risk exposure, and
+            strategic alignment — in under 30 seconds of attention.</p>
+
+        <h2>Executive Dashboard Principles</h2>
+        <p>Executive dashboards fail when they <strong>overload with operational detail</strong>. A CIO doesn't need to
+            see individual task status — they need to know: "Are we going to hit our strategic objectives this quarter?"
+            Design with these principles:</p>
+        <ul>
+            <li><strong>30-Second Rule</strong>: An executive should grasp the portfolio state in 30 seconds</li>
+            <li><strong>Exception-Based</strong>: Highlight what needs attention, not what's going well</li>
+            <li><strong>Actionable</strong>: Every metric should have a "so what?" — what decision does this inform?
+            </li>
+            <li><strong>Drillable</strong>: Allow drill-down for the curious, but don't require it for comprehension
+            </li>
+        </ul>
+
+        <h2>Recommended Dashboard Layout</h2>
+        <h3>Top Row: Portfolio Health Score</h3>
+        <p>A single composite metric (0-100) that aggregates schedule, budget, risk, and scope indicators. Configure in
+            Portfolios → Dashboard → Health Score Widget. Recommended formula:</p>
+        <ul>
+            <li>Schedule Performance Index (SPI ≥ 0.9 = healthy): 30% weight</li>
+            <li>Budget Variance (< 10% overrun=healthy): 25% weight</li>
+            <li>Critical Risk Count (0 = healthy): 25% weight</li>
+            <li>Scope Change Rate (< 15%=healthy): 20% weight</li>
+        </ul>
+
+        <h3>Middle Row: Strategic Alignment Matrix</h3>
+        <p>A bubble chart showing initiatives plotted against strategic themes (x-axis) and investment level (y-axis).
+            Bubble size = team count. Color = health status. This view immediately shows if spending aligns with stated
+            priorities.</p>
+
+        <h3>Bottom Row: Key Metrics Trend</h3>
+        <p>Sparkline charts showing 6-month trends for: portfolio ROI, resource utilization, schedule predictability,
+            and customer satisfaction. Trend direction matters more than absolute numbers at the executive level.</p>
+
+        <h2>Pre-Built Dashboard Templates</h2>
+        <table>
+            <tr>
+                <th>Template</th>
+                <th>Target Audience</th>
+                <th>Key Metrics</th>
+            </tr>
+            <tr>
+                <td>CIO Dashboard</td>
+                <td>CIO / CTO</td>
+                <td>Portfolio health, strategic alignment, IT spend efficiency</td>
+            </tr>
+            <tr>
+                <td>PMO Operations</td>
+                <td>VP of PMO</td>
+                <td>Project count by status, resource utilization, risk register</td>
+            </tr>
+            <tr>
+                <td>Value Stream</td>
+                <td>Product VP</td>
+                <td>Feature throughput, cycle time, predictability, customer NPS</td>
+            </tr>
+            <tr>
+                <td>Financial Summary</td>
+                <td>CFO / Finance</td>
+                <td>Budget vs. actual, CapEx/OpEx split, forecast accuracy</td>
+            </tr>
+        </table>
+
+        <div class="info-box tip">
+            <div class="label">💡 Configuration Tip</div>
+            <p>Set dashboards to <strong>auto-refresh every 15 minutes</strong> on Enterprise tier. For Standard tier,
+                schedule a daily build at 7 AM local time. Avoid real-time refresh for executive dashboards — data
+                stability matters more than currency at this level. Metric fluctuations throughout the day create
+                unnecessary anxiety.</p>
+        </div>
+
+        <h2>Data Quality Requirements</h2>
+        <p>Dashboards are only as good as the underlying data. Before rolling out executive dashboards, ensure:</p>
+        <ul>
+            <li>All active projects have current status updates (< 7 days old)</li>
+            <li>Budget data is synced from ERP via Hub (not manually entered)</li>
+            <li>Risk registers are maintained with probability and impact scores</li>
+            <li>Resource allocations reflect actual assignments (not last quarter's plan)</li>
+        </ul>
+
+        <div class="info-box warning">
+            <div class="label">⚠ Anti-Pattern: "Watermelon" Projects</div>
+            <p>Projects that show green on the dashboard but are actually deep in trouble (red underneath). The #1
+                cause: status updates based on <strong>self-reporting</strong> rather than objective data. Solution: use
+                PPM Pro's earned value metrics (CPI, SPI) which are computed from actual schedule and cost data,
+                eliminating subjective bias.</p>
+        </div>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

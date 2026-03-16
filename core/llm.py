@@ -6,7 +6,7 @@ or transient model unavailabilities.
 """
 
 from google import genai
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 from google.api_core import exceptions
 
 from core.config import config
@@ -17,6 +17,7 @@ async def generate_content_with_fallback(
     gen_config: GenerateContentConfig,
     primary_model: str = config.gen_model,
     fallback_model: str = config.fallback_model,
+    thinking_config: ThinkingConfig | None = None,
 ) -> str | None:
     """Generate content from Gemini, gracefully falling back on errors.
 
@@ -37,6 +38,11 @@ async def generate_content_with_fallback(
 
     try:
         print(f"[LLM] Attempting generation with primary model: {primary_model}")
+        
+        # Merge thinking_config into gen_config if provided
+        if thinking_config:
+            gen_config.thinking_config = thinking_config
+
         response = await client.aio.models.generate_content(
             model=primary_model,
             contents=contents,

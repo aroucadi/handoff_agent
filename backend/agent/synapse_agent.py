@@ -34,14 +34,14 @@ def _build_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
-                    "client_id": {"type": "string", "description": "The client identifier"},
+                    "account_id": {"type": "string", "description": "The account identifier"},
                     "layer": {
                         "type": "string",
-                        "enum": ["client", "product", "industry"],
+                        "enum": ["account", "product", "industry"],
                         "description": "Which knowledge layer to read",
                     },
                 },
-                "required": ["client_id"],
+                "required": ["account_id"],
             },
         ),
         FunctionDeclaration(
@@ -52,11 +52,11 @@ def _build_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
-                    "client_id": {"type": "string", "description": "The client identifier"},
+                    "account_id": {"type": "string", "description": "The account identifier"},
                     "node_id": {"type": "string", "description": "The node_id to navigate to"},
                     "sections_only": {"type": "boolean", "description": "Return only headers"},
                 },
-                "required": ["client_id", "node_id"],
+                "required": ["account_id", "node_id"],
             },
         ),
         FunctionDeclaration(
@@ -66,10 +66,10 @@ def _build_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
-                    "client_id": {"type": "string", "description": "The client identifier"},
+                    "account_id": {"type": "string", "description": "The account identifier"},
                     "query": {"type": "string", "description": "Natural language search query"},
                 },
-                "required": ["client_id", "query"],
+                "required": ["account_id", "query"],
             },
         ),
     ]
@@ -78,7 +78,8 @@ def _build_tools() -> list[Tool]:
 
 
 async def run_text_conversation(
-    client_id: str,
+    tenant_id: str,
+    account_id: str,
     message: str,
     history: list[dict] | None = None,
     brand_name: str = "ClawdView",
@@ -114,29 +115,35 @@ async def run_text_conversation(
     tool_calls_log = []
     nodes_visited = []
 
-    # Wrapper functions to hide client_id from the model and log calls
-    def get_index(layer: str = "client") -> str:
+    # Wrapper functions to hide account_id from the model and log calls
+    def get_index(layer: str = "account") -> str:
         """Read the index/table-of-contents node for a skill graph layer. Use this FIRST when starting a briefing."""
         tool_calls_log.append({"tool": "read_index", "args": {"layer": layer}})
-        return TOOL_FUNCTIONS["read_index"](client_id, layer)
+        return TOOL_FUNCTIONS["read_index"](tenant_id, account_id, layer)
 
     def follow_link(node_id: str, sections_only: bool = False) -> str:
         """Navigate to a specific node in the skill graph by following a wikilink."""
         tool_calls_log.append({"tool": "follow_link", "args": {"node_id": node_id, "sections_only": sections_only}})
         nodes_visited.append(node_id)
-        return TOOL_FUNCTIONS["follow_link"](client_id, node_id, sections_only)
+        return TOOL_FUNCTIONS["follow_link"](tenant_id, account_id, node_id, sections_only)
 
     def search_graph(query: str) -> str:
-        """Search across the client's entire skill graph using semantic search."""
+        """Search across the account's entire skill graph using semantic search."""
         tool_calls_log.append({"tool": "search_graph", "args": {"query": query}})
-        return TOOL_FUNCTIONS["search_graph"](client_id, query)
+        return TOOL_FUNCTIONS["search_graph"](tenant_id, account_id, query)
 
-    from google.genai.types import AutomaticFunctionCallingConfig
+    # Wrapper functions for automatic function calling
+    async def web_scrape(url: str) -> str:
+        """Fetch and scrape the text content of a public website URL."""
+        tool_calls_log.append({"tool": "web_scrape", "args": {"url": url}})
+        return await TOOL_FUNCTIONS["web_scrape"](url)
+
+    from google.genai.types import AutomaticFunctionCallingConfig, GoogleSearch
     
     gen_config = GenerateContentConfig(
         system_instruction=system_instruction,
         temperature=0.3,
-        tools=[get_index, follow_link, search_graph],
+        tools=[get_index, follow_link, search_graph, web_scrape, Tool(google_search=GoogleSearch())],
         automatic_function_calling=AutomaticFunctionCallingConfig(disable=False),
     )
 
@@ -168,7 +175,7 @@ async def run_text_conversation(
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 tools_used=tool_calls_log,
-                client_id=client_id,
+                client_id=account_id,
             )
         )
         

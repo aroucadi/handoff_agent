@@ -1,0 +1,21 @@
+# Synapse Admin Portal — API + Frontend Container
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install deps
+COPY admin-portal/api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy API source
+COPY admin-portal/api/ .
+
+# Copy shared core module (optional if main.py doesn't use it yet, but good for parity)
+# COPY core/ /app/core/
+
+# Copy pre-built Admin frontend dist (built by deploy.ps1 before Cloud Build)
+COPY admin-portal/dist/ /app/frontend/dist/
+
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

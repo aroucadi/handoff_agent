@@ -1,200 +1,111 @@
-# Synapse — The Living Memory of Your Customer Journey
+# 🌌 ClawdView (by Synapse) — The Living Memory of Your Customer Journey
 
-> **Gemini-powered voice agent** that transforms CRM deal closure into real-time, grounded customer success briefings.
-
-[![Release](https://img.shields.io/badge/release-v1.0.0-blue)]()
-[![Gemini](https://img.shields.io/badge/Gemini-3.1_Pro_%7C_2.5_Flash_Audio_%7C_Embedding_001-orange)]()
-[![IaC](https://img.shields.io/badge/IaC-Terraform_with_GCP-purple)]()
+> **Gemini-powered multimodal voice agent** that transforms CRM data into real-time, grounded customer intelligence — with role-specific briefings, Google Search enrichment, and AI-generated enterprise artifacts.
 
 ---
 
-## What Is This?
+### ✅ System Status: Production Ready (Hardened)
+The Synapse ecosystem has been fully hardened with "Ironclad" multi-tenancy and zero-fallback administrative security.
 
-When a B2B SaaS deal closes, critical context is trapped in CRM data and sales transcripts. Synapse uses **Gemini 3.1 Pro** to extract that knowledge into a navigable **skill graph**, then serves it through a **Gemini Live multimodal agent** that Customer Success Managers can talk to and screen-share with before their kickoff call.
+**Recent Hardening Highlights:**
+- [x] **Fail-Closed Admin Auth**: Removed all hardcoded fallbacks in services and automation; system refuses to operate if unconfigured.
+- [x] **Isolated Workflow Execution**: All protected deal data, graph traversals, and voice sessions require valid, cryptographically signed tenant context.
+- [x] **Secure Discovery Bootstrap**: Explicit separation between public tenant resolution (slug-to-config) and private data access (token-gated).
+- [x] **Protected Sync Monitoring**: All extraction metadata and status endpoints are hidden behind Master Admin authorization.
 
-### The Demo Flow
+---
 
-1. **CSM closes a deal** in the CRM Simulator → webhook fires
-2. **Graph Generator** extracts entities with Gemini 3.1 Pro → creates 8 client-specific knowledge nodes → stores in GCS → indexes with embeddings in Firestore
-3. **CSM opens Synapse** → sees account ready on Dashboard
-4. **CSM clicks "Start Briefing"** → real-time voice conversation with the agent
-5. **Agent navigates the skill graph** using 3 tools (read_index, follow_link, search_graph) → provides grounded, never-hallucinated answers
-6. **Split-screen UI** shows live transcript + React Flow graph topology animating in real-time
+## 💡 What Is ClawdView?
 
-### Gemini Models Used
+ClawdView is a **CRM-agnostic AI briefing platform** for B2B SaaS teams. It connects to any CRM via the **Hub integration layer**, extracts deal data into a structured **ontology-driven knowledge graph**, and serves it through a **Gemini Live multimodal voice agent**.
 
-| Model | Purpose |
+### ✨ Core Capabilities
+
+| Feature | Description |
 |---|---|
-| `gemini-3.1-pro-preview` | Entity extraction + node generation |
-| `gemini-embedding-001` | 768d vector embeddings for semantic search |
-| `gemini-2.0-flash-exp` | Real-time multimodal (Vision + Voice) via Live API |
-| `gemini-2.5-flash-native-audio-preview` | Voice-only fallback |
+| **🧠 Knowledge Graph** | 20+ entity types (Risks, Milestones, Products) extracted with **Gemini 3.1 Pro**. |
+| **🎙️ Live Briefings** | Low-latency voice sessions using **Gemini Live 2.5 Flash**. |
+| **🎭 Zero Adaptation** | Workflow-agnostic architecture: override terminology (**Account**, **Case**) and mapped roles. |
+| **🌍 Search Grounding** | Real-time industry enrichment via Google Search. |
+| **📄 Smart Artifacts** | Generate MSAs, SLAs, and Discovery Guides with **Thinking-enabled** reasoning (3.1 Flash Lite). |
+| **🔌 Hub Portal** | Multi-tenant integration portal for CRM field mapping, stage normalization, and brand mapping. |
+
+---
+
+## 🛠️ Tech Stack
+
+- **AI Engine**: Gemini 3.1 Pro (Extraction), Gemini 3.1 Flash Lite (Thinking/Artifacts), Gemini 2.5 Flash (Voice).
+- **Frontend**: React 19, Vite 6, Tailwind CSS, Lucide icons.
+- **Backend**: Python 3.11, FastAPI, WebSockets.
+- **Infrastructure**: Terraform, GCP (Cloud Run, GCS, Firestore).
 
 ---
 
 ## 📚 Documentation Hub
 
-Explore the `docs/` folder for in-depth technical breakdowns of the platform:
-- **[Developer Onboarding](docs/ONBOARDING.md)** — Start here! Monorepo structure, manifests, and cross-platform scripts.
-- **[Product Requirements Document (PRD)](docs/PRD.md)** — The original vision and UX flows.
-- **[System Architecture](docs/ARCHITECTURE.md)** — Core design decisions and data models.
-- **[AI Agents Deep Dive](docs/AI_AGENTS.md)** — How the Multi-Agent Generator and Gemini Live Vision interact.
-- **[Cloud Infrastructure](docs/INFRASTRUCTURE.md)** — Detailed GCP Terraform diagrams and Cloud Run topologies.
-- **[API Reference](docs/API_REFERENCE.md)** — Webhook payloads, internal endpoints, and WebSocket negotiation.
-- **[Observability & Telemetry](docs/OBSERVABILITY.md)** — Level 5 Agent tracing, token counting, and tool-call logging.
-- **[Hackathon Submission Pitch](docs/DEVPOST_SUBMISSION.md)** — The elevator pitch, inspiration, and judging criteria responses.
-- **[Demo Scipt](docs/DEMO_SCRIPT.md)** — The narrative flow for the 4-minute demonstration.
+Explore our comprehensive guides to get the most out of ClawdView:
+
+### 🏁 Getting Started
+- **[Zero-Knowledge Setup Guide](docs/SETUP_GUIDE.md)** — From zero to deployed in 10 minutes.
+- **[Developer Onboarding](docs/ONBOARDING.md)** — Monorepo layout and local environment variables.
+- **[Automation Scripts](docs/SCRIPTS.md)** — Detailed guide to all 20+ PowerShell and Python utilities.
+
+### 🏗️ Architecture & AI
+- **[System Architecture](docs/ARCHITECTURE.md)** — Deep dive into the Hub, GraphQL pipeline, and Voice WebSocket flow.
+- **[GCP Survival / Safety](docs/CLAWVIEW_GCP_SURVIVAL.md)** — How we prevent API abuse and account suspensions.
+- **[API Reference](docs/API_REFERENCE.md)** — Endpoints for Hub, Sync, and Voice sessions.
+
+### 📝 Product & Strategy
+- **[PRD & Vision](docs/PRD.md)** — The "Big Picture" and user journey maps.
+- **[Demo Scripts](docs/DEMO_SCRIPT.md)** — Step-by-step instructions for a perfect stakeholder presentation.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start (Local)
 
-### Prerequisites
+### 1. Prerequisites
 - Python 3.11+
 - Node.js 20+
-- A Gemini API key ([Google AI Studio](https://aistudio.google.com/))
+- GCP CLI (`gcloud auth login`)
+- [Gemini API Key](https://aistudio.google.com/)
 
-### Setup
-
-```bash
-# Clone
-git clone https://github.com/aroucadi/synapse_agent.git
-cd synapse_agent
-
-# Set your API key
-export GEMINI_API_KEY="your-key-here"
-
-# Install everything
-bash scripts/demo-setup.sh
-
-# Start all services
-bash scripts/start-local.sh
-```
-
-### Access Points
-
-| Service | URL |
-|---|---|
-| CRM Simulator | http://localhost:5173 |
-| Synapse UI | http://localhost:5174 |
-| Backend API | http://localhost:8000/health |
-| Graph Generator | http://localhost:8002/health |
-
-### Demo Walkthrough
-
-1. Open **CRM Simulator** → click "Closed Won" on a deal
-2. Open **Synapse UI** → enter the deal ID → click "Start Briefing"
-3. Talk to the agent or type questions
-4. Watch the React Flow graph animate as the agent navigates nodes
-
-### Keyboard Shortcuts
-
-| Key | Action |
-|---|---|
-| **Space** | Toggle microphone on/off |
-| **Escape** | End briefing session |
-| **Enter** | Send text message |
-
----
-
-## Architecture
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system diagram.
-
-```
-CRM Simulator → webhook → Synapse API → Graph Generator
-                                ↕                 ↓
-                          Gemini Live        GCS + Firestore
-                          (voice)            (skill graphs)
-                                ↕
-                          Voice UI ←── WebSocket (bidirectional audio)
-```
-
----
-
-## Tech Stack
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript 5, Vite 6, React Flow |
-| Backend | Python 3.11, FastAPI, WebSockets |
-| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
-| Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
-
----
-
-## Project Structure
-
-```
-synapse/
-├── backend/                # Synapse API (FastAPI)
-│   ├── agent/              # ADK agent (tools, prompts, synapse_agent)
-│   ├── graph/              # Graph traversal engine
-│   └── live/               # Gemini Live session handler
-├── graph-generator/        # Graph Generator (FastAPI)
-│   └── extractors/         # Gemini 3.1 Pro entity extraction
-├── crm-simulator/          # CRM Simulator (FastAPI + React)
-├── frontend/               # Synapse Voice UI (React + React Flow)
-├── skill-graphs/           # 12 static knowledge nodes
-├── infra/                  # Terraform IaC (4 modules)
-└── scripts/                # Deploy, demo-setup, start-local
-```
-
----
-
-## Infrastructure (Terraform)
-
-All infrastructure is defined as code in `infra/`:
-
-| Module | Resources |
-|---|---|
-| `storage` | GCS buckets (skill-graphs + uploads) |
-| `firestore` | Firestore database (native mode) |
-| `cloud-run` | 2 Cloud Run services, Artifact Registry, IAM |
-| `firebase` | Firebase Web App |
-
-### Deploy to GCP
-
-To deploy the entire architecture (Frontend, FastAPIs, Cloud Run, Firestore, Storage) to Google Cloud, you need a GCP Project ID where you have billing and owner permissions.
-
-We have provided one-click PowerShell scripts to handle the Docker builds, Terraform execution, and Firebase deployment.
-
+### 2. Launch
 ```powershell
-# 1. Open PowerShell and run the deployment script, passing your GCP Project ID:
-.\scripts\deploy.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
+# Install everything
+.\scripts\demo-setup.ps1
 
-# 2. To completely destroy the environment and avoid billing:
-.\scripts\teardown.ps1 -ProjectId "YOUR_GCP_PROJECT_ID" -Region "us-central1"
+# Set Key
+$env:GEMINI_API_KEY = "your_key"
+
+# Start All
+.\scripts\start-local.ps1
 ```
 
-See [DEPLOYMENT_PROOF.md](DEPLOYMENT_PROOF.md) for full infrastructure details.
-
----
-
-## Release History
-
-| Version | Release | What Shipped |
-|---|---|---|
-| `v0.1.0` | R0 — Foundation | CRM Simulator, IaC base, 12 static skill graphs |
-| `v1.0.0` | R4 — Submission | Demo polish, documentation, deployment scripts |
-| `v1.4.0` | R8 — Grounding | Native Firestore Vector Search (`FindNearest`) |
-| `v1.6.0` | R10 — Telemetry | Asynchronous `core/telemetry.py` traces |
-| `v1.7.0` | R11 — Vision | Multimodal WebRTC screen sharing |
-| `v1.8.0` | R12 — Polish | Global exception handlers and architecture diagrams |
-| `v1.9.0` | R13 — IaC | Hardened Terraform & PowerShell deployment scripts |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
+### 3. Access
+| Portal | URL |
 |---|---|
-| Frontend | React 19, TypeScript 5, Vite 6, React Flow |
-| Backend | Python 3.11, FastAPI, WebSockets |
-| AI | Gemini 3.1 Pro, Embedding 001, 2.5 Flash Native Audio |
-| Infrastructure | Terraform, GCP (Cloud Run, GCS, Firestore, Secret Manager) |
+| **Synapse Admin** | [http://localhost:5177](http://localhost:5177) |
+| **Synapse Hub** | [http://localhost:5176](http://localhost:5176) |
+| **Live Agent UI** | [http://localhost:5174](http://localhost:5174) |
+| **CRM Simulator** | [http://localhost:5173](http://localhost:5173) |
 
 ---
 
-## License
+## 🗺️ Project Structure
 
-MIT
+```text
+synapse/
+├── admin-portal/    # Global Registry & Provisioning (React + FastAPI)
+├── hub/             # Tenant Config Portal (React + FastAPI)
+├── live-agent/      # Synapse Live Agent UI (React + WebRTC)
+├── backend/         # Core Voice API & ADK Agent Engine
+├── graph-generator/ # Extraction Pipeline (CRM + Knowledge Center)
+├── crm-simulator/   # Mock Enterprise CRM (SalesClaw)
+├── infra/           # Terraform IaC Modules
+└── scripts/         # Deployment & Seeding Automation
+```
+
+---
+
+## 📜 License
+MIT © 2026 ClawdView Team

@@ -19,6 +19,7 @@ from google.genai.types import (
     Content,
     FunctionDeclaration,
     FunctionResponse,
+    GoogleSearch,
     LiveConnectConfig,
     Modality,
     Part,
@@ -38,18 +39,163 @@ import json
 
 
 def _build_live_tools() -> list[Tool]:
-    """Build tool declarations for the Live API."""
+    """Build tool declarations for the Live API.
+    
+    Includes: legacy graph tools, structured entity tools, and output generators.
+    """
     declarations = [
+        # ── Structured Graph Tools (Primary) ──
+        FunctionDeclaration(
+            name="graph_overview",
+            description="Get a high-level overview of the client's knowledge graph. Use FIRST to understand available knowledge.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                },
+                "required": ["tenant_id", "client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_entity",
+            description="Retrieve a specific entity and its connections from the knowledge graph.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "entity_id": {"type": "string"},
+                },
+                "required": ["tenant_id", "client_id", "entity_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_entities_by_type",
+            description="Get all entities of a specific type (e.g., Risk, Contact, Product).",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "entity_type": {"type": "string"},
+                },
+                "required": ["tenant_id", "client_id", "entity_type"],
+            },
+        ),
+        FunctionDeclaration(
+            name="traverse_graph",
+            description="Multi-hop graph traversal from an entity.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "entity_id": {"type": "string"},
+                    "edge_type": {"type": "string"},
+                    "max_hops": {"type": "integer"},
+                },
+                "required": ["tenant_id", "client_id", "entity_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="search_entities",
+            description="Semantic search across knowledge graph entities. "
+                        "Optionally filter by entity type.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "query": {"type": "string"},
+                    "entity_type": {"type": "string", "description": "Optional type filter"},
+                },
+                "required": ["tenant_id", "client_id", "query"],
+            },
+        ),
+        FunctionDeclaration(
+            name="risk_profile",
+            description="Get comprehensive risk profile: all risks with severity breakdown and derisking strategies.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"}
+                },
+                "required": ["tenant_id", "client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="product_knowledge",
+            description="Get product knowledge: products, features, limitations, and KB articles.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"}
+                },
+                "required": ["tenant_id", "client_id"],
+            },
+        ),
+        # ── Output Generation Tools ──
+        FunctionDeclaration(
+            name="generate_briefing",
+            description="Generate a pre-meeting briefing summary from the knowledge graph.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "csm_name": {"type": "string", "description": "CSM name for personalization"},
+                },
+                "required": ["tenant_id", "client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="generate_action_plan",
+            description="Generate a post-session action plan with prioritized items.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "meeting_notes": {"type": "string", "description": "Optional session notes"},
+                },
+                "required": ["tenant_id", "client_id"],
+            },
+        ),
+        FunctionDeclaration(
+            name="generate_transcript",
+            description="Generate a role-based script (sales, support, QBR, renewal, onboarding, discovery). "
+                        "Use when user asks for a transcript, script, or talking points.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "tenant_id": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "transcript_type": {
+                        "type": "string",
+                        "enum": ["sales_script", "support_script", "qbr_prep",
+                                 "renewal_script", "onboarding_guide", "discovery_questions"],
+                    },
+                    "user_role": {"type": "string", "description": "User role (AE, CSM, Support Agent)"},
+                    "additional_context": {"type": "string", "description": "Extra context or notes"},
+                },
+                "required": ["tenant_id", "client_id", "transcript_type"],
+            },
+        ),
+        # ── Legacy Tools (backward compat) ──
         FunctionDeclaration(
             name="read_index",
             description="Read the index/table-of-contents node for a skill graph layer. ",
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "layer": {"type": "string", "enum": ["client", "product", "industry"]},
                 },
-                "required": ["client_id"],
+                "required": ["tenant_id", "client_id"],
             },
         ),
         FunctionDeclaration(
@@ -60,11 +206,12 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "node_id": {"type": "string"},
                     "sections_only": {"type": "boolean"},
                 },
-                "required": ["client_id", "node_id"],
+                "required": ["tenant_id", "client_id", "node_id"],
             },
         ),
         FunctionDeclaration(
@@ -74,10 +221,24 @@ def _build_live_tools() -> list[Tool]:
             parameters={
                 "type": "object",
                 "properties": {
+                    "tenant_id": {"type": "string"},
                     "client_id": {"type": "string"},
                     "query": {"type": "string"},
                 },
-                "required": ["client_id", "query"],
+                "required": ["tenant_id", "client_id", "query"],
+            },
+        ),
+        FunctionDeclaration(
+            name="web_scrape",
+            description="Fetch and scrape the text content of a public website URL. "
+                        "Use this for real-time browsing when the knowledge graph doesn't have "
+                        "the latest information.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The full URL to browse and scrape"},
+                },
+                "required": ["url"],
             },
         ),
     ]
@@ -135,6 +296,10 @@ class LiveSession:
 
         return (
             f"{role_prompt}\n\n"
+            f"## Multimodal Awareness (CRITICAL)\n"
+            f"- **VISUAL INPUT**: You are receiving a high-frequency live stream of the user's screen (Vision). \n"
+            f"- **GROUNDING**: If the user asks 'What do you see?' or refers to 'this' while showing a document/CRM page, analyze the visual frames to give a grounded answer.\n"
+            f"- **AUDIO INPUT**: You are in a real-time voice session. Speak naturally, be concise, and handle interruptions (barge-in) gracefully.\n\n"
             f"## Current Session Context\n"
             f"- Client ID: {self.client_id}\n"
             f"- User Name: {self.csm_name}\n"
@@ -144,8 +309,8 @@ class LiveSession:
             f"{deal_context}"
             f"{focus_hint}\n"
             f"IMPORTANT: When using tools, always pass client_id=\"{self.client_id}\".\n"
-            f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality). Do not just output text silently.\n"
-            f"Start by greeting the user naturally by their first name only. You are {role_config['greeting_style']}."
+            f"CRITICAL OVERRIDE: If the user sends a TEXT message, you MUST still respond ALOUD using VOICE (Audio Modality).\n"
+            f"Start by greeting {self.csm_name} naturally (first name ONLY). You are {role_config['greeting_style']}."
         )
 
     async def connect(self):
@@ -166,7 +331,7 @@ class LiveSession:
             system_instruction=Content(
                 parts=[Part.from_text(text=self._build_system_prompt())]
             ),
-            tools=_build_live_tools(),
+            tools=_build_live_tools() + [Tool(google_search=GoogleSearch())],
         )
 
         # The live.connect returns an async context manager in google-genai 1.0.0+
@@ -182,7 +347,7 @@ class LiveSession:
         # Deterministic Kickoff: Pre-load the graph index locally to bypass the 1008 API crash.
         # This prevents the LLM from attempting to monologue while generating a tool call.
         try:
-            index_data = get_index(self.client_id, "client")
+            index_data = get_index(self.tenant_id, self.client_id, "client")
             node_id = index_data.get("node_id") if index_data else None
             if node_id:
                 self.nodes_visited.append(node_id)
@@ -332,9 +497,13 @@ class LiveSession:
                                 fn_name = fc.name
                                 fn_args = dict(fc.args) if fc.args else {}
 
-                                # Inject client_id
+                                # Scoping: Inject context if missing
+                                if "tenant_id" not in fn_args:
+                                    fn_args["tenant_id"] = self.tenant_id
                                 if "client_id" not in fn_args:
                                     fn_args["client_id"] = self.client_id
+                                if "account_id" not in fn_args:
+                                    fn_args["account_id"] = self.client_id
 
                                 print(f"[LIVE] Tool call: {fn_name}({fn_args})")
                                 self.tool_calls.append({
@@ -352,7 +521,11 @@ class LiveSession:
                                 # Execute the tool
                                 tool_fn = TOOL_FUNCTIONS.get(fn_name)
                                 if tool_fn:
-                                    result = tool_fn(**fn_args)
+                                    # Handle both async and sync tools in the live loop
+                                    if asyncio.iscoroutinefunction(tool_fn):
+                                        result = await tool_fn(**fn_args)
+                                    else:
+                                        result = tool_fn(**fn_args)
                                     # Track visited nodes
                                     try:
                                         result_data = json.loads(result)
@@ -429,6 +602,8 @@ class LiveSession:
             await doc_ref.set({
                 "session_id": self.session_id,
                 "client_id": self.client_id,
+                "tenant_id": self.tenant_id,
+                "brand_name": self.brand_name,
                 "csm_name": self.csm_name,
                 "started_at": self.started_at,
                 "ended_at": datetime.utcnow().isoformat(),

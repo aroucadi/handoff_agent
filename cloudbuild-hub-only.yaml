@@ -1,0 +1,5 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--no-cache', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
+images:
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest'

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Release Notes v4.1.0 — ClawdView Knowledge Center</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+
+<body>
+    <header class="top-nav">
+        <a href="../index.html" class="brand">Clawd<em>View</em> Knowledge Center</a>
+        <nav><a href="../index.html">Home</a><a href="../products/portfolios.html">Products</a><a
+                href="../guides/enterprise-scaling.html">Guides</a><a
+                href="../best-practices/agile-transformation.html">Best Practices</a><a href="v4-2-0.html"
+                class="active">Release Notes</a></nav>
+    </header>
+    <main class="page-wrapper content-page">
+        <div class="breadcrumb"><a href="../index.html">Home</a> / <a href="v4-2-0.html">Release Notes</a> / v4.1.0
+        </div>
+        <h1>ClawdView v4.1.0 Release Notes</h1>
+        <p class="subtitle">January 2026 — Portfolio scoring revamp, Hub connector marketplace, WCAG 2.1 AA compliance,
+            and GraphQL API beta.</p>
+
+        <h2>🆕 New Features</h2>
+
+        <h3>Portfolio Scoring Engine Overhaul (Portfolios)</h3>
+        <p>The scoring engine has been completely rewritten to support:</p>
+        <ul>
+            <li><strong>Weighted criteria</strong> with configurable importance levels (previously all criteria had
+                equal weight)</li>
+            <li><strong>Scoring templates</strong> that can be shared across portfolios and organizations</li>
+            <li><strong>Scenario comparison</strong>: Score the same portfolio under different criteria weights to model
+                strategic shifts</li>
+            <li><strong>Scoring history</strong>: Track how initiative scores change over time as data updates</li>
+            <li><strong>Bulk scoring</strong>: Score up to 100 initiatives simultaneously with committee collaboration
+                mode</li>
+        </ul>
+
+        <h3>Hub Connector Marketplace</h3>
+        <p>A self-service marketplace for discovering, installing, and configuring Hub connectors. Key features:</p>
+        <ul>
+            <li>Browse 100+ connectors with ratings, reviews, and use case examples</li>
+            <li>One-click installation with guided setup wizard</li>
+            <li>Partner-built connectors alongside ClawdView-certified ones</li>
+            <li>Connector health monitoring with uptime SLA indicators</li>
+        </ul>
+
+        <h3>WCAG 2.1 AA Compliance</h3>
+        <p>Full accessibility compliance achieved across all ClawdView modules:</p>
+        <ul>
+            <li>Keyboard navigation for all interactive elements including board cards and Gantt tasks</li>
+            <li>Screen reader compatibility (tested with NVDA, JAWS, and VoiceOver)</li>
+            <li>Color contrast ratios meeting AA standards (minimum 4.5:1 for text)</li>
+            <li>Focus indicators visible on all interactive components</li>
+            <li>ARIA labels and roles on custom widgets</li>
+        </ul>
+
+        <h3>GraphQL API Beta</h3>
+        <p>A new GraphQL endpoint for complex, multi-resource queries. See <a href="../guides/api-integration.html">API
+                Integration Guide</a> for details. Key capabilities in beta:</p>
+        <ul>
+            <li>Query projects with nested tasks, resources, and financials</li>
+            <li>Portfolio items with scoring criteria and history</li>
+            <li>Board cards with custom fields and connection data</li>
+            <li>WebSocket-based subscriptions for real-time card movement events</li>
+        </ul>
+
+        <h2>🔧 Improvements</h2>
+        <ul>
+            <li><strong>AgilePlace</strong>: Dependency lines now show risk level coloring (green = on track, amber = at
+                risk, red = blocked)</li>
+            <li><strong>PPM Pro</strong>: Baseline comparison view shows delta overlay on the Gantt chart</li>
+            <li><strong>Portfolios</strong>: Investment scenario modeling supports up to 10 scenarios (previously 3)
+            </li>
+            <li><strong>Hub</strong>: Azure DevOps connector now supports Board-level sync (previously limited to
+                Backlog items)</li>
+            <li><strong>Performance</strong>: Dashboard rendering speed improved by 30% through data caching layer</li>
+        </ul>
+
+        <h2>🐛 Bug Fixes</h2>
+        <ul>
+            <li>Fixed: AgilePlace automation rules firing twice when card was moved by another automation (cascade loop)
+            </li>
+            <li>Fixed: PPM Pro resource leveling ignored non-working days in custom calendars</li>
+            <li>Fixed: Hub ServiceNow connector timed out on initial sync with >50,000 incidents</li>
+            <li>Fixed: Portfolios roadmap PDF export cut off initiative names longer than 60 characters</li>
+            <li>Fixed: Time entry approval workflow skipped the second-level approver in hierarchy</li>
+        </ul>
+
+        <h2>⚠ Deprecations</h2>
+        <ul>
+            <li><strong>API v1</strong>: All v1 REST endpoints now return deprecation warnings. Full removal planned for
+                v4.3.0 (Q3 2026). Migrate to v2.</li>
+            <li><strong>Classic Board UI</strong>: The legacy board renderer (pre-v3.0) has been removed. All boards now
+                use the modern rendering engine.</li>
+        </ul>
+    </main>
+    <footer class="footer">
+        <p>© 2026 ClawdView, Inc. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

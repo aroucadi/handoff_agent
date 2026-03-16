@@ -1,11 +1,11 @@
 steps:
   # 1. Build & Push API
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest', '-f', 'backend/Dockerfile', '.']
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/synapse/api:latest', '-f', 'backend/Dockerfile', '.']
 
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/synapse/api:latest'
 
 substitutions:
   _REGION: us-central1
-  _TAG: latest
+  _PROJECT_ID: synapse-488201

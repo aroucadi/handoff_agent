@@ -7,6 +7,7 @@ orchestration. Persists all data in Firestore collection: tenants/{tenant_id}
 
 from __future__ import annotations
 
+import os
 import re
 import logging
 from datetime import datetime, timezone
@@ -28,6 +29,12 @@ from models import (
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("hub")
+
+# Graph generator URL for webhook provisioning
+GRAPH_GENERATOR_URL = os.environ.get(
+    "GRAPH_GENERATOR_URL",
+    "http://localhost:8002",
+)
 
 app = FastAPI(
     title="Synapse Hub API",
@@ -77,17 +84,25 @@ def list_tenants():
 @app.post("/api/tenants", response_model=TenantConfig, status_code=201)
 def create_tenant(req: CreateTenantRequest):
     """Create a new tenant with default configuration."""
+    from crm_templates import get_template_for_crm
+
     tenant = TenantConfig(
         name=req.name,
         brand_name=req.brand_name or req.name,
-        crm=CrmConnection(crm_type=req.crm_type),
+        crm=CrmConnection(
+            crm_type=req.crm_type,
+            field_mapping=get_template_for_crm(req.crm_type.value),
+        ),
     )
     # Set agent brand_name to match
     tenant.agent.brand_name = tenant.brand_name
 
+    # Auto-provision webhook URL
+    tenant.webhook_url = f"{GRAPH_GENERATOR_URL}/ingest/{tenant.tenant_id}"
+
     doc_ref = db.collection(TENANTS_COLLECTION).document(tenant.tenant_id)
     doc_ref.set(tenant.model_dump())
-    log.info(f"Created tenant: {tenant.tenant_id} ({tenant.name})")
+    log.info(f"Created tenant: {tenant.tenant_id} ({tenant.name}) webhook: {tenant.webhook_url}")
     return tenant
 
 
@@ -139,6 +154,34 @@ def delete_tenant(tenant_id: str):
         raise HTTPException(404, f"Tenant {tenant_id} not found")
     doc_ref.delete()
     log.info(f"Deleted tenant: {tenant_id}")
+
+
+# ── Integration Guide ─────────────────────────────────────────────
+
+@app.get("/api/tenants/{tenant_id}/integration-guide")
+def get_integration_guide(tenant_id: str):
+    """Get CRM-specific integration instructions for a tenant."""
+    from crm_templates import get_setup_instructions, get_template_for_crm
+
+    doc = db.collection(TENANTS_COLLECTION).document(tenant_id).get()
+    if not doc.exists:
+        raise HTTPException(404, f"Tenant {tenant_id} not found")
+
+    tenant = TenantConfig(**doc.to_dict())
+    crm_type = tenant.crm.crm_type.value
+    instructions = get_setup_instructions(crm_type)
+    template = get_template_for_crm(crm_type)
+
+    return {
+        "tenant_id": tenant_id,
+        "crm_type": crm_type,
+        "webhook_url": tenant.webhook_url,
+        "webhook_secret": tenant.webhook_secret,
+        "integration_status": tenant.integration_status.value,
+        "field_mapping": tenant.crm.field_mapping,
+        "default_template": template,
+        "setup": instructions,
+    }
 
 
 # ── Product Management ───────────────────────────────────────────

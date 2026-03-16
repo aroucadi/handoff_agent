@@ -15,7 +15,7 @@ from textwrap import dedent
 
 from google import genai
 from google.cloud import storage, firestore
-from google.genai.types import GenerateContentConfig
+from google.genai.types import GenerateContentConfig, ThinkingConfig
 
 from models import Product
 
@@ -23,7 +23,7 @@ log = logging.getLogger("hub.knowledge")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SKILL_GRAPHS_BUCKET = os.environ.get("SKILL_GRAPHS_BUCKET", "")
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.1-flash-lite-preview"
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 gcs = storage.Client()
@@ -96,17 +96,27 @@ async def generate_product_knowledge(
         config=GenerateContentConfig(
             temperature=0.4,
             max_output_tokens=4096,
+            thinking_config=ThinkingConfig(thinking_level="high"),
         ),
     )
 
-    markdown_content = response.text
+    # Robustly handle potential BOM or encoding issues
+    try:
+        raw_text = response.text
+        if not raw_text:
+             raise ValueError("Empty response from AI")
+        # Strip BOM if present
+        markdown_content = raw_text.encode('utf-8', 'ignore').decode('utf-8').lstrip('\ufeff')
+    except Exception as e:
+        log.error(f"Error decoding AI response: {e}")
+        raise
 
     # ── Store in GCS ─────────────────────────────────────────────
     if SKILL_GRAPHS_BUCKET:
         bucket = gcs.bucket(SKILL_GRAPHS_BUCKET)
         blob_path = f"product/{product.node_id}.md"
         blob = bucket.blob(blob_path)
-        blob.upload_from_string(markdown_content, content_type="text/markdown")
+        blob.upload_from_string(markdown_content.encode('utf-8'), content_type="text/markdown")
         log.info(f"Stored knowledge node at gs://{SKILL_GRAPHS_BUCKET}/{blob_path}")
 
     # ── Index in Firestore ───────────────────────────────────────

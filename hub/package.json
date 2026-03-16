@@ -5,20 +5,30 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "lint": "eslint .",
         "build": "tsc && vite build",
         "preview": "vite preview"
     },
     "dependencies": {
+        "lucide-react": "^0.474.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "react-router-dom": "^7.13.0"
     },
     "devDependencies": {
+        "@eslint/js": "^9.0.0",
+        "@types/eslint__js": "^8.42.3",
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
         "@types/react-router-dom": "^5.3.3",
         "@vitejs/plugin-react": "^4.3.0",
+        "eslint": "^9.19.0",
+        "eslint-plugin-react": "^7.37.5",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.5.2",
+        "globals": "^17.4.0",
         "typescript": "^5.6.0",
+        "typescript-eslint": "^8.56.1",
         "vite": "^6.0.0"
     }
 }

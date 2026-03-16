@@ -36,3 +36,14 @@ export async function changeDealStage(
 export async function resetData(): Promise<void> {
     await fetch(`${API_BASE}/reset`, { method: 'POST' });
 }
+
+export async function importTemplate(templateId: string, tenantId?: string): Promise<Deal> {
+    const url = tenantId
+        ? `${API_BASE}/import-template?template_id=${templateId}&tenant_id=${tenantId}`
+        : `${API_BASE}/import-template?template_id=${templateId}`;
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+        throw new Error(`Failed to import template: ${res.status}`);
+    }
+    return res.json();
+}
