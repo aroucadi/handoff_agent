@@ -18,6 +18,6 @@ COPY crm-simulator/seed_data.py ./
 # Copy pre-built frontend dist (built by deploy.ps1 before Cloud Build)
 COPY crm-simulator/frontend/dist/ ./frontend/dist/
 
-EXPOSE 8001
+EXPOSE 8080
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

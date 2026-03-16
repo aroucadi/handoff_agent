@@ -10,26 +10,33 @@ interface BackgroundVideoProps {
 export default function BackgroundVideo({ src, poster }: BackgroundVideoProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const globalWithStatic = globalThis as typeof globalThis & {
+        __REMOTION_STATIC_FILE__?: (path: string) => string;
+    };
+    const resolver = globalWithStatic.__REMOTION_STATIC_FILE__;
+    const resolvedSrc = typeof resolver === "function"
+        ? resolver(src.startsWith("/") ? src.slice(1) : src)
+        : src;
 
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
 
-        if (src.endsWith('.m3u8')) {
+        if (resolvedSrc.endsWith('.m3u8')) {
             if (hls.isSupported()) {
                 const hlsInstance = new hls();
-                hlsInstance.loadSource(src);
+                hlsInstance.loadSource(resolvedSrc);
                 hlsInstance.attachMedia(video);
                 hlsInstance.on(hls.Events.MANIFEST_PARSED, () => {
                     video.play().catch(e => console.error("HLS Autoplay failed:", e));
                 });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = src;
+                video.src = resolvedSrc;
             }
         } else {
-            video.src = src;
+            video.src = resolvedSrc;
         }
-    }, [src]);
+    }, [resolvedSrc]);
 
     return (
         <div className="fixed inset-0 w-full h-full overflow-hidden bg-black -z-10 pointer-events-none">

@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 import httpx
+import random
 from google.cloud import firestore, storage
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -180,6 +181,8 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
     ]
     for p in products:
         await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/products", p, headers=admin_headers, timeout=30.0)
+        # Anti-Suspension: Add jittered delay between product adds to prevent rapid DB writes/AI triggers
+        await asyncio.sleep(2 + random.uniform(1.0, 3.0))
 
     print("\n[RUNNER] Triggering knowledge generation (background)...")
     await _post_json(f"{urls.hub.rstrip('/')}/api/tenants/{tenant_id}/generate-knowledge", headers=admin_headers, timeout=120.0)
@@ -213,7 +216,8 @@ async def tenant_onboard(urls: ServiceUrls, tenant_name: str, kc_uri: str) -> st
                 break
             print(f"[RUNNER] Still syncing... ({status})")
         except (httpx.NetworkError, httpx.TimeoutException) as e:
-            print(f"[RUNNER] Transient connection error polling status: {e}. Retrying in 10s...")
+            print(f"[RUNNER] Transient connection error polling status: {e}. Retrying in 15s...")
+            await asyncio.sleep(15 + random.uniform(1.0, 5.0))
     else:
         print("[RUNNER] WARNING: Knowledge sync timed out after 10 minutes.")
 
@@ -328,9 +332,11 @@ async def seed_deals_via_crm(urls: ServiceUrls, tenant_id: str, out_dir: Path, l
 
         await _crm_stage(urls, deal.deal_id, deal.stage.value)
         
-        if lite:
-            print("    ⏳ [LITE MODE] Pausing 5s before NEXT deal to throttle CRM Webhook -> Graph Gen pipeline...")
-            await asyncio.sleep(5)
+        # Anti-Suspension: mandatory throttled delay (15-20s) between deal stage transitions.
+        # This is the PRIMARY safety mechanism to prevent Gemini/Vertex AI account suspension.
+        wait_time = 15 + random.uniform(1.0, 5.0)
+        print(f"    ⏳ Anti-Suspension: Sleeping {wait_time:.1f}s before next deal...")
+        await asyncio.sleep(wait_time)
 
 
 async def seed_negative_deal(urls: ServiceUrls, tenant_id: str, out_dir: Path):
@@ -389,22 +395,36 @@ async def wait_for_graph_ready(tenant_id: str, deal_id: str, company_name: str, 
 
 
 async def verify_outputs(urls: ServiceUrls, client_id: str):
+    print(f"  [VERIFY] Generating briefing for {client_id}...")
     await _post_json(f"{urls.backend.rstrip('/')}/api/clients/{client_id}/outputs/briefing", {"user_role": "csm"}, timeout=300.0)
+    await asyncio.sleep(10 + random.uniform(2.0, 5.0)) # Jittered cooldown
+    print(f"  [VERIFY] Generating action-plan for {client_id}...")
     await _post_json(f"{urls.backend.rstrip('/')}/api/clients/{client_id}/outputs/action-plan", {"user_role": "csm"}, timeout=300.0)
+    await asyncio.sleep(10 + random.uniform(2.0, 5.0)) # Jittered cooldown
 
 
 async def main():
     parser = argparse.ArgumentParser(description="Synapse end-to-end journey runner (UI-equivalent seeding)")
-    parser.add_argument("--hub_url", default="http://localhost:8003")
-    parser.add_argument("--crm_url", default="http://localhost:8001")
-    parser.add_argument("--graph_url", default="http://localhost:8002")
-    parser.add_argument("--backend_url", default="http://localhost:8000")
+    parser.add_argument("--hub_url", default="AUTO")
+    parser.add_argument("--crm_url", default="AUTO")
+    parser.add_argument("--graph_url", default="AUTO")
+    parser.add_argument("--backend_url", default="AUTO")
+    parser.add_argument("--project", help="GCP Project ID override")
     parser.add_argument("--kc_uri", default=str(Path(__file__).parent.parent / "knowledge-center"))
     parser.add_argument("--skip_clean", action="store_true")
     parser.add_argument("--lite", action="store_true", help="Limit to 3 deals and stagger delays to prevent API abuse")
     args = parser.parse_args()
 
-    urls = ServiceUrls(hub=args.hub_url, crm=args.crm_url, graph=args.graph_url, backend=args.backend_url)
+    if args.project:
+        config.project_id = args.project
+
+    # Resolve URLs if set to AUTO (otherwise use local or provided ones)
+    hub_url = args.hub_url if args.hub_url != "AUTO" else (config.resolve_run_url("synapse-hub") or "http://localhost:8003")
+    crm_url = args.crm_url if args.crm_url != "AUTO" else (config.resolve_run_url("synapse-crm-simulator") or "http://localhost:8001")
+    graph_url = args.graph_url if args.graph_url != "AUTO" else (config.resolve_run_url("synapse-graph-generator") or "http://localhost:8002")
+    backend_url = args.backend_url if args.backend_url != "AUTO" else (config.resolve_run_url("synapse-api") or "http://localhost:8000")
+
+    urls = ServiceUrls(hub=hub_url, crm=crm_url, graph=graph_url, backend=backend_url)
 
     # Auto-resolve kc_uri to HTTPS if hitting production
     kc_uri = args.kc_uri

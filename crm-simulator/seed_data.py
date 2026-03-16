@@ -21,7 +21,7 @@ from models import (
 )
 
 import os
-WEBHOOK_URL = os.getenv("CRM_WEBHOOK_URL", "https://synapse-api-uicugotuta-uc.a.run.app/api/webhooks/crm/deal-closed")
+WEBHOOK_URL = os.getenv("CRM_WEBHOOK_URL")
 
 DEMO_DEALS: list[Deal] = [
 

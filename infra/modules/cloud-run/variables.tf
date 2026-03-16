@@ -23,3 +23,15 @@ variable "synapse_admin_key" {
   type        = string
   sensitive   = true
 }
+
+variable "demo_secret_key" {
+  description = "The secret key for signing demo tokens"
+  type        = string
+  sensitive   = true
+}
+
+variable "deploy_tag" {
+  description = "The container image tag to deploy (e.g. latest or timestamp)"
+  type        = string
+  default     = "latest"
+}

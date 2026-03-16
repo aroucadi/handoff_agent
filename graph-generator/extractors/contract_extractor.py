@@ -87,10 +87,6 @@ CONTRACT PDF:
 """
 
 
-class ContractNotFoundError(FileNotFoundError):
-    pass
-
-
 async def extract_from_contract(client_id: str, contract_pdf_url: str | None = None) -> dict | None:
     """Extract structured contract terms from a PDF using Gemini 3.1 Pro multimodal.
 
@@ -188,7 +184,7 @@ async def _download_contract_pdf(client_id: str, contract_pdf_url: str | None) -
 
         if blob.exists():
             return blob.download_as_bytes()
-        raise ContractNotFoundError(f"Contract PDF not found at {contract_pdf_url}")
+        return None
 
     # Search for any PDF under contracts/{client_id}/
     prefix = f"contracts/{client_id}/"

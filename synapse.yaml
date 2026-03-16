@@ -12,8 +12,8 @@ global_version: 3.2.0
 
 # Shared Infrastructure Destinations
 infrastructure:
-  gcp_project: synapse-488201
-  firebase_project: synapse-488201-e74ac
+  gcp_project: ${PROJECT_ID}
+  firebase_project: ${FIREBASE_PROJECT_ID}
   region: us-central1
 
 # Monorepo Sub-projects

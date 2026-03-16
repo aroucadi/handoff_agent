@@ -1,12 +1,18 @@
 param(
-    [Parameter(Mandatory = $false)]
-    [string]$ProjectId = "synapse-488201",
+    [Parameter(Mandatory = $true)]
+    [string]$ProjectId,
     
     [Parameter(Mandatory = $false)]
     [string]$Region = "us-central1",
 
     [Parameter(Mandatory = $false)]
-    [string]$FirebaseProject = $null
+    [string]$FirebaseProject,
+
+    [Parameter(Mandatory = $false)]
+    [string]$SynapseAdminKey = "synapse-admin-demo-key-2026",
+
+    [Parameter(Mandatory = $false)]
+    [string]$DemoSecretKey = "synapse-demo-secret-777-ironclad"
 )
 
 if (-not $FirebaseProject) {
@@ -29,6 +35,21 @@ Write-Host "Generated Deploy Tag: $DeployTag" -ForegroundColor Cyan
 
 # 2. Build and push containers to GCP (Remote Build)
 Write-Host "`n[2/4] Building and Pushing Containers to GCP..." -ForegroundColor Yellow
+
+# Ensure Artifact Registry exists (Bootstrap for the build)
+Write-Host "--> Checking Artifact Registry 'synapse'..." -ForegroundColor Cyan
+$repoExists = $false
+# We temporarily relax ErrorActionPreference to prevent NativeCommandError from informational stderr
+$oldEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& gcloud artifacts repositories describe synapse --location=$Region --project=$ProjectId --format="value(name)" --quiet 2>$null
+if ($LASTEXITCODE -eq 0) { $repoExists = $true }
+$ErrorActionPreference = $oldEAP
+
+if (-not $repoExists) {
+    Write-Host "--> Creating Artifact Registry 'synapse'..." -ForegroundColor Cyan
+    & gcloud artifacts repositories create synapse --repository-format=docker --location=$Region --project=$ProjectId --description="Docker repository for Synapse images" --quiet
+}
 
 # Build CRM & Hub Frontends first locally (required for images if hosting assets)
 Write-Host '--> Building SalesClaw CRM Frontend'
@@ -57,7 +78,12 @@ if ($LASTEXITCODE -ne 0) { throw "Cloud Build failed with exit code $LASTEXITCOD
 Write-Host "`n[3/4] Applying Terraform Infrastructure..." -ForegroundColor Yellow
 Set-Location -Path ./infra
 terraform init
-terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region"
+terraform apply -auto-approve -var="project_id=$ProjectId" -var="region=$Region" -var="synapse_admin_key=$SynapseAdminKey" -var="demo_secret_key=$DemoSecretKey" -var="firebase_project_id=$FirebaseProject" -var="deploy_tag=$DeployTag"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Terraform Apply FAILED! Stopping deployment." -ForegroundColor Red
+    Set-Location -Path ..
+    exit $LASTEXITCODE
+}
 
 Write-Host "---> Exporting Terraform Outputs..." -ForegroundColor Yellow
 $apiUrl = terraform output -raw api_url
@@ -125,6 +151,7 @@ if ($crmUrlDeployed) {
     $graphUrlDeployed = gcloud run services describe synapse-graph-generator --region $Region --format "value(status.url)"
     Write-Host "---> Found CRM URL: $crmUrlDeployed"
     Write-Host "---> Found Graph URL: $graphUrlDeployed"
+    $env:PROJECT_ID = $ProjectId
     py scripts/test_pipeline.py --crm_url $crmUrlDeployed --graph_url $graphUrlDeployed
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Integration Test Failed! The pipeline might be broken." -ForegroundColor Red

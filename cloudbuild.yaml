@@ -1,28 +1,31 @@
 steps:
   # 1. Build & Push API
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest', '-f', 'backend/Dockerfile', '.']
+    args: ['build', '--no-cache', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest', '-f', 'backend/Dockerfile', '.']
   
   # 2. Build & Push Graph Generator
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest', '-f', 'graph-generator/Dockerfile', '.']
+    args: ['build', '--no-cache', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest', '-f', 'graph-generator/Dockerfile', '.']
 
   # 3. Build & Push CRM Simulator
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest', '-f', 'crm-simulator/Dockerfile', '.']
+    args: ['build', '--no-cache', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest', '-f', 'crm-simulator/Dockerfile', '.']
 
   # 4. Hub API
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
+    args: ['build', '--no-cache', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
 
   # 5. Admin Portal API
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest', '-f', 'admin-portal/Dockerfile.api', '.']
+    args: ['build', '--no-cache', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest', '-f', 'admin-portal/Dockerfile.api', '.']
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/api:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/graph-generator:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/crm-simulator:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}'

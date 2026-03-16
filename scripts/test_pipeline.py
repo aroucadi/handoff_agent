@@ -174,8 +174,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--crm_url", default="http://localhost:8001", help="CRM Simulator URL")
     parser.add_argument("--graph_url", default="http://localhost:8002", help="Graph Generator URL")
+    parser.add_argument("--project", help="GCP Project ID override")
     parser.add_argument("--skip_cleanup", action="store_true", help="Skip purging test data from Firestore")
     args = parser.parse_args()
+
+    if args.project:
+        config.project_id = args.project
     
     success = asyncio.run(run_integration_test(args.crm_url, args.graph_url, args.skip_cleanup))
     if not success:

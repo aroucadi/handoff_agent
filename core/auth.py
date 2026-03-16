@@ -1,3 +1,4 @@
+import os
 import hmac
 import hashlib
 import time
@@ -15,8 +16,6 @@ DEMO_SECRET_KEY = os.getenv("DEMO_SECRET_KEY")
 if not DEMO_SECRET_KEY:
     # For local development without env vars, you might want a fallback, 
     # but for "Ironclad" mode we should enforce it or at least not use a known default in prod.
-    # We'll keep a fallback for the VERY specific demo environment if needed, 
-    # but the review asked to remove it to avoid undermining security.
     raise RuntimeError("DEMO_SECRET_KEY environment variable is required for secure tenant isolation.")
 else:
     log.info("DEMO_SECRET_KEY loaded from environment. Hardened context enabled.")
@@ -79,4 +78,36 @@ def verify_tenant_context(token: str) -> str | None:
         print(f"[AUTH] Token verification failed: {e}")
         return None
 
-import os # Added import for DEMO_SECRET_KEY
+
+def verify_tenant_access(tenant_id: str, client_id: str) -> bool:
+    """Authoritative tenant access verification.
+    
+    Checks if the given client_id belongs to the tenant_id by verifying
+    the 'tenant_id' field on the graph status documents.
+    
+    Used by traversal and search modules to ensure strict data isolation.
+    """
+    if not tenant_id:
+        return False
+    
+    # Fast path: deterministic prefix matches tenant
+    if client_id.startswith(f"{tenant_id}_"):
+        return True
+
+    # Authoritative check from Firestore (for non-prefixed or legacy)
+    from core.db import get_firestore_client
+    db = get_firestore_client()
+    
+    # Check skill_graphs or knowledge_graphs status docs
+    for coll in ["skill_graphs", "knowledge_graphs"]:
+        doc = db.collection(coll).document(client_id).get()
+        if doc.exists:
+            stored_tenant = doc.to_dict().get("tenant_id")
+            if stored_tenant == tenant_id:
+                return True
+            else:
+                return False
+
+    # Note: If no graph doc exists yet, we let it pass the isolation check 
+    # but the subsequent read will naturally fail if the data isn't there.
+    return client_id.startswith(f"{tenant_id}_")

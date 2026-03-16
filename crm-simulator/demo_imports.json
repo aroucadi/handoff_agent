@@ -1,0 +1,63 @@
+[
+  {
+    "template_id": "aerospace_expansion",
+    "company_name": "PrecisionMetal Ltd",
+    "deal_value": 2400000,
+    "stage": "prospecting",
+    "industry": "aerospace-defense",
+    "employee_count": 4500,
+    "products": [
+      { "name": "ClawdView Portfolios (GovCloud)", "annual_value": 1800000 },
+      { "name": "ClawdView AI Shield", "annual_value": 600000 }
+    ],
+    "contacts": [
+      {
+        "name": "Frank Iron",
+        "title": "VP Engineering",
+        "role": "champion",
+        "pain_point": "Project slippage in GovCloud environment"
+      },
+      {
+        "name": "Elena Petrova",
+        "title": "Director of Compliance",
+        "role": "blocker",
+        "notes": "Concerned about ITAR data residency protocols"
+      }
+    ],
+    "risks": [
+      { "description": "Compliance mismatch for GovCloud regions", "severity": "high", "source": "compliance_audit" },
+      { "description": "Competitor outbidding on implementation services", "severity": "medium", "source": "sales_notes" }
+    ],
+    "success_metrics": [
+      { "metric": "Project Margin Efficiency", "current_value": "12%", "target_value": "18%", "timeframe": "Q4" }
+    ],
+    "sales_transcript": "[FRANK IRON]: Our biggest bottleneck right now is GovCloud visibility. We are flying blind on 3 major defense contracts. If Synapse can ground our project data without violating ITAR, we're in. [ELENA PETROVA]: I need to see the encryption-at-rest architecture before I sign off."
+  },
+  {
+    "template_id": "biotech_onboarding",
+    "company_name": "BioSynth Labs",
+    "deal_value": 1200000,
+    "stage": "prospecting",
+    "industry": "biotech",
+    "employee_count": 1200,
+    "products": [
+      { "name": "ClawdView AgilePlace", "annual_value": 800000 },
+      { "name": "ClawdView Hub", "annual_value": 400000 }
+    ],
+    "contacts": [
+      {
+        "name": "Dr. Aris Thorne",
+        "title": "Chief Scientist",
+        "role": "champion",
+        "pain_point": "CRISPR pipeline tracking is manual and error-prone"
+      }
+    ],
+    "risks": [
+      { "description": "Legacy system data integrity during migration", "severity": "medium", "source": "IT_eval" }
+    ],
+    "success_metrics": [
+      { "metric": "Time to Market for Lab Results", "current_value": "14 days", "target_value": "9 days", "timeframe": "6 months" }
+    ],
+    "sales_transcript": "[DR. ARIS THORNE]: We can't afford a single missing step in our lab documentation. We're looking for Synapse to build the thread between our research and our delivery timelines."
+  }
+]

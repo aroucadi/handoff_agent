@@ -16,6 +16,6 @@ COPY admin-portal/api/ .
 # Copy pre-built Admin frontend dist (built by deploy.ps1 before Cloud Build)
 COPY admin-portal/dist/ /app/frontend/dist/
 
-EXPOSE 8004
+EXPOSE 8080
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

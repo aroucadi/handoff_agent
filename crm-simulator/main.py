@@ -8,7 +8,6 @@ and file uploads for contracts/transcripts.
 from __future__ import annotations
 
 import os
-import sys
 import uuid
 from copy import deepcopy
 from datetime import date, datetime
@@ -21,10 +20,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from google.cloud import storage as gcs
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from core.db import get_firestore_client
-
-from models import Deal, DealCreate, DealStage, DealUpdate, WebhookPayload
+from models import Deal, DealStage, DealUpdate, WebhookPayload
+from seed_data import DEMO_DEALS
 
 app = FastAPI(
     title="ClawdForce CRM Simulator",
@@ -41,15 +38,31 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Firestore deal store
+# In-memory deal store (seeded from seed_data.py)
+# In a real CRM this would be a database. For our simulator, in-memory is fine
+# because the data is small and we reseed on restart.
 # ---------------------------------------------------------------------------
-def _get_deal_doc(deal_id: str):
-    db = get_firestore_client()
-    return db.collection("crm_deals").document(deal_id)
+deals_store: dict[str, Deal] = {}
+webhook_log: list[dict] = []
 
-def _get_webhook_col():
-    db = get_firestore_client()
-    return db.collection("crm_webhooks")
+
+def _seed_deals():
+    """Load demo deals into the store with environment-aware WEBHOOK_URL."""
+    env_webhook = os.environ.get("SYNAPSE_WEBHOOK_URL")
+    count = 0
+    for deal in DEMO_DEALS:
+        d = deepcopy(deal)
+        # Override with environment variable if provided
+        if env_webhook:
+            d.webhook_url = env_webhook
+        deals_store[d.deal_id] = d
+        count += 1
+    print(f"✅ Seeded {count} deals into memory store.")
+    if env_webhook:
+        print(f"🔗 Webhook URL override active: {env_webhook}")
+
+
+_seed_deals()
 
 
 # ---------------------------------------------------------------------------
@@ -66,54 +79,42 @@ async def health():
 @app.get("/api/deals")
 async def list_deals():
     """List all deals in the CRM."""
-    db = get_firestore_client()
-    docs = db.collection("crm_deals").stream()
-    deals = [doc.to_dict() for doc in docs]
     return {
-        "deals": deals,
-        "count": len(deals),
+        "deals": [deal.model_dump(mode="json") for deal in deals_store.values()],
+        "count": len(deals_store),
     }
 
 
 @app.post("/api/deals")
-async def create_deal(req: DealCreate):
-    deal_id = req.deal_id or f"OPP-{datetime.utcnow().year}-{uuid.uuid4().hex[:4].upper()}"
-    doc_ref = _get_deal_doc(deal_id)
-    if doc_ref.get().exists:
-        raise HTTPException(status_code=409, detail=f"Deal {deal_id} already exists")
-
-    payload = req.model_dump()
-    payload["deal_id"] = deal_id
-    deal = Deal(**payload)
-    deal.updated_at = datetime.utcnow()
-    doc_ref.set(deal.model_dump(mode="json"))
+async def create_deal(deal: Deal):
+    """Create a new deal programmatically like a human would via UI."""
+    if deal.deal_id in deals_store:
+        raise HTTPException(status_code=400, detail=f"Deal {deal.deal_id} already exists")
+    deals_store[deal.deal_id] = deal
     return deal.model_dump(mode="json")
 
 
 @app.get("/api/deals/{deal_id}")
 async def get_deal(deal_id: str):
     """Get a single deal by ID."""
-    doc = _get_deal_doc(deal_id).get()
-    if not doc.exists:
+    deal = deals_store.get(deal_id)
+    if not deal:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found")
-    return doc.to_dict()
+    return deal.model_dump(mode="json")
 
 
 @app.patch("/api/deals/{deal_id}")
 async def update_deal(deal_id: str, update: DealUpdate):
     """Update a deal's fields."""
-    doc_ref = _get_deal_doc(deal_id)
-    doc = doc_ref.get()
-    if not doc.exists:
+    deal = deals_store.get(deal_id)
+    if not deal:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found")
 
-    deal = Deal(**doc.to_dict())
     update_data = update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(deal, field, value)
     deal.updated_at = datetime.utcnow()
 
-    doc_ref.set(deal.model_dump(mode="json"))
     return deal.model_dump(mode="json")
 
 
@@ -128,12 +129,9 @@ async def change_deal_stage(deal_id: str, stage: str):
     1. Sets close_date to today
     2. Fires webhook to configured URL
     """
-    doc_ref = _get_deal_doc(deal_id)
-    doc = doc_ref.get()
-    if not doc.exists:
+    deal = deals_store.get(deal_id)
+    if not deal:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found")
-        
-    deal = Deal(**doc.to_dict())
 
     try:
         new_stage = DealStage(stage)
@@ -158,17 +156,15 @@ async def change_deal_stage(deal_id: str, stage: str):
     if new_stage == DealStage.CLOSED_WON:
         deal.close_date = date.today()
         
-    doc_ref.set(deal.model_dump(mode="json"))
-        
     # Fire webhook on ALL transitions to keep the Graph holistic
-    webhook_result = await _fire_webhook(deal, doc_ref)
+    webhook_result = await _fire_webhook(deal)
     result["webhook_fired"] = True
     result["webhook_result"] = webhook_result
 
     return result
 
 
-async def _fire_webhook(deal: Deal, doc_ref) -> dict:
+async def _fire_webhook(deal: Deal) -> dict:
     """Fire a webhook using CRM platform emulation.
 
     Resolves the webhook target from:
@@ -176,7 +172,7 @@ async def _fire_webhook(deal: Deal, doc_ref) -> dict:
     2. SYNAPSE_WEBHOOK_URL environment variable
     3. Deal's webhook_url property
     """
-    db = get_firestore_client()
+    from webhook_emitters import emit_webhook_payload
 
     # Resolve webhook target
     webhook_target = None
@@ -184,7 +180,9 @@ async def _fire_webhook(deal: Deal, doc_ref) -> dict:
     # Priority 1: Tenant-aware routing via Firestore
     if deal.tenant_id:
         try:
-            tenant_doc = db.collection("tenants").document(deal.tenant_id).get()
+            from google.cloud import firestore as _fs
+            _db = _fs.Client()
+            tenant_doc = _db.collection("tenants").document(deal.tenant_id).get()
             if tenant_doc.exists:
                 webhook_target = tenant_doc.to_dict().get("webhook_url")
                 print(f"🔗 Resolved webhook URL from tenant config: {webhook_target}")
@@ -201,9 +199,7 @@ async def _fire_webhook(deal: Deal, doc_ref) -> dict:
 
     # Gather historical deals for text synthesis in Graph Generator
     historical_deals = []
-    docs = db.collection("crm_deals").stream()
-    for other_doc in docs:
-        other_deal = Deal(**other_doc.to_dict())
+    for other_deal in deals_store.values():
         if other_deal.deal_id != deal.deal_id and other_deal.company_name.strip().lower() == deal.company_name.strip().lower():
             historical_deals.append({
                 "deal_id": other_deal.deal_id,
@@ -230,18 +226,16 @@ async def _fire_webhook(deal: Deal, doc_ref) -> dict:
         "risks": [r.model_dump() for r in deal.risks],
         "success_metrics": [m.model_dump() for m in deal.success_metrics],
         "sales_transcript": deal.sales_transcript,
-        "contract_pdf_url": deal.contract_pdf_url,
         "contract_file_uri": deal.contract_pdf_url,
         "historical_deals": historical_deals,
     }
 
     # Apply platform emulation — transform to CRM-specific format
     crm_platform = deal.crm_platform or "custom"
-    emitted_payload = internal_payload
+    emitted_payload = emit_webhook_payload(internal_payload, crm_platform)
 
-    log_id = str(uuid.uuid4())
     log_entry = {
-        "id": log_id,
+        "id": str(uuid.uuid4()),
         "deal_id": deal.deal_id,
         "company_name": deal.company_name,
         "webhook_url": webhook_target,
@@ -279,8 +273,7 @@ async def _fire_webhook(deal: Deal, doc_ref) -> dict:
         return {"status": "failed", "error": str(e)}
 
     finally:
-        doc_ref.set(deal.model_dump(mode="json"))
-        _get_webhook_col().document(log_id).set(log_entry)
+        webhook_log.append(log_entry)
 
 
 
@@ -305,12 +298,9 @@ async def upload_contract(deal_id: str, file: UploadFile = File(...)):
     Writes to gs://{UPLOADS_BUCKET}/contracts/{deal_id}/{filename}
     and updates the deal's contract_pdf_url with the GCS URI.
     """
-    doc_ref = _get_deal_doc(deal_id)
-    doc = doc_ref.get()
-    if not doc.exists:
+    deal = deals_store.get(deal_id)
+    if not deal:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found")
-
-    deal = Deal(**doc.to_dict())
 
     file_ext = os.path.splitext(file.filename or "contract.pdf")[1]
     filename = f"{deal_id}_contract{file_ext}"
@@ -327,8 +317,6 @@ async def upload_contract(deal_id: str, file: UploadFile = File(...)):
     deal.contract_pdf_url = gcs_uri
     deal.updated_at = datetime.utcnow()
 
-    doc_ref.set(deal.model_dump(mode="json"))
-
     print(f"[GCS] Uploaded contract: {gcs_uri} ({len(content)} bytes)")
 
     return {
@@ -342,16 +330,12 @@ async def upload_contract(deal_id: str, file: UploadFile = File(...)):
 @app.post("/api/deals/{deal_id}/update-transcript")
 async def update_transcript(deal_id: str, transcript: str = Form(...)):
     """Update the sales call transcript for a deal."""
-    doc_ref = _get_deal_doc(deal_id)
-    doc = doc_ref.get()
-    if not doc.exists:
+    deal = deals_store.get(deal_id)
+    if not deal:
         raise HTTPException(status_code=404, detail=f"Deal {deal_id} not found")
 
-    deal = Deal(**doc.to_dict())
     deal.sales_transcript = transcript
     deal.updated_at = datetime.utcnow()
-
-    doc_ref.set(deal.model_dump(mode="json"))
 
     return {"deal_id": deal_id, "transcript_length": len(transcript)}
 
@@ -362,9 +346,7 @@ async def update_transcript(deal_id: str, transcript: str = Form(...)):
 @app.get("/api/webhooks/log")
 async def get_webhook_log():
     """View the history of fired webhooks."""
-    docs = _get_webhook_col().order_by("timestamp", direction="DESCENDING").limit(100).stream()
-    log_data = [d.to_dict() for d in docs]
-    return {"log": log_data, "count": len(log_data)}
+    return {"log": webhook_log, "count": len(webhook_log)}
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +368,10 @@ async def get_contract_pdf(deal_id: str):
 @app.post("/api/reset")
 async def reset_data():
     """Reset all deals to seed data. Useful for demo reruns."""
-    return {"status": "no_op", "message": "Reset handles via cleanup script and journey runner"}
+    deals_store.clear()
+    webhook_log.clear()
+    _seed_deals()
+    return {"status": "reset", "deal_count": len(deals_store)}
 
 
 # ---------------------------------------------------------------------------

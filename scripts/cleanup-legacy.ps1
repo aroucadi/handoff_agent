@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [string]$ProjectId = "synapse-488201",
+    [string]$ProjectId = "synapse-gemini-live",
     
     [Parameter(Mandatory = $false)]
     [string]$Region = "us-central1"

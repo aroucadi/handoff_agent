@@ -11,7 +11,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Deal, DealStage } from './types';
 import { PIPELINE_STAGES, STAGE_LABELS } from './types';
-import { fetchDeals, changeDealStage, resetData } from './api';
+import { fetchDeals, changeDealStage, resetData, importTemplate } from './api';
 import { PremiumDashboard } from './components/PremiumDashboard';
 import { AdvancedAccountsTable } from './components/AdvancedAccountsTable';
 
@@ -266,6 +266,34 @@ export default function App() {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const handleImportDeal = async (templateId: string) => {
+        try {
+            const menu = document.getElementById('import-menu');
+            if (menu) menu.style.display = 'none';
+
+            setNotification(`⏳ Importing ${templateId.replace('_', ' ')}...`);
+            await importTemplate(templateId);
+            await loadDeals();
+            setActiveTab('opportunities');
+            setNotification('✅ Demo deal imported to Prospecting!');
+            setTimeout(() => setNotification(null), 3000);
+        } catch (err) {
+            console.error('Failed to import deal:', err);
+            setNotification('❌ Failed to import demo deal');
+            setTimeout(() => setNotification(null), 3000);
+        }
+    };
+
+    // Global toggle for the menu (simple approach for demo app)
+    useEffect(() => {
+        (window as any).toggleImportMenu = () => {
+            const menu = document.getElementById('import-menu');
+            if (menu) {
+                menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            }
+        };
+    }, []);
+
     const handleViewContract = (dealId: string, companyName: string) => {
         setPdfModal({ dealId, companyName });
     };
@@ -298,6 +326,21 @@ export default function App() {
                 </div>
                 <div className="app-header__actions">
                     <button className="slds-button slds-button--icon" title="Notifications">🔔</button>
+                    <div className="import-menu-container" style={{ position: 'relative', display: 'inline-block' }}>
+                        <button className="slds-button slds-button--brand" onClick={() => (window as any).toggleImportMenu()}>
+                            📥 Import Demo Deal
+                        </button>
+                        <div id="import-menu" className="import-menu" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #dddbda', borderRadius: '4px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', zIndex: 1000, width: '220px', marginTop: '4px' }}>
+                            <div className="import-menu__item" onClick={() => handleImportDeal('aerospace_expansion')} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f3f3' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Aerospace Expansion</div>
+                                <div style={{ fontSize: '0.7rem', color: '#706e6b' }}>$2.4M • PrecisionMetal Ltd</div>
+                            </div>
+                            <div className="import-menu__item" onClick={() => handleImportDeal('biotech_onboarding')} style={{ padding: '8px 12px', cursor: 'pointer' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Biotech Onboarding</div>
+                                <div style={{ fontSize: '0.7rem', color: '#706e6b' }}>$1.2M • BioSynth Labs</div>
+                            </div>
+                        </div>
+                    </div>
                     <button className="slds-button" onClick={handleReset}>Reset Demo</button>
                     <div className="avatar">
                         <span>AE</span>

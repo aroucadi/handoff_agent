@@ -1,15 +1,27 @@
-import { Play, Star } from 'lucide-react';
+import { Play } from 'lucide-react';
 import BackgroundVideo from './BackgroundVideo';
 import Navbar from './Navbar';
 
 export default function LandingPage() {
 
+    const cloudfrontSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4";
+    const localSrc = "/synapse-brand.mp4";
+    const backgroundSrc = typeof window !== "undefined"
+        && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+        ? localSrc
+        : cloudfrontSrc;
+    const globalWithStatic = globalThis as typeof globalThis & {
+        __REMOTION_STATIC_FILE__?: (path: string) => string;
+    };
+    const assetResolver = globalWithStatic.__REMOTION_STATIC_FILE__;
+    const dashboardImageSrc = typeof assetResolver === "function"
+        ? assetResolver("synapse_dashboard_mockup.png")
+        : "/synapse_dashboard_mockup.png";
+
     return (
         <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
             {/* Background Video Spec: 120% scale handled in component */}
-            <BackgroundVideo
-                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
-            />
+            <BackgroundVideo src={backgroundSrc} />
 
             {/* Navbar Spec: 102px height, 1440px max-width */}
             <Navbar />
@@ -18,30 +30,23 @@ export default function LandingPage() {
             <main className="relative pt-[162px] pb-20 px-6 max-w-[871px] mx-auto flex flex-col items-center text-center z-[2]">
 
                 {/* Trusted Badge Spec: Similar to image reference */}
-                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-sm animate-fade-in">
-                    <div className="flex -space-x-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="w-6 h-6 rounded-full border-2 border-black bg-white/10 flex items-center justify-center overflow-hidden">
-                                <span className="text-[10px]"><Star size={10} className="fill-white" /></span>
-                            </div>
-                        ))}
-                    </div>
-                    <span className="text-sm font-medium text-white/80">Trusted by over <span className="text-white font-bold">12,000+</span> CS teams globally</span>
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-10 backdrop-blur-sm animate-fade-in text-[10px] font-black uppercase tracking-widest text-[#f6f7f9]/50">
+                    Unified Relationship Intelligence
                 </div>
 
                 {/* Heading Block Spec: 10px gap, 76px size, 1.15 line-height */}
                 <div className="flex flex-col gap-2.5 mb-10 transition-all duration-700">
                     <h1 className="text-5xl md:text-[76px] font-medium font-inter leading-[1.15] tracking-[-2px] text-gradient">
-                        Restore memory.
+                        Live Voice Intelligence.
                     </h1>
                     <h1 className="text-5xl md:text-[76px] font-normal font-serif italic leading-[1.15] tracking-[-2px] text-white opacity-90">
-                        Focus on the briefing.
+                        Grounded in your Graph.
                     </h1>
                 </div>
 
                 {/* Subtitle Spec: Manrope max-width 613px, 18px size, 26px line-height */}
-                <p className="text-[18px] leading-[26px] text-[#f6f7f9] opacity-90 max-w-[613px] mb-12 font-regular">
-                    Synapse handles deal context extraction and knowledge grounding, so your teams can walk into every briefing fully informed with our Live Agent.
+                <p className="text-[18px] leading-[26px] text-[#f6f7f9] opacity-90 max-w-[750px] mb-12 font-regular">
+                    Experience the first multimodal, voice-first briefing engine. Synapse transforms your CRM data into a living Knowledge Graph, empowering Sales, Success, and Win-back teams with real-time intelligence from Salesforce, HubSpot, and Dynamics.
                 </p>
 
                 {/* CTA Buttons Spec: 22px gap, vertically centered */}
@@ -68,7 +73,7 @@ export default function LandingPage() {
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-br from-primary-purple/10 to-transparent rounded-[24px] pointer-events-none" />
                     <img
-                        src="/synapse_dashboard_mockup.png"
+                        src={dashboardImageSrc}
                         alt="Synapse Dashboard Preview"
                         className="w-full h-auto rounded-[8px] object-cover shadow-2xl relative z-10"
                     />

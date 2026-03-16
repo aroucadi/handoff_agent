@@ -59,10 +59,10 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/api:${var.deploy_tag}"
 
       ports {
-        container_port = 8000
+        container_port = 8080
       }
 
       env {
@@ -103,8 +103,12 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
       env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v5.0.0-ROLE-BASED-DASHBOARD"
+        value = "v5.0.1-CORE-AUTH-FIX"
       }
 
       resources {
@@ -149,10 +153,10 @@ resource "google_cloud_run_v2_service" "graph_generator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/graph-generator:${var.deploy_tag}"
 
       ports {
-        container_port = 8002
+        container_port = 8080
       }
 
       env {
@@ -181,8 +185,12 @@ resource "google_cloud_run_v2_service" "graph_generator" {
         }
       }
       env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v4.3.0-LIVE-AUDIO-FIXES"
+        value = "v4.3.0-SECURITY-HARDENING"
       }
 
       resources {
@@ -225,10 +233,10 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/crm-simulator:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/crm-simulator:${var.deploy_tag}"
 
       ports {
-        container_port = 8001
+        container_port = 8080
       }
       
       env {
@@ -236,8 +244,16 @@ resource "google_cloud_run_v2_service" "crm_simulator" {
         value = "1"
       }
       env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
+      }
+      env {
         name  = "REDEPLOY_TRIGGER"
-        value = "v3.7.0-GEMINI-2.5-UPGRADE"
+        value = "v3.7.0-SECURITY-HARDENING"
       }
 
       resources {
@@ -280,10 +296,10 @@ resource "google_cloud_run_v2_service" "hub" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/hub:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/hub:${var.deploy_tag}"
 
       ports {
-        container_port = 8003
+        container_port = 8080
       }
 
       env {
@@ -318,6 +334,10 @@ resource "google_cloud_run_v2_service" "hub" {
       env {
         name  = "SYNAPSE_ADMIN_KEY"
         value = var.synapse_admin_key
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
       }
 
       resources {
@@ -360,10 +380,10 @@ resource "google_cloud_run_v2_service" "admin" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/admin:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/synapse/admin:${var.deploy_tag}"
 
       ports {
-        container_port = 8004
+        container_port = 8080
       }
 
       env {
@@ -377,6 +397,10 @@ resource "google_cloud_run_v2_service" "admin" {
       env {
         name  = "SYNAPSE_ADMIN_KEY"
         value = var.synapse_admin_key
+      }
+      env {
+        name  = "DEMO_SECRET_KEY"
+        value = var.demo_secret_key
       }
 
       resources {

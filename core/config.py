@@ -13,7 +13,35 @@ class CoreConfig:
     """Unified application configuration."""
 
     # GCP
-    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID", "synapse-488201"))
+    project_id: str = field(default_factory=lambda: os.environ.get("PROJECT_ID") or CoreConfig._resolve_project_id())
+
+    @staticmethod
+    def _resolve_project_id() -> str:
+        """Attempt to resolve project ID from gcloud if not in environment."""
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                capture_output=True, text=True, check=False
+            )
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    def resolve_run_url(self, service_name: str, region: str = None) -> str:
+        """Dynamically resolve the URL of a Cloud Run service."""
+        try:
+            import subprocess
+            reg = region or self.region
+            result = subprocess.run(
+                ["gcloud", "run", "services", "describe", service_name, "--region", reg, "--project", self.project_id, "--format", "value(status.url)"],
+                capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+            return ""
+        except Exception:
+            return ""
     region: str = field(default_factory=lambda: os.environ.get("REGION", "us-central1"))
     # Gemini 3.x preview generation models require the global endpoint
     gen_region: str = field(default_factory=lambda: os.environ.get("GEN_REGION", "global"))
@@ -52,13 +80,13 @@ class CoreConfig:
     skill_graphs_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "SKILL_GRAPHS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-graphs",
+            f"{os.environ.get('PROJECT_ID', '')}-synapse-graphs" if os.environ.get('PROJECT_ID') else "synapse-graphs",
         )
     )
     uploads_bucket: str = field(
         default_factory=lambda: os.environ.get(
             "UPLOADS_BUCKET",
-            f"{os.environ.get('PROJECT_ID', 'synapse-488201')}-synapse-uploads",
+            f"{os.environ.get('PROJECT_ID', '')}-synapse-uploads" if os.environ.get('PROJECT_ID') else "synapse-uploads",
         )
     )
 

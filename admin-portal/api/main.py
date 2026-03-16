@@ -58,7 +58,7 @@ async def create_tenant(tenant: TenantCreate, admin_key: str = Depends(verify_ad
         "name": tenant.name,
         "brand_name": tenant.brand_name,
         "crm_type": tenant.crm_type,
-        "status": "provisioned",
+        "status": "configuring",
         "crm": {
             "crm_type": tenant.crm_type,
             "connected": False

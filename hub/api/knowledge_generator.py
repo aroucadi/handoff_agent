@@ -100,14 +100,23 @@ async def generate_product_knowledge(
         ),
     )
 
-    markdown_content = response.text
+    # Robustly handle potential BOM or encoding issues
+    try:
+        raw_text = response.text
+        if not raw_text:
+             raise ValueError("Empty response from AI")
+        # Strip BOM if present
+        markdown_content = raw_text.encode('utf-8', 'ignore').decode('utf-8').lstrip('\ufeff')
+    except Exception as e:
+        log.error(f"Error decoding AI response: {e}")
+        raise
 
     # ── Store in GCS ─────────────────────────────────────────────
     if SKILL_GRAPHS_BUCKET:
         bucket = gcs.bucket(SKILL_GRAPHS_BUCKET)
         blob_path = f"product/{product.node_id}.md"
         blob = bucket.blob(blob_path)
-        blob.upload_from_string(markdown_content, content_type="text/markdown")
+        blob.upload_from_string(markdown_content.encode('utf-8'), content_type="text/markdown")
         log.info(f"Stored knowledge node at gs://{SKILL_GRAPHS_BUCKET}/{blob_path}")
 
     # ── Index in Firestore ───────────────────────────────────────

@@ -11,53 +11,20 @@ from __future__ import annotations
 import re
 import yaml
 
-from core.storage import read_node, read_static_node, list_client_nodes
-from core.db import get_firestore_client
-from graph.search import search_nodes, search_entities
-
+from core.auth import verify_tenant_access
 
 from fastapi import HTTPException
 
 def _verify_tenant_access(tenant_id: str, client_id: str):
-    """Authoritative tenant access verification.
-    
-    Checks if the given client_id belongs to the tenant_id by verifying
-    the 'tenant_id' field on the graph status documents.
-    """
+    """Bridge to core.auth verification with FastAPI exception handling."""
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Tenant context required")
     
-    # Fast path: deterministic prefix matches tenant
-    if client_id.startswith(f"{tenant_id}_"):
-        return True
-
-    # Authoritative check from Firestore (for non-prefixed or legacy)
-    db = get_firestore_client()
-    
-    # Check skill_graphs or knowledge_graphs status docs
-    for coll in ["skill_graphs", "knowledge_graphs"]:
-        doc = db.collection(coll).document(client_id).get()
-        if doc.exists:
-            stored_tenant = doc.to_dict().get("tenant_id")
-            if stored_tenant == tenant_id:
-                return True
-            else:
-                raise HTTPException(
-                    status_code=403, 
-                    detail=f"Access denied: Client {client_id} does not belong to tenant {tenant_id}"
-                )
-
-    # Note: If no graph doc exists yet, we let it pass the isolation check 
-    # but the subsequent read will naturally fail if the data isn't there.
-    # However, for 100% isolation, we return True only if we are CERTAIN or safe.
-    # For now, prefix is our primary trust anchor.
-    if client_id.startswith(f"{tenant_id}_"):
-        return True
-        
-    raise HTTPException(
-        status_code=403, 
-        detail=f"Access denied: No authoritative ownership found for {client_id} under tenant {tenant_id}"
-    )
+    if not verify_tenant_access(tenant_id, client_id):
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Access denied: No authoritative ownership found for {client_id} under tenant {tenant_id}"
+        )
 
 
 # ── Legacy Markdown Graph Traversal ──────────────────────────────

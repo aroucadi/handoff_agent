@@ -27,8 +27,8 @@ from seed_data import DEMO_DEALS
 import os
 
 # The Synapse API endpoint for CRM webhooks (remote default)
-DEFAULT_WEBHOOK_URL = "https://synapse-api-uicugotuta-uc.a.run.app/api/webhooks/crm/deal-closed"
-WEBHOOK_URL = os.environ.get("SYNAPSE_WEBHOOK_URL") or DEFAULT_WEBHOOK_URL
+DEFAULT_WEBHOOK_BASE = "AUTO"
+WEBHOOK_URL = os.environ.get("SYNAPSE_WEBHOOK_URL")
 
 
 async def seed_rag(tenant_id: str = "default-tenant", lite: bool = False):
@@ -45,7 +45,8 @@ async def seed_rag(tenant_id: str = "default-tenant", lite: bool = False):
     print(f"Starting RAG seeding for tenant: {tenant_id}")
     print(f"Stats: {total_deals} deals across {len(set(d.company_name for d in deals_to_process))} accounts")
     if lite:
-        print("⚠️ LITE MODE ACTIVE: Processing heavily restricted to prevent quota abuse.")
+        print("⚠️ LITE MODE ACTIVE: Processing restricted to 3 deals.")
+    print("🔒 ANTI-SUSPENSION MODE: Active. Delays of 15-25s enforced between all API calls.")
     print("=" * 60)
 
     async with httpx.AsyncClient() as client:
@@ -114,9 +115,11 @@ async def seed_rag(tenant_id: str = "default-tenant", lite: bool = False):
             except Exception as e:
                 print(f"    ❌ Error: {str(e)}")
 
-            if lite and idx < total_deals:
-                print("    ⏳ [LITE MODE] Pausing 5s before next webhook payload to throttle LLMs...")
-                await asyncio.sleep(5)
+            # Anti-Suspension: mandatory throttled delay (15-25s) between RAG seeding payloads.
+            import random
+            wait_time = 15 + random.uniform(5.0, 10.0)
+            print(f"    ⏳ Anti-Suspension: Sleeping {wait_time:.1f}s for Gemini/Vertex AI safety...")
+            await asyncio.sleep(wait_time)
 
     print("\n" + "=" * 60)
     print(f"RAG seeding complete for tenant: {tenant_id}")
@@ -129,4 +132,13 @@ if __name__ == "__main__":
     parser.add_argument("--lite", action="store_true", help="Limit to 3 deals and add delays to prevent API abuse.")
     args = parser.parse_args()
     
+    # Resolve webhook URL if not provided
+    global WEBHOOK_URL
+    if not WEBHOOK_URL:
+        base_url = config.resolve_run_url("synapse-api")
+        if not base_url:
+            print("❌ Error: Could not resolve Synapse API URL for RAG seeding. Provide SYNAPSE_WEBHOOK_URL env var.")
+            sys.exit(1)
+        WEBHOOK_URL = f"{base_url.rstrip('/')}/api/webhooks/crm/deal-closed"
+
     asyncio.run(seed_rag(args.tenant, lite=args.lite))

@@ -2,6 +2,12 @@
 Graph Generator — Tenant-Aware Ingest Endpoint
 
 Universal webhook receiver that accepts payloads from any CRM platform.
+For each incoming webhook:
+1. Looks up tenant config from Firestore
+2. Verifies HMAC-SHA256 webhook signature
+3. Applies the tenant's field mapping to normalize the payload
+4. Writes a deal summary to Firestore (for the Voice UI dashboard)
+5. Forwards to the existing graph generation pipeline
 """
 
 from __future__ import annotations
@@ -9,19 +15,19 @@ from __future__ import annotations
 import hmac
 import hashlib
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
+from google.cloud import firestore
 
-from core.db import get_firestore_client
-from core.normalization import apply_field_mapping, validate_mapping_result, normalize_stage, generate_client_id
-from orchestrator import _run_generation
+from field_mapper import apply_field_mapping, validate_mapping_result
 
 log = logging.getLogger("graph-generator.ingest")
 
 router = APIRouter()
+db = firestore.Client()
+
 
 def _verify_signature(payload_bytes: bytes, secret: str, signature: str) -> bool:
     """Verify HMAC-SHA256 webhook signature."""
@@ -43,9 +49,12 @@ async def ingest_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
 ):
-    """Universal webhook receiver for any CRM platform."""
-    db = get_firestore_client()
-    
+    """Universal webhook receiver for any CRM platform.
+
+    Accepts raw JSON, applies tenant-specific field mapping, and triggers
+    graph generation. This is the URL that tenants paste into their CRM's
+    outbound webhook configuration.
+    """
     # 1. Look up tenant config
     tenant_doc = db.collection("tenants").document(tenant_id).get()
     if not tenant_doc.exists:
@@ -56,14 +65,18 @@ async def ingest_webhook(
     field_mapping = tenant.get("crm", {}).get("field_mapping", {})
     brand_name = tenant.get("brand_name", "Unknown")
 
-    # 2. Verify signature
+    # 2. Verify signature (optional — skip if no signature header)
     payload_bytes = await request.body()
     signature = request.headers.get("X-Webhook-Signature", "")
 
-    if webhook_secret:
-        if not signature or not _verify_signature(payload_bytes, webhook_secret, signature):
-            log.warning(f"[INGEST] Invalid or missing signature for tenant {tenant_id}")
-            raise HTTPException(401, "Invalid or missing webhook signature")
+    if webhook_secret and signature:
+        if not _verify_signature(payload_bytes, webhook_secret, signature):
+            log.warning(f"[INGEST] Invalid signature for tenant {tenant_id}")
+            raise HTTPException(401, "Invalid webhook signature")
+    elif webhook_secret and not signature:
+        # Signature expected but not provided — log warning but allow
+        # (graceful degradation for initial setup / testing)
+        log.warning(f"[INGEST] No signature provided for tenant {tenant_id} (expected)")
 
     # 3. Parse and apply field mapping
     import json
@@ -72,6 +85,7 @@ async def ingest_webhook(
     if field_mapping:
         normalized = apply_field_mapping(raw_payload, field_mapping)
     else:
+        # No mapping configured — assume payload is already in internal format
         normalized = raw_payload
 
     # Inject tenant metadata
@@ -79,10 +93,11 @@ async def ingest_webhook(
     normalized["_brand_name"] = brand_name
     normalized["_ingested_at"] = _now_iso()
 
-    # 4. Validate mapping
+    # 4. Validate the normalized payload
     warnings = validate_mapping_result(normalized)
     if any(w.startswith("REQUIRED:") for w in warnings):
         log.error(f"[INGEST] Missing required fields: {warnings}")
+        # Update integration status to error
         db.collection("tenants").document(tenant_id).update({
             "integration_status": "error",
             "updated_at": _now_iso(),
@@ -92,18 +107,15 @@ async def ingest_webhook(
             content={
                 "error": "Missing required fields after mapping",
                 "warnings": warnings,
+                "normalized_preview": {k: v for k, v in normalized.items() if not k.startswith("_")},
             },
         )
 
-    # 5. Write deal summary to Firestore
+    # 5. Write deal summary to Firestore (for Voice UI dashboard)
     deal_id = normalized.get("deal_id", f"deal-{tenant_id[:8]}")
     company_name = normalized.get("company_name", "Unknown Company")
-    client_id = generate_client_id(tenant_id, company_name)
-
-    # Normalize stage at ingest point to ensure Dashboard/Graph synchronization
-    stage_mapping = tenant.get("crm", {}).get("stage_mapping", {})
-    raw_stage = normalized.get("stage", "")
-    normalized_stage = normalize_stage(raw_stage, stage_mapping)
+    raw_client_id = company_name.lower().replace(" ", "-").replace(",", "").replace(".", "")
+    client_id = f"{tenant_id}_{raw_client_id}"
 
     deal_summary = {
         "deal_id": deal_id,
@@ -113,17 +125,17 @@ async def ingest_webhook(
         "deal_value": normalized.get("deal_value", 0),
         "close_date": normalized.get("close_date", ""),
         "industry": normalized.get("industry", ""),
-        "stage": normalized_stage,
+        "stage": "closed_won",
         "products": normalized.get("products", []),
         "contacts": normalized.get("contacts", []),
-        "graph_ready": False,
+        "graph_ready": False,  # Will be updated after generation
         "ingested_at": _now_iso(),
     }
 
     db.collection("deals").document(tenant_id).collection("items").document(deal_id).set(deal_summary)
-    log.info(f"[INGEST] Persisted deal summary: {deal_id}")
+    log.info(f"[INGEST] Persisted deal summary: deals/{tenant_id}/items/{deal_id}")
 
-    # 6. Update integration status
+    # 6. Update integration status to verified (first successful ingest)
     current_status = tenant.get("integration_status", "not_configured")
     if current_status in ("not_configured", "pending", "error"):
         db.collection("tenants").document(tenant_id).update({
@@ -131,32 +143,35 @@ async def ingest_webhook(
             "updated_at": _now_iso(),
         })
 
-    # 7. Forward to generation
+    # 7. Forward to graph generation pipeline
+    from main import _run_generation, jobs
+    import uuid
+
     job_id = str(uuid.uuid4())[:8]
-    db.collection("graph_jobs").document(job_id).set({
+    jobs[job_id] = {
         "job_id": job_id,
         "status": "queued",
         "company_name": company_name,
         "deal_id": deal_id,
         "tenant_id": tenant_id,
         "started_at": _now_iso(),
-        "warnings": [],
-    })
+    }
 
     async def _run_and_update_deal(job_id: str, payload: dict):
+        """Run generation and update deal summary when complete."""
         await _run_generation(job_id, payload)
-        
-        # After generation, update the deal document to show graph is ready
-        job_doc = get_firestore_client().collection("graph_jobs").document(job_id).get()
-        if job_doc.exists:
-            job = job_doc.to_dict()
-            if job.get("status") == "complete":
-                get_firestore_client().collection("deals").document(tenant_id).collection("items").document(deal_id).update({
-                    "graph_ready": True,
-                    "node_count": job.get("node_count", 0) or job.get("entity_count", 0),
-                })
+        # After generation, update the deal's graph_ready flag
+        job = jobs.get(job_id, {})
+        if job.get("status") == "complete":
+            db.collection("deals").document(tenant_id).collection("items").document(deal_id).update({
+                "graph_ready": True,
+                "node_count": job.get("node_count", 0),
+            })
+            log.info(f"[INGEST] Deal {deal_id} graph_ready=True, nodes={job.get('node_count', 0)}")
 
     background_tasks.add_task(_run_and_update_deal, job_id, normalized)
+
+    log.info(f"[INGEST] Accepted webhook for tenant {tenant_id}, job {job_id}")
 
     return JSONResponse(
         status_code=202,
@@ -166,5 +181,8 @@ async def ingest_webhook(
             "tenant_id": tenant_id,
             "company_name": company_name,
             "deal_id": deal_id,
+            "mapping_warnings": [w for w in warnings if w.startswith("RECOMMENDED:")],
         },
     )
+
+

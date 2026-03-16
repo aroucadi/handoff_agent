@@ -1,5 +1,6 @@
 param(
-    [string]$ProjectId = "synapse-488201",
+    [Parameter(Mandatory=$true)]
+    [string]$ProjectId,
     [string]$Region = "us-central1"
 )
 

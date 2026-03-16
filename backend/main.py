@@ -13,7 +13,8 @@ import uuid
 from datetime import datetime
 
 import httpx
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from typing import Optional
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -21,8 +22,10 @@ from pydantic import BaseModel
 import os
 import sys
 
-# Add root directory to python path for shared modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add root directory to python path for shared modules only if not already in containerized flat structure
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if os.path.exists(os.path.join(project_root, 'core')) and project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from core.config import config
 # Hub API URL

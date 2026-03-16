@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import CrmConfig from './CrmConfig.tsx';
+import CrmConfig from './CrmConfig';
 import MappingConfig from './MappingConfig';
 import KnowledgeSourcesConfig from './KnowledgeSourcesConfig';
-import ProductCatalog from './ProductCatalog.tsx';
-import AgentConfig from './AgentConfig.tsx';
-import TestPanel from './TestPanel.tsx';
+import ProductCatalog from './ProductCatalog';
+import AgentConfig from './AgentConfig';
+import TestPanel from './TestPanel';
 import RoleViewConfig from './RoleViewConfig';
 
 interface Product {

@@ -122,11 +122,16 @@ export default function RoleSelection() {
         navigate(`/dashboard?${params.toString()}`);
     };
 
+    const cloudfrontSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4";
+    const localSrc = "/synapse-brand.mp4";
+    const backgroundSrc = typeof window !== "undefined"
+        && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+        ? localSrc
+        : cloudfrontSrc;
+
     return (
         <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
-            <BackgroundVideo
-                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4"
-            />
+            <BackgroundVideo src={backgroundSrc} />
 
 
             <main className="relative pt-8 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center">

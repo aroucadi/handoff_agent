@@ -20,8 +20,17 @@ if [ -z "$GEMINI_API_KEY" ]; then
     exit 1
 fi
 
-PROJECT_ID="${PROJECT_ID:-synapse-dev}"
-BUCKET="${SKILL_GRAPHS_BUCKET:-${PROJECT_ID}-skill-graphs}"
+if [ -z "$PROJECT_ID" ]; then
+    PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "")
+fi
+
+if [ -z "$PROJECT_ID" ]; then
+    echo "❌ PROJECT_ID not set and could not be resolved from gcloud. Export it first:"
+    echo "   export PROJECT_ID='your-project-id'"
+    exit 1
+fi
+
+BUCKET="${SKILL_GRAPHS_BUCKET:-${PROJECT_ID}-synapse-graphs}"
 
 echo "📋 Configuration:"
 echo "   PROJECT_ID: $PROJECT_ID"

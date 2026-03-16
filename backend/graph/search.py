@@ -11,7 +11,7 @@ from google.genai.types import EmbedContentConfig
 from google.cloud.firestore_v1.vector import Vector
 
 from core.config import config
-from graph.traversal import _verify_tenant_access
+from core.auth import verify_tenant_access
 
 
 def _get_firestore() -> firestore.Client:

@@ -18,7 +18,6 @@ SYNAPSE_SCHEMA_FIELDS = [
     "deal_id",
     "company_name",
     "deal_value",
-    "stage",
     "close_date",
     "industry",
     "employee_count",
@@ -29,7 +28,6 @@ SYNAPSE_SCHEMA_FIELDS = [
     "success_metrics",
     "sales_transcript",
     "contract_pdf_url",
-    "contract_file_uri",
     "csm_id",
 ]
 
@@ -38,31 +36,20 @@ SYNAPSE_SCHEMA_FIELDS = [
 # Based on Salesforce sObject Describe API field names for
 # Opportunity and Account objects.
 SALESFORCE_TEMPLATE = {
-    "field_mapping": {
-        "Id": "deal_id",
-        "Account.Name": "company_name",
-        "Amount": "deal_value",
-        "StageName": "stage",
-        "CloseDate": "close_date",
-        "Account.Industry": "industry",
-        "Account.NumberOfEmployees": "employee_count",
-        "SLA_Days__c": "sla_days",
-        "OpportunityLineItems": "products",
-        "OpportunityContactRoles": "contacts",
-        "Risk_Factors__c": "risks",
-        "Success_Metrics__c": "success_metrics",
-        "Sales_Transcript__c": "sales_transcript",
-        "Contract_PDF_URL__c": "contract_pdf_url",
-        "OwnerId": "csm_id",
-    },
-    "stage_mapping": {
-        "Discovery": "prospecting",
-        "Qualification": "qualification",
-        "Proposal/Price Quote": "negotiation",
-        "Negotiation/Review": "negotiation",
-        "Closed Won": "closed_won",
-        "Closed Lost": "closed_lost",
-    }
+    "Id": "deal_id",
+    "Account.Name": "company_name",
+    "Amount": "deal_value",
+    "CloseDate": "close_date",
+    "Account.Industry": "industry",
+    "Account.NumberOfEmployees": "employee_count",
+    "SLA_Days__c": "sla_days",
+    "OpportunityLineItems": "products",
+    "OpportunityContactRoles": "contacts",
+    "Risk_Factors__c": "risks",
+    "Success_Metrics__c": "success_metrics",
+    "Sales_Transcript__c": "sales_transcript",
+    "Contract_PDF_URL__c": "contract_pdf_url",
+    "OwnerId": "csm_id",
 }
 
 
@@ -70,32 +57,20 @@ SALESFORCE_TEMPLATE = {
 # Based on HubSpot Properties API field names for Deal and Company
 # objects. HubSpot nests deal properties under "properties".
 HUBSPOT_TEMPLATE = {
-    "field_mapping": {
-        "properties.hs_object_id": "deal_id",
-        "properties.dealname": "company_name",
-        "properties.amount": "deal_value",
-        "properties.dealstage": "stage",
-        "properties.closedate": "close_date",
-        "associations.company.properties.industry": "industry",
-        "associations.company.properties.numberofemployees": "employee_count",
-        "properties.sla_days": "sla_days",
-        "associations.line_items": "products",
-        "associations.contacts": "contacts",
-        "properties.risk_factors": "risks",
-        "properties.success_metrics": "success_metrics",
-        "properties.sales_transcript": "sales_transcript",
-        "properties.contract_pdf_url": "contract_pdf_url",
-        "properties.hubspot_owner_id": "csm_id",
-    },
-    "stage_mapping": {
-        "appointmentscheduled": "prospecting",
-        "qualifiedtobuy": "qualification",
-        "presentationscheduled": "negotiation",
-        "decisionmakerboughtin": "negotiation",
-        "contractsent": "negotiation",
-        "closedwon": "closed_won",
-        "closedlost": "closed_lost",
-    }
+    "properties.hs_object_id": "deal_id",
+    "properties.dealname": "company_name",
+    "properties.amount": "deal_value",
+    "properties.closedate": "close_date",
+    "associations.company.properties.industry": "industry",
+    "associations.company.properties.numberofemployees": "employee_count",
+    "properties.sla_days": "sla_days",
+    "associations.line_items": "products",
+    "associations.contacts": "contacts",
+    "properties.risk_factors": "risks",
+    "properties.success_metrics": "success_metrics",
+    "properties.sales_transcript": "sales_transcript",
+    "properties.contract_pdf_url": "contract_pdf_url",
+    "properties.hubspot_owner_id": "csm_id",
 }
 
 
@@ -103,24 +78,20 @@ HUBSPOT_TEMPLATE = {
 # Based on Dynamics 365 Web API EntityMetadata field names for
 # Opportunity and Account entities.
 DYNAMICS_TEMPLATE = {
-    "field_mapping": {
-        "opportunityid": "deal_id",
-        "customerid_account.name": "company_name",
-        "estimatedvalue": "deal_value",
-        "statuscode": "stage",
-        "estimatedclosedate": "close_date",
-        "customerid_account.industrycode": "industry",
-        "customerid_account.numberofemployees": "employee_count",
-        "new_sladays": "sla_days",
-        "opportunity_products": "products",
-        "opportunity_contacts": "contacts",
-        "new_riskfactors": "risks",
-        "new_successmetrics": "success_metrics",
-        "new_salestranscript": "sales_transcript",
-        "new_contractpdfurl": "contract_pdf_url",
-        "ownerid": "csm_id",
-    },
-    "stage_mapping": {}
+    "opportunityid": "deal_id",
+    "customerid_account.name": "company_name",
+    "estimatedvalue": "deal_value",
+    "estimatedclosedate": "close_date",
+    "customerid_account.industrycode": "industry",
+    "customerid_account.numberofemployees": "employee_count",
+    "new_sladays": "sla_days",
+    "opportunity_products": "products",
+    "opportunity_contacts": "contacts",
+    "new_riskfactors": "risks",
+    "new_successmetrics": "success_metrics",
+    "new_salestranscript": "sales_transcript",
+    "new_contractpdfurl": "contract_pdf_url",
+    "ownerid": "csm_id",
 }
 
 
@@ -128,40 +99,26 @@ DYNAMICS_TEMPLATE = {
 # Identity mapping — the Synapse CRM simulator already uses the
 # internal field names directly (this is backward-compatible).
 CUSTOM_TEMPLATE = {
-    "field_mapping": {
-        "deal_id": "deal_id",
-        "company_name": "company_name",
-        "deal_value": "deal_value",
-        "stage": "stage",
-        "close_date": "close_date",
-        "industry": "industry",
-        "employee_count": "employee_count",
-        "sla_days": "sla_days",
-        "products": "products",
-        "contacts": "contacts",
-        "risks": "risks",
-        "success_metrics": {
-            "target": "success_metrics",
-            "item_map": {
-                "metric": "name",
-                "current_value": "baseline",
-                "target_value": "target",
-                "timeframe": "timeline",
-            },
-            "preserve_unmapped": True,
-        },
-        "sales_transcript": "sales_transcript",
-        "contract_pdf_url": "contract_pdf_url",
-        "contract_file_uri": "contract_file_uri",
-        "csm_id": "csm_id",
-    },
-    "stage_mapping": {}
+    "deal_id": "deal_id",
+    "company_name": "company_name",
+    "deal_value": "deal_value",
+    "close_date": "close_date",
+    "industry": "industry",
+    "employee_count": "employee_count",
+    "sla_days": "sla_days",
+    "products": "products",
+    "contacts": "contacts",
+    "risks": "risks",
+    "success_metrics": "success_metrics",
+    "sales_transcript": "sales_transcript",
+    "contract_pdf_url": "contract_pdf_url",
+    "csm_id": "csm_id",
 }
 
 
 # ── Template Registry ───────────────────────────────────────────
 
-CRM_TEMPLATES: dict[str, dict[str, object]] = {
+CRM_TEMPLATES: dict[str, dict[str, str]] = {
     "salesforce": SALESFORCE_TEMPLATE,
     "hubspot": HUBSPOT_TEMPLATE,
     "dynamics": DYNAMICS_TEMPLATE,
