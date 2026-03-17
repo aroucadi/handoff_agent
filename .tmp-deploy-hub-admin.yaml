@@ -1,0 +1,17 @@
+steps:
+  # Hub API + Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--no-cache', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest', '-f', 'hub/Dockerfile.api', '.']
+
+  # Admin Portal API + Frontend
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--no-cache', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest', '-f', 'admin-portal/Dockerfile.api', '.']
+
+images:
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:${_TAG}'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/hub:latest'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/admin:${_TAG}'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/synapse/admin:latest'
+
+substitutions:
+  _TAG: fix-spa-v1

@@ -34,7 +34,7 @@ from core.config import config
 from core.db import get_firestore_async_client
 from agent.tools import TOOL_FUNCTIONS
 from agent.prompts import get_role_prompt, get_role_config
-from graph.traversal import get_index
+from graph.traversal import get_index, get_graph_overview
 import json
 
 
@@ -347,22 +347,25 @@ class LiveSession:
         # Deterministic Kickoff: Pre-load the graph index locally to bypass the 1008 API crash.
         # This prevents the LLM from attempting to monologue while generating a tool call.
         try:
-            index_data = get_index(self.tenant_id, self.client_id, "client")
-            node_id = index_data.get("node_id") if index_data else None
-            if node_id:
-                self.nodes_visited.append(node_id)
+            # Use unified graph overview for kickoff (handles both structured and legacy)
+            overview = get_graph_overview(self.tenant_id, self.client_id)
+            
+            # Track initial nodes/entities
+            if overview.get("graph_format") == "structured":
+                for ke in overview.get("key_entities", []):
+                    if ke.get("id"):
+                        self.nodes_visited.append(ke["id"])
+            else:
+                if overview.get("node_id"):
+                    self.nodes_visited.append(overview["node_id"])
                 
-            # Queue simulated WebSocket events to trick the React UI into updating the dashboard instantly
-            json_result = json.dumps(index_data, default=str)
+            json_result = json.dumps(overview, default=str)
+            
+            # Queue simulated WebSocket event for the UI
             self._initial_events.extend([
                 {
-                    "type": "tool_call",
-                    "name": "read_index",
-                    "args": {"client_id": self.client_id}
-                },
-                {
                     "type": "tool_result",
-                    "name": "read_index",
+                    "name": "graph_overview" if overview.get("graph_format") == "structured" else "read_index",
                     "result": json_result
                 }
             ])
@@ -526,14 +529,27 @@ class LiveSession:
                                         result = await tool_fn(**fn_args)
                                     else:
                                         result = tool_fn(**fn_args)
-                                    # Track visited nodes
+                                    # Track visited nodes (Structured vs Legacy)
                                     try:
                                         result_data = json.loads(result)
+                                        # Legacy mode
                                         if "node_id" in result_data:
                                             self.nodes_visited.append(result_data["node_id"])
-                                            # Forward node_id in the fn_args so the tool_result event can capture it if needed
-                                            fn_args["_node_id"] = result_data["node_id"]
-                                    except (json.JSONDecodeError, KeyError):
+                                        # Structured mode (Direct Entity)
+                                        elif "entity" in result_data and "entity_id" in result_data["entity"]:
+                                            self.nodes_visited.append(result_data["entity"]["entity_id"])
+                                        # Structured mode (Traversal/Bulk)
+                                        elif "entities" in result_data and isinstance(result_data["entities"], list):
+                                            for e in result_data["entities"]:
+                                                if "entity_id" in e:
+                                                    self.nodes_visited.append(e["entity_id"])
+                                        # Special tools (Risk/Product)
+                                        for key in ["risks", "products", "strategies"]:
+                                            if key in result_data and isinstance(result_data[key], list):
+                                                for item in result_data[key]:
+                                                    if "entity_id" in item:
+                                                        self.nodes_visited.append(item["entity_id"])
+                                    except (json.JSONDecodeError, KeyError, TypeError):
                                         pass
                                 else:
                                     result = json.dumps({"error": f"Unknown tool: {fn_name}"})
