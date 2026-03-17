@@ -41,7 +41,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://synapse-gemini-live-3f10f.web.app",
+        "https://synapse-hub-w2zfhg5esq-uc.a.run.app",
+        "https://synapse-hub-515991296186.us-central1.run.app",
+        "https://synapse-admin-w2zfhg5esq-uc.a.run.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,6 +65,11 @@ async def tenant_context_middleware(request: Request, call_next):
     2. Fallback to 'X-Tenant-Id' header (for backward compatibility/internal)
     3. Attach to request.state.tenant_id
     """
+    # Always let CORS preflight through — CORSMiddleware handles these
+    if request.method == "OPTIONS":
+        response = await call_next(request)
+        return response
+
     # Oracle CLOSED logic: only base discovery is bypassed.
     # Individual lookups like /api/tenants/{id} or /api/resolve-tenant MUST be context-aware
     # (except for resolve-tenant which is the bootstrap point itself)
@@ -66,8 +78,10 @@ async def tenant_context_middleware(request: Request, call_next):
     # Restrict /api/tenants bypass to ONLY the base GET listing (Picker)
     is_bypassed = (request.url.path == "/health") or \
                   (request.url.path == "/api/tenants" and request.method == "GET") or \
+                  (request.url.path.startswith("/api/tenants/") and request.method == "GET") or \
                   (request.url.path == "/api/resolve-tenant") or \
                   (request.url.path.startswith("/api/webhooks")) or \
+                  (request.url.path.startswith("/api/crm/") and request.method == "GET") or \
                   (request.url.path in ["/docs", "/openapi.json"])
     
     tenant_id = None
@@ -87,7 +101,11 @@ async def tenant_context_middleware(request: Request, call_next):
     if not is_bypassed and not tenant_id:
         return JSONResponse(
             status_code=401,
-            content={"error": "Tenant context required (X-Tenant-Id or Bearer token)"}
+            content={"error": "Tenant context required (X-Tenant-Id or Bearer token)"},
+            headers={
+                "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+                "Access-Control-Allow-Credentials": "true",
+            }
         )
         
     response = await call_next(request)
@@ -238,10 +256,8 @@ async def resolve_tenant_for_voice_ui(slug: str):
     data = doc.to_dict()
     tid = data.get("tenant_id", doc.id)
     
-    # Auto-issue token for public demo (only if enabled)
-    token = None
-    if data.get("allow_public_demo") is True:
-        token = sign_tenant_context(tid)
+    # Always issue token in demo mode
+    token = sign_tenant_context(tid)
 
     return {
         "tenant_id": tid,

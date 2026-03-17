@@ -14,7 +14,8 @@ const VoiceTenantLayout: React.FC = () => {
             try {
                 // In production, the API URL might need to be absolute or proxied
                 // For this demo, we assume the backend is reachable at /api
-                const resp = await fetch(`/api/resolve-tenant?slug=${slug}`);
+                const apiUrl = import.meta.env.VITE_API_URL || '';
+                const resp = await fetch(`${apiUrl}/api/resolve-tenant?slug=${slug}`);
                 if (!resp.ok) throw new Error('Workspace not found');
                 const tenant = await resp.json();
 

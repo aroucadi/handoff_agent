@@ -6,7 +6,10 @@ interface Tenant {
     tenant_id: string;
     name: string;
     brand_name: string;
-    crm_type: string;
+    crm?: {
+        crm_type: string;
+    };
+    signed_token?: string;
 }
 
 const TenantSelector: React.FC = () => {
@@ -96,7 +99,7 @@ const TenantSelector: React.FC = () => {
                                             {tenant.name}
                                         </h3>
                                         <p className="text-white/40 text-sm font-medium">
-                                            ID: {tenant.tenant_id} • CRM: {tenant.crm_type.toUpperCase()}
+                                            ID: {tenant.tenant_id} • CRM: {(tenant.crm?.crm_type || 'custom').toUpperCase()}
                                         </p>
                                     </div>
                                 </div>

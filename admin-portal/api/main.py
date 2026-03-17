@@ -79,17 +79,33 @@ async def delete_tenant(tenant_id: str, admin_key: str = Depends(verify_admin_ke
     return {"message": f"Tenant {tenant_id} deleted"}
 
 # ── Serve Frontend (SPA) ────────────────────────────────────────
-_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "dist")
-# Also check /app/frontend/dist for Docker container parity
-if not os.path.exists(_frontend_dir):
+_frontend_dir = None
+_candidates = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dist"),
+    "/app/frontend/dist",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist"),
+]
+for _c in _candidates:
+    if os.path.isdir(_c):
+        _frontend_dir = _c
+        break
+if not _frontend_dir:
     _frontend_dir = "/app/frontend/dist"
 
-@app.get("/", include_in_schema=False)
-async def serve_admin_index():
+print(f"[Admin] Frontend dir: {_frontend_dir} (Exists: {os.path.isdir(_frontend_dir)})")
+if os.path.isdir(_frontend_dir):
+    _assets = os.path.join(_frontend_dir, "assets")
+    if os.path.isdir(_assets):
+        print(f"[Admin] Assets: {os.listdir(_assets)}")
+
+
+@app.get("/{path:path}", include_in_schema=False)
+async def catch_all(path: str):
+    """SPA catch-all: serve static files if they exist, otherwise index.html."""
+    file_path = os.path.join(_frontend_dir, path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
     index_path = os.path.join(_frontend_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "Synapse Admin API", "frontend_path": _frontend_dir, "exists": os.path.exists(_frontend_dir)}
-
-if os.path.exists(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="admin-frontend")
+    return {"error": "Not Found"}

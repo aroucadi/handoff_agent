@@ -14,6 +14,7 @@ COPY core/ ./core/
 COPY crm-simulator/main.py ./
 COPY crm-simulator/models.py ./
 COPY crm-simulator/seed_data.py ./
+COPY crm-simulator/webhook_emitters.py ./
 
 # Copy pre-built frontend dist (built by deploy.ps1 before Cloud Build)
 COPY crm-simulator/frontend/dist/ ./frontend/dist/

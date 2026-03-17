@@ -70,12 +70,11 @@ const STEPS = [
 const TenantWizard: React.FC<{ step?: number }> = ({ step: initialStep }) => {
     const { id: legacyId, slug } = useParams<{ id: string; slug: string }>();
     const navigate = useNavigate();
-    const [step, setStep] = useState(initialStep || 1);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-
-    // Resolve effective ID from context or URL
     const id = legacyId || localStorage.getItem('tenant_id');
+
+    const [step, setStep] = useState(initialStep || 1);
+    const [loading, setLoading] = useState(!!id);
+    const [saving, setSaving] = useState(false);
 
     const [config, setConfig] = useState<TenantConfig>({
         name: '',

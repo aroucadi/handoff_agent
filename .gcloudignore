@@ -60,3 +60,7 @@ service-account.json
 # Temp files
 temp_contracts/
 crm-simulator/uploads/
+
+# Investor Demo Assets
+video/
+showcase/

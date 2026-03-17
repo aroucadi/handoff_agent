@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -14,9 +14,7 @@ export default function Navbar() {
 
     const navLinks = [
         { name: 'Home', path: '/' },
-        { name: 'Services', path: '#', hasDropdown: true },
-        { name: 'Reviews', path: '#' },
-        { name: 'Contact us', path: '#' },
+        { name: 'Dashboard', path: '/dashboard?role=csm&tenant_id=9049d8ec' },
     ];
 
     return (
@@ -39,7 +37,6 @@ export default function Navbar() {
                                 className="px-[10px] py-[4px] font-manrope font-medium text-[14px] leading-[22px] text-white hover:text-primary-purple transition-colors flex items-center gap-[3px]"
                             >
                                 {link.name}
-                                {link.hasDropdown && <ChevronDown size={14} className="opacity-60" />}
                             </Link>
                         ))}
                     </div>
@@ -47,11 +44,11 @@ export default function Navbar() {
 
                 {/* Right Side: Buttons with 12px gap */}
                 <div className="hidden md:flex items-center gap-[12px]">
-                    <button className="px-[16px] py-[8px] bg-white border border-[#d4d4d4] rounded-[8px] font-manrope font-semibold text-[14px] leading-[22px] text-[#171717] hover:bg-white/90 transition-all">
-                        Sign In
-                    </button>
-                    <button className="px-[16px] py-[8px] bg-primary-purple rounded-[8px] font-manrope font-semibold text-[14px] leading-[22px] text-[#fafafa] shadow-[0px_4px_16px_rgba(23,23,23,0.04)] hover:bg-primary-purple-hover transition-all">
-                        Get Started
+                    <button 
+                        className="px-[16px] py-[8px] bg-primary-purple rounded-[8px] font-manrope font-semibold text-[14px] leading-[22px] text-[#fafafa] shadow-[0px_4px_16px_rgba(23,23,23,0.04)] hover:bg-primary-purple-hover transition-all"
+                        onClick={() => window.location.href = '/dashboard?role=csm&tenant_id=9049d8ec'}
+                    >
+                        Go to Dashboard
                     </button>
                 </div>
 
@@ -77,8 +74,12 @@ export default function Navbar() {
                         </Link>
                     ))}
                     <div className="flex flex-col gap-4 mt-4">
-                        <button className="w-full py-4 bg-white text-black font-bold rounded-xl">Sign In</button>
-                        <button className="w-full py-4 bg-primary-purple text-white font-bold rounded-xl">Get Started</button>
+                        <button 
+                            className="w-full py-4 bg-primary-purple text-white font-bold rounded-xl"
+                            onClick={() => window.location.href = '/dashboard?role=csm&tenant_id=9049d8ec'}
+                        >
+                            Go to Dashboard
+                        </button>
                     </div>
                 </div>
             )}

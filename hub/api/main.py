@@ -342,26 +342,70 @@ async def test_webhook(tenant_id: str):
         return {"success": False, "steps": steps}
 
 
+# ── Resolve Tenant by Slug ──────────────────────────────────────
+
+@app.get("/api/resolve-tenant")
+def resolve_tenant(slug: str):
+    """Resolve a tenant by slug for the Hub workspace bootstrap."""
+    docs = db.collection(TENANTS_COLLECTION).where("slug", "==", slug).limit(1).stream()
+    for doc in docs:
+        tenant = doc.to_dict()
+        tid = tenant.get("tenant_id", doc.id)
+
+        # Inline token signing (same algo as core.auth but without import)
+        import hmac as _hmac, hashlib as _hl, time as _t, json as _j, base64 as _b64
+        secret = os.environ.get("DEMO_SECRET_KEY", "synapse-demo-fallback-key")
+        payload = _j.dumps({"tenant_id": tid, "exp": int(_t.time()) + 86400, "mode": "demo"}, sort_keys=True)
+        p_b64 = _b64.urlsafe_b64encode(payload.encode()).decode().rstrip("=")
+        sig = _hmac.new(secret.encode(), p_b64.encode(), _hl.sha256).digest()
+        s_b64 = _b64.urlsafe_b64encode(sig).decode().rstrip("=")
+        token = f"{p_b64}.{s_b64}"
+
+        return {
+            "tenant_id": tid,
+            "slug": tenant.get("slug", ""),
+            "name": tenant.get("name", ""),
+            "brand_name": tenant.get("brand_name", ""),
+            "synapse_tenant_token": token,
+        }
+    raise HTTPException(404, f"No tenant with slug '{slug}'")
+
+
 # ── Serve Frontend (SPA) ────────────────────────────────────────
 import os
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
-# Also check /app/frontend/dist for Docker container
-if not os.path.exists(_frontend_dir):
-    _frontend_dir = "/app/frontend/dist"
+# Resolve frontend directory — try multiple locations
+_frontend_dir = None
+_candidates = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist"),
+    "/app/frontend/dist",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist"),
+]
+for _c in _candidates:
+    if os.path.isdir(_c):
+        _frontend_dir = _c
+        break
+if not _frontend_dir:
+    _frontend_dir = "/app/frontend/dist"  # fallback
 
-print(f"[Hub] Looking for frontend at: {_frontend_dir} (Exists: {os.path.exists(_frontend_dir)})")
+print(f"[Hub] Frontend dir: {_frontend_dir} (Exists: {os.path.isdir(_frontend_dir)})")
+if os.path.isdir(_frontend_dir):
+    _assets = os.path.join(_frontend_dir, "assets")
+    if os.path.isdir(_assets):
+        print(f"[Hub] Assets: {os.listdir(_assets)}")
 
 
-@app.get("/", include_in_schema=False)
-async def serve_hub_index():
+@app.get("/{path:path}", include_in_schema=False)
+async def catch_all(path: str):
+    """SPA catch-all: serve static files if they exist, otherwise index.html."""
+    # Try to serve the actual static file first
+    file_path = os.path.join(_frontend_dir, path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    # Fall back to index.html for SPA client-side routing
     index_path = os.path.join(_frontend_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {"message": "Synapse Hub API", "frontend_path": _frontend_dir, "exists": os.path.exists(_frontend_dir)}
-
-
-if os.path.exists(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="hub-frontend")
+    return {"error": "Not Found"}

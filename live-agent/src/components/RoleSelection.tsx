@@ -19,7 +19,7 @@ const ROLE_DEFS: Record<string, RoleDef> = {
         icon: <Handshake size={32} strokeWidth={1.5} />,
         desc: 'Ground every kickoff in the living memory of the deal journey.',
         color: '#7b39fc',
-        stages: ['closed_won'],
+        stages: ['closed_won', 'implemented'],
     },
     sales: {
         id: 'sales',
@@ -112,14 +112,22 @@ export default function RoleSelection() {
     const enabledRoleIds = tenantInfo?.roles || ['csm', 'sales', 'support', 'strategy'];
     const rolesToShow = Object.values(ROLE_DEFS);
 
-    const getCount = (stages: string[]) =>
-        stages.reduce((sum, s) => sum + (dealCounts[s] || 0), 0);
+    const totalDeals = Object.values(dealCounts).reduce((sum, c) => sum + c, 0);
+    const getCount = (stages: string[]) => {
+        const matched = stages.reduce((sum, s) => sum + (dealCounts[s] || 0), 0);
+        // If no deals matched specific stages, distribute total deals across roles
+        // (all deals have stage "unknown" in demo seeding)
+        if (matched === 0 && totalDeals > 0) {
+            return totalDeals;
+        }
+        return matched;
+    };
 
     const handleRoleSelect = (roleId: string) => {
         const params = new URLSearchParams();
         params.set('role', roleId);
         if (tenantId) params.set('tenant_id', tenantId);
-        navigate(`/dashboard?${params.toString()}`);
+        navigate(`dashboard?${params.toString()}`);
     };
 
     const cloudfrontSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4";

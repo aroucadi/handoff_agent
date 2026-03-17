@@ -1,15 +1,8 @@
 import { Play } from 'lucide-react';
-import BackgroundVideo from './BackgroundVideo';
 import Navbar from './Navbar';
 
 export default function LandingPage() {
 
-    const cloudfrontSrc = "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260215_121759_424f8e9c-d8bd-4974-9567-52709dfb6842.mp4";
-    const localSrc = "/synapse-brand.mp4";
-    const backgroundSrc = typeof window !== "undefined"
-        && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-        ? localSrc
-        : cloudfrontSrc;
     const globalWithStatic = globalThis as typeof globalThis & {
         __REMOTION_STATIC_FILE__?: (path: string) => string;
     };
@@ -19,9 +12,12 @@ export default function LandingPage() {
         : "/synapse_dashboard_mockup.png";
 
     return (
-        <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30">
-            {/* Background Video Spec: 120% scale handled in component */}
-            <BackgroundVideo src={backgroundSrc} />
+        <div className="relative min-h-screen text-white font-manrope selection:bg-primary-purple/30 bg-[#0f0a1e]">
+            {/* Background Mesh Gradient */}
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-purple/20 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
+            </div>
 
             {/* Navbar Spec: 102px height, 1440px max-width */}
             <Navbar />
@@ -53,16 +49,16 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row items-center gap-[22px] mb-20 animate-fade-in-up">
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-primary-purple text-white rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-primary-purple-hover transition-all hover:scale-105 shadow-xl shadow-primary-purple/20 flex items-center justify-center gap-2"
-                        onClick={() => window.open('https://docs.synapse.com', '_blank')}
+                        onClick={() => window.location.href = '/dashboard?role=csm&tenant_id=9049d8ec'}
                     >
-                        Explore Documentation
+                        Go to Dashboard
                     </button>
                     <button
                         className="w-full sm:w-auto px-[24px] py-[14px] bg-[#2b2344] text-[#f6f7f9] rounded-[10px] font-cabin font-medium text-[16px] leading-[1.7] hover:bg-[#352b54] transition-all hover:scale-105 border border-white/5 flex items-center justify-center gap-2 group"
-                        onClick={() => window.open('https://demo.synapse.com', '_blank')}
+                        onClick={() => window.open('https://github.com/aroucadi/handoff_agent', '_blank')}
                     >
                         <Play size={16} className="fill-current group-hover:scale-110 transition-transform" />
-                        Watch 2min Demo
+                        View on GitHub
                     </button>
                 </div>
 

@@ -143,6 +143,21 @@ class TenantConfig(BaseModel):
     products: list[Product] = Field(default_factory=list)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     knowledge_sources: list[KnowledgeSource] = Field(default_factory=list)
+    
+    @property
+    def crm_type(self) -> str:
+        return self.crm.crm_type.value
+        
+    @property
+    def crm_url(self) -> str:
+        return self.crm.crm_url or ""
+
+    def model_dump(self, **kwargs):
+        d = super().model_dump(**kwargs)
+        # Flatten for legacy frontend access
+        d["crm_type"] = self.crm.crm_type.value
+        d["crm_url"] = self.crm.crm_url or ""
+        return d
     # Product Aliases: source CRM product name -> internal canonical slug
     product_alias_map: dict[str, str] = Field(default_factory=dict)
     # Terminology Overrides: generic key -> tenant label (e.g., {"account": "Client", "case": "Opportunity"})

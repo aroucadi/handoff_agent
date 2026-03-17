@@ -63,7 +63,7 @@ const AdminDashboard: React.FC = () => {
     );
 
     return (
-        <div className="admin-portal p-12 max-w-7xl mx-auto animate-fade-in">
+        <div className="admin-portal p-20 pt-8 max-w-7xl mx-auto animate-fade-in">
             {showKeyModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-6">
                     <div className="glass-card p-10 max-w-md w-full border-primary-purple/30">

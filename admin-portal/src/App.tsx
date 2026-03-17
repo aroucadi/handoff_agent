@@ -7,14 +7,14 @@ const App: React.FC = () => {
     return (
         <BrowserRouter>
             <div className="admin-app">
-                <header className="header p-12 pb-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-purple rounded-lg flex items-center justify-center font-black italic text-xl">S</div>
-                        <span className="font-black tracking-tighter text-2xl">Synapse Admin</span>
+                <header className="header p-20 pb-0">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary-purple rounded-xl flex items-center justify-center font-black italic text-2xl shadow-premium">S</div>
+                        <span className="font-black tracking-tighter text-3xl text-gradient">Synapse Admin</span>
                     </div>
                 </header>
 
-                <main className="container">
+                <main className="container pt-12 pb-24">
                     <Routes>
                         <Route path="/" element={<AdminDashboard />} />
                     </Routes>

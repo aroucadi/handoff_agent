@@ -34,7 +34,9 @@ const TenantLayout: React.FC = () => {
     return (
         <Routes>
             <Route path="/" element={<TenantWizard />} />
+            <Route path="/hub" element={<TenantWizard />} />
             <Route path="/config" element={<TenantWizard />} />
+            <Route path="*" element={<TenantWizard />} />
         </Routes>
     );
 };

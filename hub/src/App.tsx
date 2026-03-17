@@ -18,7 +18,7 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <main className="container pt-12">
+        <main className="container pt-24 pb-12">
           <Routes>
             {/* Dedicated Tenant Workspace */}
             <Route path="/t/:slug/*" element={<TenantLayout />} />
@@ -26,6 +26,7 @@ const App: React.FC = () => {
             {/* Admin/Discovery Surface */}
             <Route path="/" element={<TenantSelector />} />
             <Route path="/tenants/new" element={<TenantWizard />} />
+            <Route path="/tenants/:id" element={<TenantWizard />} />
 
             {/* Fallback */}
             <Route path="*" element={<TenantSelector />} />

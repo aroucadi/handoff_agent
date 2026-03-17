@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -41,7 +41,7 @@ const ICON_MAP: Record<string, any> = {
     'Users': Users
 };
 
-const DEFAULT_ROLE_CONFIG = { title: 'Nexus Overview', subtitle: 'High-fidelity workflow monitoring', stages: ['closed_won'], icon: LayoutDashboard };
+const DEFAULT_ROLE_CONFIG = { title: 'Nexus Overview', subtitle: 'High-fidelity workflow monitoring', stages: ['closed_won', 'implemented'], icon: LayoutDashboard };
 
 export default function Dashboard() {
     const [searchParams] = useSearchParams();
@@ -57,8 +57,12 @@ export default function Dashboard() {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerClientId, setViewerClientId] = useState('');
 
-    const roleConfig = tenantConfig?.agent?.role_views?.[roleId] || null;
-    const activeRole = roleConfig ? {
+    // Safety locks to prevent infinite loops
+    const configFetchLock = useRef<string | null>(null);
+    const dealsFetchLock = useRef<string | null>(null);
+
+    const roleConfig = useMemo(() => tenantConfig?.agent?.role_views?.[roleId] || null, [tenantConfig, roleId]);
+    const activeRole = useMemo(() => roleConfig ? {
         title: roleConfig.display_name,
         subtitle: `Workflow: ${roleConfig.display_name}`,
         stages: roleConfig.stage_filter || [],
@@ -66,13 +70,14 @@ export default function Dashboard() {
     } : {
         ...DEFAULT_ROLE_CONFIG,
         title: `${roleId.toUpperCase()} Overview`,
-        subtitle: `Operational monitoring for ${roleId.toUpperCase()}`
-    };
+        subtitle: `Operational monitoring for ${roleId.toUpperCase()}`,
+        stages: DEFAULT_ROLE_CONFIG.stages
+    }, [roleConfig, roleId]);
 
-    const terms = {
+    const terms = useMemo(() => ({
         account: tenantConfig?.terminology_overrides?.account || 'Account',
         case: tenantConfig?.terminology_overrides?.case || 'Case'
-    };
+    }), [tenantConfig]);
 
     const activeStageLabels = tenantConfig?.agent?.stage_display_config || {
         'closed_won': 'Won',
@@ -85,7 +90,9 @@ export default function Dashboard() {
 
     useEffect(() => {
         const fetchTenantConfig = async () => {
-            if (!tenantId) return;
+            if (!tenantId || configFetchLock.current === tenantId) return;
+            configFetchLock.current = tenantId;
+            
             try {
                 const token = localStorage.getItem('synapse_tenant_token');
                 const headers: Record<string, string> = {};
@@ -102,29 +109,44 @@ export default function Dashboard() {
             }
         };
 
+        fetchTenantConfig();
+    }, [tenantId]);
+
+    const activeStagesStr = JSON.stringify(activeRole.stages);
+    const fetchKey = `${tenantId}-${roleId}-${activeStagesStr}`;
+
+    useEffect(() => {
         const fetchDeals = async () => {
+            if (!tenantId || dealsFetchLock.current === fetchKey) return;
+            dealsFetchLock.current = fetchKey;
+            
+            setLoading(true);
             try {
                 const token = localStorage.getItem('synapse_tenant_token');
-                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId || '' };
+                const headers: Record<string, string> = { 'X-Tenant-Id': tenantId };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
                 const baseUrl = import.meta.env.VITE_API_URL || '';
-                const url = tenantId
-                    ? `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`
-                    : `${baseUrl}/api/crm/deals`;
+                const url = `${baseUrl}/api/crm/deals?tenant_id=${tenantId}`;
                 const res = await fetch(url, { headers });
                 const data = await res.json();
 
-                const filtered = (data.deals || []).filter((d: { stage: string }) =>
-                    activeRole.stages.includes(d.stage)
-                );
+                const allDeals = data.deals || [];
+                const currentStages = JSON.parse(activeStagesStr);
+                
+                const filtered = allDeals.filter((d: { stage: string }) => {
+                    const isInStages = currentStages.includes(d.stage);
+                    // Force 'implemented' for CSM if not explicitly present (for demo fidelity)
+                    if (roleId === 'csm' && d.stage === 'implemented') return true;
+                    return isInStages;
+                });
 
-                const mapped = filtered.map((d: { deal_id?: string; id: string; client_id: string; account_name?: string; company_name: string; stage: string; amount?: number; deal_value: number; graph_ready?: boolean; close_date?: string }) => ({
+                const mapped = filtered.map((d: any) => ({
                     id: d.deal_id || d.id,
                     client_id: d.client_id,
                     account_name: d.account_name || d.company_name,
                     stage: d.stage,
-                    amount: d.amount || d.deal_value,
+                    amount: d.amount || d.deal_value || 0,
                     close_date: d.close_date || '',
                     graph_status: d.graph_ready ? 'ready' : 'generating'
                 }));
@@ -137,8 +159,8 @@ export default function Dashboard() {
             }
         };
 
-        fetchTenantConfig().then(fetchDeals);
-    }, [roleId, activeRole.stages, tenantId]);
+        fetchDeals();
+    }, [tenantId, roleId, activeStagesStr, fetchKey]);
 
     // Fetch artifact counts per client
     const fetchArtifactCounts = useCallback(async (clientIds: string[]) => {
@@ -314,7 +336,7 @@ export default function Dashboard() {
                                         const params = new URLSearchParams();
                                         if (tenantId) params.set('tenant_id', tenantId);
                                         params.set('role', roleId);
-                                        navigate(`/briefing/${deal.client_id}?${params.toString()}`, {
+                                        navigate(`../briefing/${deal.client_id}?${params.toString()}`, {
                                             state: {
                                                 dealId: deal.id,
                                                 companyName: deal.account_name
